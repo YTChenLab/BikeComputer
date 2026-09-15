@@ -9,6 +9,7 @@
 #include "ui/models/ui_ride_data_model.h"
 #include "platform/pc/ui_pc_services.h"
 #include "platform/stm32/ui_stm32_services.h"
+#include "services/ui_command_service.h"
 #include "services/ui_system_services.h"
 
 #include <assert.h>
@@ -309,6 +310,8 @@ typedef struct
     uint32_t gnss_calls;
     uint32_t save_calls;
     uint32_t tick_ms;
+    uint32_t command_calls;
+    ui_command_t last_command;
 } fake_stm32_context_t;
 
 static void fake_stm32_lock(void *context)
@@ -338,6 +341,14 @@ static void fake_stm32_tick(uint32_t elapsed_ms, void *context)
     ((fake_stm32_context_t *)context)->tick_ms += elapsed_ms;
 }
 
+static bool fake_stm32_command(const ui_command_t *command, void *context)
+{
+    fake_stm32_context_t *fake = context;
+    fake->command_calls++;
+    fake->last_command = *command;
+    return true;
+}
+
 static void test_stm32_service_contract(void)
 {
     fake_stm32_context_t context = {0};
@@ -352,6 +363,7 @@ static void test_stm32_service_contract(void)
         .request_gnss_fix = fake_stm32_gnss,
         .save_ride = fake_stm32_save,
         .retry_save = NULL,
+        .dispatch_command = fake_stm32_command,
         .tick = fake_stm32_tick,
         .lock = fake_stm32_lock,
         .unlock = fake_stm32_unlock,
@@ -365,6 +377,28 @@ static void test_stm32_service_contract(void)
     assert(context.gnss_calls == 1);
     assert(context.save_calls == 2);
     assert(context.tick_ms == 25);
+
+    uint32_t command_id = ui_command_service_submit(
+        UI_COMMAND_WIFI_SET_ENABLED, 0, 1000U);
+    assert(command_id != 0U);
+    ui_command_service_process(20U);
+    assert(context.command_calls == 1U);
+    assert(context.last_command.id == command_id);
+    assert(context.last_command.type == UI_COMMAND_WIFI_SET_ENABLED);
+    const ui_state_adapter_snapshot_t command_state = {
+        .wifi_enabled = false,
+        .wifi_connected = false,
+        .bluetooth_enabled = true,
+        .bluetooth_connected = true
+    };
+    assert(ui_stm32_services_complete_command(
+        command_id, UI_COMMAND_STATUS_SUCCESS, 0, &command_state,
+        UI_STATE_ADAPTER_CONNECTIVITY));
+    ui_command_service_process(20U);
+    assert(ui_state_adapter_process() == UI_STATE_ADAPTER_CONNECTIVITY);
+    ui_app_state_t command_app_state;
+    assert(ui_app_state_get(&command_app_state));
+    assert(!command_app_state.wifi_enabled);
 
     s_event_count = 0;
     assert(ui_event_bus_subscribe(UI_EVENT_MASK_ALL, event_callback, NULL) > 0);
@@ -417,6 +451,7 @@ static void test_stm32_service_contract(void)
     assert(ui_input_queue_pending() == 1U);
 
     ui_system_services_reset();
+    ui_command_service_reset_backend();
     ui_concurrency_reset_port();
 }
 
@@ -436,6 +471,16 @@ static void test_async_pc_services(void)
     ui_pc_services_register();
     s_event_count = 0;
     assert(ui_event_bus_subscribe(UI_EVENT_MASK_ALL, event_callback, NULL) > 0);
+
+    uint32_t wifi_command = ui_command_service_submit(
+        UI_COMMAND_WIFI_SET_ENABLED, 0, 1000U);
+    assert(wifi_command != 0U);
+    ui_command_service_process(1U);
+    ui_command_service_process(UI_PC_COMMAND_DELAY_MS);
+    assert(ui_state_adapter_process() != 0U);
+    ui_app_state_t command_state;
+    assert(ui_app_state_get(&command_state));
+    assert(!command_state.wifi_enabled && !command_state.wifi_connected);
 
     assert(ui_system_services_request_gnss_fix());
     assert(ui_pc_services_gnss_busy());

@@ -4,6 +4,7 @@
 #include "ui/core/ui_event.h"
 #include "ui/core/ui_input.h"
 #include "ui/models/ui_ride_data_model.h"
+#include "services/ui_command_service.h"
 #include "services/ui_navigation_service.h"
 #include "services/ui_state_adapter.h"
 
@@ -12,9 +13,11 @@
 
 typedef struct
 {
+    /* Legacy hooks are optional during migration to dispatch_command. */
     bool (*request_gnss_fix)(void *context);
     bool (*save_ride)(void *context);
     bool (*retry_save)(void *context);
+    bool (*dispatch_command)(const ui_command_t *command, void *context);
     void (*tick)(uint32_t elapsed_ms, void *context);
     void (*lock)(void *context);
     void (*unlock)(void *context);
@@ -32,5 +35,13 @@ bool ui_stm32_services_submit_state(
     const ui_state_adapter_snapshot_t *snapshot,
     ui_state_adapter_mask_t fields);
 bool ui_stm32_services_submit_input(const ui_input_message_t *message);
+
+/* Task-context completion. Optional state is applied before result delivery. */
+bool ui_stm32_services_complete_command(
+    uint32_t command_id,
+    ui_command_status_t status,
+    int32_t error_code,
+    const ui_state_adapter_snapshot_t *state,
+    ui_state_adapter_mask_t fields);
 
 #endif /* UI_STM32_SERVICES_H */

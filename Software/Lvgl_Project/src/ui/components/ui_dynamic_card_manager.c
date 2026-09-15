@@ -4,6 +4,7 @@
 #include "../core/ui_app_state.h"
 #include "../core/ui_motion.h"
 #include "../core/ui_theme.h"
+#include "../../services/ui_command_service.h"
 
 #include "lvgl/src/draw/lv_draw_line.h"
 #include "lvgl/src/draw/lv_draw_triangle.h"
@@ -584,31 +585,27 @@ static void scroll_to_card(ui_dynamic_card_id_t card)
 
 static void execute_music_control(uint8_t control_index)
 {
-    ui_app_state_t state;
-    if(!ui_app_state_get(&state)) return;
-    uint8_t track = (uint8_t)(state.media_track % 3U);
-    ui_media_mode_t mode = state.media_mode;
-
     switch(control_index)
     {
         case 0:
-            track = track == 0U ? 2U : (uint8_t)(track - 1U);
-            break;
+            (void)ui_command_service_submit(UI_COMMAND_MEDIA_PREVIOUS,
+                                            0, 1500U);
+            return;
         case 1:
-            ui_app_state_set_media(!state.media_playing, track, mode);
+            (void)ui_command_service_submit(
+                UI_COMMAND_MEDIA_TOGGLE_PLAYBACK, 0, 1500U);
             return;
         case 2:
-            track = (uint8_t)((track + 1U) % 3U);
-            break;
+            (void)ui_command_service_submit(UI_COMMAND_MEDIA_NEXT,
+                                            0, 1500U);
+            return;
         case 3:
-            mode = (ui_media_mode_t)(((uint8_t)mode + 1U) %
-                                     UI_MEDIA_MODE_COUNT);
-            ui_app_state_set_media(state.media_playing, track, mode);
+            (void)ui_command_service_submit(UI_COMMAND_MEDIA_CYCLE_MODE,
+                                            0, 1500U);
             return;
         default:
             return;
     }
-    ui_app_state_set_media(state.media_playing, track, mode);
 }
 
 void ui_dynamic_card_manager_create(lv_obj_t *parent)

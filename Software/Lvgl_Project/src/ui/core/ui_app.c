@@ -15,6 +15,7 @@
 #include "ui_sound.h"
 #include "ui_state_machine.h"
 #include "ui_theme.h"
+#include "../../services/ui_command_service.h"
 #include "../../services/ui_system_services.h"
 #include "../../services/ui_state_adapter.h"
 #include "../../services/ui_navigation_service.h"
@@ -92,7 +93,11 @@ static void app_route_changed(ui_route_id_t previous,
 static void app_ride_state_changed(ui_ride_state_t previous,
                                    ui_ride_state_t current,
                                    ui_ride_event_t event, void *user_data);
+static void app_command_changed(const ui_command_result_t *result,
+                                void *user_data);
 static void app_handle_key(uint32_t key);
+static bool app_submit_command(ui_command_type_t type, int32_t value,
+                               uint32_t timeout_ms);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -136,24 +141,44 @@ static void app_event_received(const ui_event_t *event, void *user_data)
     (void)user_data;
     switch(event->type) {
         case UI_EVENT_GPS_SEARCHING:
-            if(!ui_system_services_request_gnss_fix()) {
+            if(!app_submit_command(UI_COMMAND_GNSS_ACQUIRE_FIX, 0, 3000U))
                 (void)app_publish_event(UI_EVENT_GPS_FAILED,
                                         UI_EVENT_PRIORITY_P1_RIDING_SAFETY);
-            }
             break;
         case UI_EVENT_RIDE_FINISH_CONFIRMED:
-            if(!ui_system_services_save_ride()) {
+            if(!app_submit_command(UI_COMMAND_RIDE_FINISH, 0, 2000U)) {
                 (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
                                         UI_EVENT_PRIORITY_P0_CRITICAL);
             }
             break;
         case UI_EVENT_STORAGE_RETRY:
             if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING &&
-               !ui_system_services_retry_save()) {
+               !app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U)) {
                 (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
                                         UI_EVENT_PRIORITY_P0_CRITICAL);
             }
             break;
+        case UI_EVENT_MEDIA_PREVIOUS:
+        case UI_EVENT_MEDIA_TOGGLE:
+        case UI_EVENT_MEDIA_NEXT:
+        case UI_EVENT_MEDIA_MODE: {
+            if(event->type == UI_EVENT_MEDIA_PREVIOUS) {
+                (void)app_submit_command(UI_COMMAND_MEDIA_PREVIOUS,
+                                         0, 1500U);
+            }
+            else if(event->type == UI_EVENT_MEDIA_NEXT) {
+                (void)app_submit_command(UI_COMMAND_MEDIA_NEXT, 0, 1500U);
+            }
+            else if(event->type == UI_EVENT_MEDIA_TOGGLE) {
+                (void)app_submit_command(UI_COMMAND_MEDIA_TOGGLE_PLAYBACK,
+                                         0, 1500U);
+            }
+            else {
+                (void)app_submit_command(UI_COMMAND_MEDIA_CYCLE_MODE,
+                                         0, 1500U);
+            }
+            break;
+        }
         case UI_EVENT_RIDE_SUMMARY_READY:
             app_hide_quick_immediate();
             app_show(UI_PAGE_SUMMARY);
@@ -177,6 +202,7 @@ static void app_event_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
     ui_system_services_tick(20);
+    ui_command_service_process(20);
     (void)ui_state_adapter_process();
     (void)ui_ride_data_model_process();
     (void)ui_navigation_service_process();
@@ -242,6 +268,84 @@ static void app_ride_state_changed(ui_ride_state_t previous,
     (void)event;
     (void)user_data;
     ui_app_state_set_ride_state(current);
+}
+
+static bool app_submit_command(ui_command_type_t type, int32_t value,
+                               uint32_t timeout_ms)
+{
+    uint32_t command_id =
+        ui_command_service_submit(type, value, timeout_ms);
+    if(command_id == 0U)
+        LV_LOG_WARN("UI command queue rejected type=%d", (int)type);
+    return command_id != 0U;
+}
+
+static void app_command_changed(const ui_command_result_t *result,
+                                void *user_data)
+{
+    (void)user_data;
+    if(result == NULL || result->status == UI_COMMAND_STATUS_PENDING) return;
+
+    if(result->status == UI_COMMAND_STATUS_SUCCESS) {
+        switch(result->type) {
+            case UI_COMMAND_GNSS_ACQUIRE_FIX:
+                (void)app_publish_event(UI_EVENT_GPS_READY,
+                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                break;
+            case UI_COMMAND_RIDE_START:
+                app_hide_quick_immediate();
+                (void)app_publish_event(UI_EVENT_RIDE_START_REQUESTED,
+                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                break;
+            case UI_COMMAND_RIDE_PAUSE:
+                app_hide_quick_immediate();
+                (void)app_publish_event(UI_EVENT_RIDE_PAUSE_REQUESTED,
+                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                break;
+            case UI_COMMAND_RIDE_RESUME:
+                app_hide_quick_immediate();
+                (void)app_publish_event(UI_EVENT_RIDE_RESUME_REQUESTED,
+                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                break;
+            case UI_COMMAND_RIDE_FINISH:
+                if(!app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U))
+                    (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
+                                            UI_EVENT_PRIORITY_P0_CRITICAL);
+                break;
+            case UI_COMMAND_RIDE_SAVE:
+                if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING) {
+                    (void)app_publish_event(UI_EVENT_RIDE_SAVE_SUCCESS,
+                                            UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                }
+                else {
+                    ui_sound_play(UI_SFX_SUCCESS);
+                }
+                break;
+            case UI_COMMAND_RIDE_UPLOAD:
+                ui_sound_play(UI_SFX_SUCCESS);
+                break;
+            default:
+                break;
+        }
+        return;
+    }
+
+    LV_LOG_WARN("UI command failed: id=%lu type=%d status=%d error=%ld",
+                (unsigned long)result->id, (int)result->type,
+                (int)result->status, (long)result->error_code);
+    if(result->type == UI_COMMAND_GNSS_ACQUIRE_FIX) {
+        (void)app_publish_event(UI_EVENT_GPS_FAILED,
+                                UI_EVENT_PRIORITY_P1_RIDING_SAFETY);
+    }
+    else if(result->type == UI_COMMAND_RIDE_SAVE) {
+        (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
+                                UI_EVENT_PRIORITY_P0_CRITICAL);
+    }
+    else if(result->type == UI_COMMAND_RIDE_FINISH) {
+        (void)app_publish_event(UI_EVENT_RIDE_FINISH_CANCELLED,
+                                UI_EVENT_PRIORITY_P2_RIDE_STATE);
+    }
+    app_update_quick_states();
 }
 
 static void app_dashboard_enter(ui_route_id_t route, lv_obj_t *screen,
@@ -479,26 +583,22 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_SYSTEM: app_show(UI_PAGE_SYSTEM); break;
         case UI_ACTION_QUICK: app_open_quick(); break;
         case UI_ACTION_SAVE_RIDE:
+            (void)app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U);
+            break;
         case UI_ACTION_UPLOAD_RIDE:
-            ui_sound_play(UI_SFX_SUCCESS);
+            (void)app_submit_command(UI_COMMAND_RIDE_UPLOAD, 0, 5000U);
             break;
         case UI_ACTION_START_RIDE:
             if(ui_state_machine_state() == UI_RIDE_STATE_HOME) {
-                app_hide_quick_immediate();
-                (void)app_publish_event(UI_EVENT_RIDE_START_REQUESTED,
-                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                (void)app_submit_command(UI_COMMAND_RIDE_START, 0, 2000U);
             }
             break;
         case UI_ACTION_PAUSE_RIDE:
             if(ui_state_machine_state() == UI_RIDE_STATE_RIDING) {
-                app_hide_quick_immediate();
-                (void)app_publish_event(UI_EVENT_RIDE_PAUSE_REQUESTED,
-                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                (void)app_submit_command(UI_COMMAND_RIDE_PAUSE, 0, 2000U);
             }
             else if(ui_state_machine_state() == UI_RIDE_STATE_PAUSED) {
-                app_hide_quick_immediate();
-                (void)app_publish_event(UI_EVENT_RIDE_RESUME_REQUESTED,
-                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                (void)app_submit_command(UI_COMMAND_RIDE_RESUME, 0, 2000U);
             }
             break;
         case UI_ACTION_END_RIDE:
@@ -509,24 +609,20 @@ static void app_action(ui_action_t action) {
             }
             break;
         case UI_ACTION_WIFI:
-            ui_app_state_set_connectivity(
-                !state.wifi_enabled, !state.wifi_enabled,
-                state.wifi_name, state.bluetooth_enabled,
-                state.bluetooth_connected, state.bluetooth_name);
+            (void)app_submit_command(UI_COMMAND_WIFI_SET_ENABLED,
+                                     !state.wifi_enabled, 2000U);
             break;
         case UI_ACTION_BT:
-            ui_app_state_set_connectivity(
-                state.wifi_enabled, state.wifi_connected, state.wifi_name,
-                !state.bluetooth_enabled, !state.bluetooth_enabled,
-                state.bluetooth_name);
+            (void)app_submit_command(UI_COMMAND_BLUETOOTH_SET_ENABLED,
+                                     !state.bluetooth_enabled, 2000U);
             break;
         case UI_ACTION_GPS:
-            ui_app_state_set_gnss(!state.gps_enabled, state.satellites);
+            (void)app_submit_command(UI_COMMAND_GNSS_SET_ENABLED,
+                                     !state.gps_enabled, 2000U);
             break;
         case UI_ACTION_POWER_SAVE:
-            ui_app_state_set_controls(state.sound_level,
-                                      state.brightness_level,
-                                      !state.power_save_enabled);
+            (void)app_submit_command(UI_COMMAND_POWER_SAVE_SET_ENABLED,
+                                     !state.power_save_enabled, 2000U);
             break;
         case UI_ACTION_BRIGHTNESS:
         case UI_ACTION_SOUND:
@@ -581,6 +677,7 @@ void ui_app_init(void) {
     ui_dock_controller_init();
     ui_ride_controller_init();
     (void)ui_event_bus_subscribe(UI_EVENT_MASK_ALL, app_event_received, NULL);
+    (void)ui_command_service_subscribe(app_command_changed, NULL);
     (void)ui_app_state_subscribe(UI_APP_STATE_CHANGE_ALL,
                                  app_state_changed, NULL);
     (void)ui_ride_data_model_subscribe(app_ride_data_changed, NULL);
@@ -688,14 +785,11 @@ static uint8_t app_slider_level_from_y(int32_t screen_y) {
 
 static void app_update_active_slider(int32_t screen_y) {
     uint8_t value = app_slider_level_from_y(screen_y);
-    ui_app_state_t state;
-    if(!ui_app_state_get(&state)) return;
     if(s_active_slider == UI_CONTROL_CENTER_SLIDER_SOUND) {
-        ui_app_state_set_controls(value, state.brightness_level,
-                                  state.power_save_enabled);
+        (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL, value, 1500U);
     } else if(s_active_slider == UI_CONTROL_CENTER_SLIDER_BRIGHTNESS) {
-        ui_app_state_set_controls(state.sound_level, value,
-                                  state.power_save_enabled);
+        (void)app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL,
+                                 value, 1500U);
     }
 }
 

@@ -210,6 +210,7 @@ if(BUILD_TESTING)
         src/ui/core/ui_state_machine.c
         src/ui/core/ui_app_state.c
         src/services/ui_system_services.c
+        src/services/ui_command_service.c
         src/services/ui_state_adapter.c
         src/services/ui_navigation_service.c
         src/platform/pc/ui_pc_services.c
@@ -270,6 +271,16 @@ if(BUILD_TESTING)
         ${PROJECT_SOURCE_DIR}/src
     )
     add_test(NAME ui_service_adapter_test COMMAND ui_service_adapter_test)
+
+    add_executable(ui_command_service_test
+        tests/ui_command_service_test.c
+        src/services/ui_command_service.c
+        src/ui/core/ui_concurrency.c
+    )
+    target_include_directories(ui_command_service_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    add_test(NAME ui_command_service_test COMMAND ui_command_service_test)
 endif()
 
 # On Windows, GUI applications do not show a console by default,

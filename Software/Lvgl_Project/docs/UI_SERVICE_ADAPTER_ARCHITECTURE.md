@@ -75,7 +75,7 @@ SDL or STM32 input -> ui_input_queue -> ui_app_handle_input/pointer
 
 ## 当前边界与风险
 
-- 目前已完成“硬件状态上报到 UI”，尚未建立“UI 命令下发到硬件”的异步请求/确认通道。
-- WiFi、蓝牙、GPS 和背光开关在 PC 上可直接模拟；移植 STM32 前必须增加命令成功、失败、处理中和超时状态，不能把 UI 显示变化当作外设操作成功。
+- “硬件状态上报到 UI”和“UI 命令下发到硬件”均已建立异步通道，命令生命周期见 `UI_COMMAND_ACTION_ARCHITECTURE.md`。
+- Phase 4/5 尚需把命令的处理中、失败和超时状态接入统一 Bottom Interaction Surface；在此之前只保留日志与观察者结果，不新增独立 Popup。
 - 导航模型已解耦，但真实地图瓦片读取、TF 卡缓存、坐标投影和路线计算仍属于后续地图服务阶段。
 - App State 与 LVGL 更新只能在 UI 线程执行；生产者只允许调用本文列出的 submit/post API。

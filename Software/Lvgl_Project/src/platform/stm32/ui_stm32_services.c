@@ -3,6 +3,9 @@
 #include "services/ui_system_services.h"
 #include "ui/core/ui_concurrency.h"
 #include "ui/core/ui_event_bridge.h"
+#include "ui/core/ui_input_queue.h"
+#include "services/ui_navigation_service.h"
+#include "services/ui_state_adapter.h"
 
 static ui_stm32_service_port_t s_port;
 
@@ -58,4 +61,21 @@ bool ui_stm32_services_publish_event(const ui_event_t *event)
 void ui_stm32_services_submit_ride_data(const ui_ride_data_t *data)
 {
     ui_ride_data_model_submit(data);
+}
+
+void ui_stm32_services_submit_navigation(const nav_model_t *model)
+{
+    ui_navigation_service_submit(model);
+}
+
+bool ui_stm32_services_submit_state(
+    const ui_state_adapter_snapshot_t *snapshot,
+    ui_state_adapter_mask_t fields)
+{
+    return ui_state_adapter_submit(snapshot, fields);
+}
+
+bool ui_stm32_services_submit_input(const ui_input_message_t *message)
+{
+    return ui_input_queue_post(message);
 }

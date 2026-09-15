@@ -3,6 +3,7 @@
 #include "../../components/navigation/ui_nav_card.h"
 #include "../../components/navigation/ui_nav_map.h"
 #include "../../core/ui_colors.h"
+#include "../../../services/ui_navigation_service.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -16,16 +17,7 @@
 #define NAV_CARD_W         227
 #define NAV_CARD_H         154
 #define NAV_CARD_GAP       6
-#define NAV_QUEUE_DEPTH    4
-#define NAV_UI_PERIOD_MS   50
 #define NAV_MOCK_PERIOD_MS 900
-
-typedef struct
-{
-    nav_model_t values[NAV_QUEUE_DEPTH];
-    volatile uint8_t write_index;
-    volatile uint8_t read_index;
-} nav_model_queue_t;
 
 typedef struct
 {
@@ -36,38 +28,15 @@ typedef struct
     ui_nav_card_t distance_card;
     ui_nav_card_t eta_card;
     ui_nav_card_t direction_card;
-    nav_model_queue_t queue;
     nav_model_t model;
-    lv_timer_t *ui_timer;
     lv_timer_t *mock_timer;
+    int32_t service_subscription;
     uint32_t mock_tick;
     bool active;
     bool created;
 } ui_navigation_context_t;
 
 static ui_navigation_context_t s_navigation;
-
-static bool queue_push(nav_model_queue_t *queue, const nav_model_t *model)
-{
-    uint8_t write = __atomic_load_n(&queue->write_index, __ATOMIC_RELAXED);
-    uint8_t read = __atomic_load_n(&queue->read_index, __ATOMIC_ACQUIRE);
-    uint8_t next = (uint8_t)((write + 1U) % NAV_QUEUE_DEPTH);
-    if(next == read) return false;
-    queue->values[write] = *model;
-    __atomic_store_n(&queue->write_index, next, __ATOMIC_RELEASE);
-    return true;
-}
-
-static bool queue_pop(nav_model_queue_t *queue, nav_model_t *model)
-{
-    uint8_t read = __atomic_load_n(&queue->read_index, __ATOMIC_RELAXED);
-    uint8_t write = __atomic_load_n(&queue->write_index, __ATOMIC_ACQUIRE);
-    if(read == write) return false;
-    *model = queue->values[read];
-    __atomic_store_n(&queue->read_index,
-                     (uint8_t)((read + 1U) % NAV_QUEUE_DEPTH), __ATOMIC_RELEASE);
-    return true;
-}
 
 static void apply_model(const nav_model_t *model)
 {
@@ -85,13 +54,14 @@ static void apply_model(const nav_model_t *model)
     ui_nav_map_apply_model(&s_navigation.map, model);
 }
 
-static void navigation_ui_timer_cb(lv_timer_t *timer)
+static void navigation_model_changed(const nav_model_t *model,
+                                     uint32_t version, void *user_data)
 {
-    nav_model_t newest;
-    bool updated = false;
-    while(queue_pop(&s_navigation.queue, &newest)) updated = true;
-    if(updated) apply_model(&newest);
-    (void)timer;
+    (void)version;
+    (void)user_data;
+    if(model == NULL) return;
+    if(s_navigation.active) apply_model(model);
+    else s_navigation.model = *model;
 }
 
 static void navigation_mock_timer_cb(lv_timer_t *timer)
@@ -110,7 +80,7 @@ static void navigation_mock_timer_cb(lv_timer_t *timer)
     } else if(model.direction_distance > 35U) {
         model.direction_distance -= 15U;
     }
-    ui_navigation_post_model(&model);
+    ui_navigation_service_submit(&model);
     (void)timer;
 }
 
@@ -143,6 +113,8 @@ void ui_navigation_create(lv_obj_t *screen)
     if(screen == NULL || s_navigation.created) return;
     memset(&s_navigation, 0, sizeof(s_navigation));
     s_navigation.screen = screen;
+    s_navigation.service_subscription =
+        ui_navigation_service_subscribe(navigation_model_changed, NULL);
     ui_nav_map_create(&s_navigation.map, screen, NAV_MAP_X, NAV_MAP_Y);
     create_grid(screen);
 
@@ -159,10 +131,9 @@ void ui_navigation_create(lv_obj_t *screen)
         .direction_distance = 250U
     };
     apply_model(&s_navigation.model);
-    s_navigation.ui_timer = lv_timer_create(navigation_ui_timer_cb, NAV_UI_PERIOD_MS, NULL);
     s_navigation.mock_timer = lv_timer_create(navigation_mock_timer_cb, NAV_MOCK_PERIOD_MS, NULL);
-    lv_timer_pause(s_navigation.ui_timer);
     lv_timer_pause(s_navigation.mock_timer);
+    ui_navigation_service_submit(&s_navigation.model);
     s_navigation.created = true;
 }
 
@@ -171,19 +142,15 @@ void ui_navigation_set_active(bool active)
     if(!s_navigation.created) return;
     s_navigation.active = active;
     if(active) {
-        lv_timer_resume(s_navigation.ui_timer);
+        nav_model_t latest;
+        uint32_t version;
+        if(ui_navigation_service_get(&latest, &version) && version > 0U)
+            apply_model(&latest);
         lv_timer_resume(s_navigation.mock_timer);
     }
     else {
-        lv_timer_pause(s_navigation.ui_timer);
         lv_timer_pause(s_navigation.mock_timer);
     }
-}
-
-bool ui_navigation_post_model(const nav_model_t *model)
-{
-    if(model == NULL || !s_navigation.created) return false;
-    return queue_push(&s_navigation.queue, model);
 }
 
 bool ui_navigation_contains_point(int32_t x, int32_t y)
@@ -207,9 +174,4 @@ bool ui_navigation_handle_input(ui_input_event_t input)
         return true;
     }
     return false;
-}
-
-const nav_model_t *ui_navigation_get_model(void)
-{
-    return &s_navigation.model;
 }

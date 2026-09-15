@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.12.4)
 # Guarded so older CMake versions remain compatible.
 if(POLICY CMP0177)
     cmake_policy(SET CMP0177 NEW)
+    set(CMAKE_POLICY_DEFAULT_CMP0177 NEW)
 endif()
 
 project(lvgl C CXX)
@@ -204,9 +205,13 @@ if(BUILD_TESTING)
         src/ui/core/ui_concurrency.c
         src/ui/core/ui_event_bridge.c
         src/ui/core/ui_event_bus.c
+        src/ui/core/ui_input_queue.c
         src/ui/core/ui_ride_controller.c
         src/ui/core/ui_state_machine.c
+        src/ui/core/ui_app_state.c
         src/services/ui_system_services.c
+        src/services/ui_state_adapter.c
+        src/services/ui_navigation_service.c
         src/platform/pc/ui_pc_services.c
         src/ui/models/ui_ride_data_model.c
         src/platform/stm32/ui_stm32_services.c
@@ -252,6 +257,19 @@ if(BUILD_TESTING)
         target_link_libraries(ui_router_lifecycle_test m pthread)
     endif()
     add_test(NAME ui_router_lifecycle_test COMMAND ui_router_lifecycle_test)
+
+    add_executable(ui_service_adapter_test
+        tests/ui_service_adapter_test.c
+        src/services/ui_state_adapter.c
+        src/services/ui_navigation_service.c
+        src/ui/core/ui_app_state.c
+        src/ui/core/ui_input_queue.c
+        src/ui/core/ui_concurrency.c
+    )
+    target_include_directories(ui_service_adapter_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    add_test(NAME ui_service_adapter_test COMMAND ui_service_adapter_test)
 endif()
 
 # On Windows, GUI applications do not show a console by default,

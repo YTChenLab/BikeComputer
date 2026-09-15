@@ -7,6 +7,7 @@
 #include "ui_dock_controller.h"
 #include "ui_event_bridge.h"
 #include "ui_event_bus.h"
+#include "ui_input_queue.h"
 #include "ui_motion.h"
 #include "ui_ride_controller.h"
 #include "ui_router.h"
@@ -15,6 +16,8 @@
 #include "ui_state_machine.h"
 #include "ui_theme.h"
 #include "../../services/ui_system_services.h"
+#include "../../services/ui_state_adapter.h"
+#include "../../services/ui_navigation_service.h"
 #include "../components/ui_status_bar.h"
 #include "../components/ui_dynamic_card_manager.h"
 #include "../components/dock/ui_dock_view.h"
@@ -89,6 +92,21 @@ static void app_route_changed(ui_route_id_t previous,
 static void app_ride_state_changed(ui_ride_state_t previous,
                                    ui_ride_state_t current,
                                    ui_ride_event_t event, void *user_data);
+static void app_handle_key(uint32_t key);
+
+static void app_input_received(const ui_input_message_t *message,
+                               void *user_data)
+{
+    (void)user_data;
+    if(message == NULL) return;
+    if(message->type >= UI_INPUT_TOUCH_BEGIN &&
+       message->type <= UI_INPUT_TOUCH_CANCEL) {
+        ui_app_handle_pointer(message);
+    }
+    else {
+        ui_app_handle_input(message->type);
+    }
+}
 
 static bool app_publish_event(ui_event_type_t type,
                               ui_event_priority_t priority)
@@ -159,7 +177,11 @@ static void app_event_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
     ui_system_services_tick(20);
+    (void)ui_state_adapter_process();
     (void)ui_ride_data_model_process();
+    (void)ui_navigation_service_process();
+    (void)ui_input_queue_drain(UI_INPUT_QUEUE_MAX,
+                               app_input_received, NULL);
     (void)ui_event_bridge_drain(UI_EVENT_BRIDGE_QUEUE_MAX);
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
     ui_dock_controller_tick(20);
@@ -182,12 +204,6 @@ static void app_ride_data_changed(const ui_ride_data_t *data,
     (void)version;
     (void)user_data;
     if(data == NULL) return;
-    ui_app_state_t state;
-    if(ui_app_state_get(&state)) {
-        ui_app_state_set_status(data->clock_hour, data->clock_minute,
-                                data->battery, state.battery_charging,
-                                state.gps_enabled, data->satellites);
-    }
     ui_dashboard_set_data(data);
 }
 
@@ -197,11 +213,6 @@ static void app_state_changed(const ui_app_state_t *state,
 {
     (void)user_data;
     if(state == NULL) return;
-    if((changed & UI_APP_STATE_CHANGE_CONNECTIVITY) != 0U) {
-        ui_ride_data_model_set_connectivity(
-            state->wifi_enabled && state->wifi_connected,
-            state->bluetooth_enabled && state->bluetooth_connected);
-    }
     if((changed & UI_APP_STATE_CHANGE_CONTROL) != 0U) {
         ui_sound_set_volume(state->sound_level);
         ui_background_set_opacity(
@@ -551,6 +562,9 @@ void ui_app_init(void) {
     ui_motion_init();
     ui_sound_init();
     ui_app_state_init();
+    ui_state_adapter_init();
+    ui_input_queue_init();
+    ui_navigation_service_init();
     ui_page_status_registry_init();
     ui_event_bridge_init();
     ui_event_bus_init();
@@ -570,12 +584,6 @@ void ui_app_init(void) {
     (void)ui_app_state_subscribe(UI_APP_STATE_CHANGE_ALL,
                                  app_state_changed, NULL);
     (void)ui_ride_data_model_subscribe(app_ride_data_changed, NULL);
-    ui_app_state_t state;
-    (void)ui_app_state_get(&state);
-    ui_ride_data_model_set_connectivity(
-        state.wifi_enabled && state.wifi_connected,
-        state.bluetooth_enabled && state.bluetooth_connected);
-    (void)ui_ride_data_model_process();
     app_update_slider_visuals();
     (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
     s_boot_timer = lv_timer_create(app_boot_timer_cb, 1600, NULL);
@@ -607,17 +615,37 @@ void ui_app_handle_input(ui_input_event_t input) {
             app_show_slide(UI_PAGE_DASHBOARD, false);
         return;
     }
+    if(input == UI_INPUT_OPEN_POWER) {
+        app_handle_key('o');
+        return;
+    }
+    if(input == UI_INPUT_TOGGLE_CONTROL_CENTER) {
+        app_handle_key('m');
+        return;
+    }
+    if(input == UI_INPUT_POWER_TOGGLE) {
+        app_handle_key('p');
+        return;
+    }
+    if(input == UI_INPUT_OPEN_PROFILE) {
+        if(!s_powered_off) app_show(UI_PAGE_PROFILE);
+        return;
+    }
+    if(input == UI_INPUT_OPEN_SETTINGS) {
+        if(!s_powered_off) app_show(UI_PAGE_SETTINGS);
+        return;
+    }
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_handle_input(input)) return;
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_NAVIGATION &&
        ui_navigation_handle_input(input)) return;
 
-    if(input == UI_INPUT_ENCODER_CW) ui_app_handle_key(LV_KEY_DOWN);
-    else if(input == UI_INPUT_ENCODER_CCW) ui_app_handle_key(LV_KEY_UP);
-    else if(input == UI_INPUT_ENCODER_PRESS) ui_app_handle_key(LV_KEY_ENTER);
+    if(input == UI_INPUT_ENCODER_CW) app_handle_key(LV_KEY_DOWN);
+    else if(input == UI_INPUT_ENCODER_CCW) app_handle_key(LV_KEY_UP);
+    else if(input == UI_INPUT_ENCODER_PRESS) app_handle_key(LV_KEY_ENTER);
 }
 
-void ui_app_handle_key(uint32_t key) {
+static void app_handle_key(uint32_t key) {
     if(s_powered_off) {
         if(key == 'p' || key == 'P' || key == LV_KEY_ENTER) {
             s_powered_off = false;

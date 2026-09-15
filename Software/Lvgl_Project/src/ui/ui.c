@@ -39,11 +39,6 @@ void ui_init(void)
 }
 
 
-void ui_handle_key(uint32_t key)
-{
-    ui_app_handle_key(key);
-}
-
 void ui_handle_input(ui_input_event_t input)
 {
     ui_app_handle_input(input);

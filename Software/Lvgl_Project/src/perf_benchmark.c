@@ -37,8 +37,6 @@ static void app_perf_data_cb(lv_timer_t *timer)
         .clock_minute = (uint8_t)(24U + (tick / 600U)),
         .satellites = (uint8_t)(8U + (tick % 7U)),
         .battery = (uint8_t)(82U - (tick / 100U)),
-        .wifi = true,
-        .bluetooth = true,
     };
 
     LV_UNUSED(timer);

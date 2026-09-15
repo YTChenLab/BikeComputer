@@ -19,8 +19,6 @@ typedef struct
     uint8_t clock_minute;
     uint8_t satellites;
     uint8_t battery;
-    bool wifi;
-    bool bluetooth;
 } ui_ride_data_t;
 
 typedef void (*ui_ride_data_observer_cb_t)(const ui_ride_data_t *data,
@@ -38,6 +36,5 @@ void ui_ride_data_model_submit(const ui_ride_data_t *data);
 /* UI-thread drain. Multiple producer updates collapse to the latest snapshot. */
 bool ui_ride_data_model_process(void);
 bool ui_ride_data_model_get(ui_ride_data_t *data, uint32_t *version);
-void ui_ride_data_model_set_connectivity(bool wifi, bool bluetooth);
 
 #endif /* UI_RIDE_DATA_MODEL_H */

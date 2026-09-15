@@ -84,8 +84,17 @@ int main(void)
     assert(s_leave[UI_ROUTE_NAVIGATION] == 1);
     assert(s_enter[UI_ROUTE_RIDE_DASHBOARD] == 2);
 
+    for(uint16_t cycle = 0; cycle < 250U; cycle++) {
+        assert(ui_router_navigate(UI_ROUTE_NAVIGATION, UI_MOTION_PAGE_NONE));
+        assert(ui_router_current() == UI_ROUTE_NAVIGATION);
+        assert(ui_router_back());
+        assert(ui_router_current() == UI_ROUTE_RIDE_DASHBOARD);
+        assert(ui_router_history_depth() == 0U);
+    }
+    assert(s_create_count == 1);
+
     ui_router_deinit();
-    assert(s_leave[UI_ROUTE_RIDE_DASHBOARD] == 2);
+    assert(s_leave[UI_ROUTE_RIDE_DASHBOARD] == 252);
     assert(s_destroy[UI_ROUTE_RIDE_DASHBOARD] == 1);
     assert(s_destroy[UI_ROUTE_NAVIGATION] == 1);
 
@@ -93,4 +102,3 @@ int main(void)
     puts("ui_router_lifecycle_test: PASS");
     return 0;
 }
-

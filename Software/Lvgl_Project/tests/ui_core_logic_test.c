@@ -3,6 +3,7 @@
 #include "ui/core/ui_concurrency.h"
 #include "ui/core/ui_event_bridge.h"
 #include "ui/core/ui_event_bus.h"
+#include "ui/core/ui_input_queue.h"
 #include "ui/core/ui_ride_controller.h"
 #include "ui/core/ui_state_machine.h"
 #include "ui/models/ui_ride_data_model.h"
@@ -299,12 +300,6 @@ static void test_ride_data_model(void)
     assert(s_last_ride_data.heart_rate == 156);
     assert(!ui_ride_data_model_process());
 
-    ui_ride_data_model_set_connectivity(true, false);
-    assert(ui_ride_data_model_process());
-    assert(s_ride_observer_calls == 2);
-    assert(s_last_ride_version == 2);
-    assert(s_last_ride_data.wifi);
-    assert(!s_last_ride_data.bluetooth);
 }
 
 typedef struct
@@ -349,6 +344,10 @@ static void test_stm32_service_contract(void)
     ui_event_bus_init();
     ui_event_bridge_init();
     ui_ride_data_model_init();
+    ui_app_state_init();
+    ui_state_adapter_init();
+    ui_navigation_service_init();
+    ui_input_queue_init();
     const ui_stm32_service_port_t port = {
         .request_gnss_fix = fake_stm32_gnss,
         .save_ride = fake_stm32_save,
@@ -387,6 +386,36 @@ static void test_stm32_service_contract(void)
     assert(s_last_ride_data.satellites == 10);
     assert(context.lock_calls == context.unlock_calls);
 
+    const ui_state_adapter_snapshot_t platform_state = {
+        .clock_hour = 9,
+        .clock_minute = 42,
+        .battery_percent = 77,
+        .gps_enabled = true,
+        .satellites = 8
+    };
+    assert(ui_stm32_services_submit_state(
+        &platform_state, UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_GNSS));
+    assert(ui_state_adapter_process() != 0U);
+    ui_app_state_t state;
+    assert(ui_app_state_get(&state));
+    assert(state.clock_hour == 9 && state.clock_minute == 42);
+    assert(state.battery_percent == 77 && state.satellites == 8);
+
+    const nav_model_t navigation = {
+        .speed = 26.8f,
+        .zoom = 14,
+        .direction = NAV_DIRECTION_LEFT
+    };
+    ui_stm32_services_submit_navigation(&navigation);
+    assert(ui_navigation_service_process());
+    nav_model_t navigation_result;
+    assert(ui_navigation_service_get(&navigation_result, NULL));
+    assert(navigation_result.speed == 26.8f);
+
+    const ui_input_message_t input = {.type = UI_INPUT_ENCODER_PRESS};
+    assert(ui_stm32_services_submit_input(&input));
+    assert(ui_input_queue_pending() == 1U);
+
     ui_system_services_reset();
     ui_concurrency_reset_port();
 }
@@ -402,6 +431,8 @@ static void test_async_pc_services(void)
     ui_event_bus_init();
     ui_event_bridge_init();
     ui_ride_data_model_init();
+    ui_app_state_init();
+    ui_state_adapter_init();
     ui_pc_services_register();
     s_event_count = 0;
     assert(ui_event_bus_subscribe(UI_EVENT_MASK_ALL, event_callback, NULL) > 0);
@@ -410,6 +441,13 @@ static void test_async_pc_services(void)
     assert(ui_pc_services_gnss_busy());
     assert(!ui_system_services_request_gnss_fix());
     ui_system_services_tick(UI_PC_GNSS_DELAY_MS - 1U);
+    assert(ui_state_adapter_process() ==
+           (UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_SATELLITES));
+    ui_app_state_t state;
+    assert(ui_app_state_get(&state));
+    assert(state.clock_hour < 24U && state.clock_minute < 60U);
+    assert(state.battery_percent >= 68U && state.battery_percent <= 99U);
+    assert(state.satellites >= 5U && state.satellites <= 16U);
     assert(process_platform_events() == 0);
     ui_system_services_tick(1U);
     assert(process_platform_events() == 1);

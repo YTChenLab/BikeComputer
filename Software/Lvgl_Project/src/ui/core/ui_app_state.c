@@ -173,6 +173,28 @@ void ui_app_state_set_status(uint8_t hour, uint8_t minute,
                        UI_APP_STATE_CHANGE_CONNECTIVITY);
 }
 
+void ui_app_state_set_telemetry(uint8_t hour, uint8_t minute,
+                                uint8_t battery_percent, bool charging,
+                                uint8_t satellites)
+{
+    hour = (uint8_t)(hour % 24U);
+    minute = (uint8_t)(minute % 60U);
+    battery_percent = clamp_percent(battery_percent);
+    ui_concurrency_lock();
+    bool changed = s_app_state.state.clock_hour != hour ||
+                   s_app_state.state.clock_minute != minute ||
+                   s_app_state.state.battery_percent != battery_percent ||
+                   s_app_state.state.battery_charging != charging ||
+                   s_app_state.state.satellites != satellites;
+    s_app_state.state.clock_hour = hour;
+    s_app_state.state.clock_minute = minute;
+    s_app_state.state.battery_percent = battery_percent;
+    s_app_state.state.battery_charging = charging;
+    s_app_state.state.satellites = satellites;
+    ui_concurrency_unlock();
+    if(changed) notify(UI_APP_STATE_CHANGE_STATUS);
+}
+
 void ui_app_state_set_clock(uint8_t hour, uint8_t minute)
 {
     hour = (uint8_t)(hour % 24U);
@@ -208,6 +230,15 @@ void ui_app_state_set_gnss(bool enabled, uint8_t satellites)
     ui_concurrency_unlock();
     if(changed) notify(UI_APP_STATE_CHANGE_STATUS |
                        UI_APP_STATE_CHANGE_CONNECTIVITY);
+}
+
+void ui_app_state_set_satellites(uint8_t satellites)
+{
+    ui_concurrency_lock();
+    bool changed = s_app_state.state.satellites != satellites;
+    s_app_state.state.satellites = satellites;
+    ui_concurrency_unlock();
+    if(changed) notify(UI_APP_STATE_CHANGE_STATUS);
 }
 
 void ui_app_state_set_connectivity(bool wifi_enabled, bool wifi_connected,

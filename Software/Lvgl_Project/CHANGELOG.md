@@ -10,6 +10,12 @@
 - 将 PC 鼠标、滚轮和键盘输入转换为平台无关的 UI 语义事件，为 STM32 输入适配预留统一接口。
 - Dynamic Card 音乐状态改由全局状态驱动，触摸和 Encoder 共用同一份播放状态。
 - 新增 App State 与 Router Lifecycle 自动化测试。
+- 新增平台状态适配器、导航数据邮箱和语义输入队列，所有生产者数据统一在 UI 线程落地。
+- STM32 适配层新增状态、导航与输入提交接口，不再要求硬件任务直接调用页面或 LVGL API。
+- Ride Data Model 移除重复的 WiFi/蓝牙字段，连接状态只由 App State 管理。
+- SDL 键鼠改为写入语义输入队列，连续触摸移动会自动合并且 RELEASE/BACK 不会因队列满而丢失。
+- Router 生命周期测试增加 250 次页面往返压力验证。
+- 设置 `CMAKE_POLICY_DEFAULT_CMP0177`，消除内置 LVGL 子工程的 CMake policy 警告。
 
 ## v1.0.0 - 2026-09-15
 

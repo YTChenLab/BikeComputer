@@ -86,5 +86,6 @@ PC 的 `hal.c` 将 SDL 鼠标、滚轮和键盘转换为上述事件。STM32 端
 
 - 本阶段没有修改 P1 顶部状态栏、实时速度、黄色速度条、2×3 数据区、Dynamic Card 几何尺寸、MiSans 字体或背景资源。
 - 当前页面仍以启动时创建为主，Router 已具备懒创建接口，但应在下一阶段按页面逐个迁移，避免一次性改变启动时序。
-- 下一阶段应把 Ride Data Model、地图服务和硬件状态通过显式 Adapter 接入 App State，并增加页面切换压力测试和状态一致性测试。
+- Ride Data、导航模型、硬件状态和语义输入现已通过显式 Adapter/邮箱接入；详细接口见 `UI_SERVICE_ADAPTER_ARCHITECTURE.md`。
+- 下一阶段应建立硬件命令通道（WiFi、蓝牙、GNSS、电源与背光）、错误回执和超时状态，避免 UI 开关仅改变显示而未改变真实外设。
 - STM32 侧必须在 LVGL/UI 线程处理 App State 通知；外设任务应通过队列提交语义事件或状态快照，不应直接调用 LVGL 对象 API。

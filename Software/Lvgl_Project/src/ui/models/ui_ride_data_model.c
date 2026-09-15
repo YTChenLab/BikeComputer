@@ -112,15 +112,3 @@ bool ui_ride_data_model_get(ui_ride_data_t *data, uint32_t *version)
     ui_concurrency_unlock();
     return true;
 }
-
-void ui_ride_data_model_set_connectivity(bool wifi, bool bluetooth)
-{
-    ui_concurrency_lock();
-    ui_ride_data_t data = s_model.pending_valid ? s_model.pending :
-                                                    s_model.current;
-    data.wifi = wifi;
-    data.bluetooth = bluetooth;
-    s_model.pending = data;
-    s_model.pending_valid = true;
-    ui_concurrency_unlock();
-}

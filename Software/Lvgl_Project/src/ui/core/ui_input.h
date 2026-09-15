@@ -15,10 +15,16 @@ typedef enum
     UI_INPUT_BACK,
     UI_INPUT_PAGE_PREV,
     UI_INPUT_PAGE_NEXT,
+    UI_INPUT_OPEN_POWER,
+    UI_INPUT_TOGGLE_CONTROL_CENTER,
+    UI_INPUT_POWER_TOGGLE,
+    UI_INPUT_OPEN_PROFILE,
+    UI_INPUT_OPEN_SETTINGS,
     UI_INPUT_TOUCH_BEGIN,
     UI_INPUT_TOUCH_MOVE,
     UI_INPUT_TOUCH_END,
-    UI_INPUT_TOUCH_CANCEL
+    UI_INPUT_TOUCH_CANCEL,
+    UI_INPUT_COUNT
 } ui_input_event_t;
 
 typedef struct
@@ -26,6 +32,8 @@ typedef struct
     ui_input_event_t type;
     int32_t x;
     int32_t y;
-} ui_input_pointer_event_t;
+} ui_input_message_t;
+
+typedef ui_input_message_t ui_input_pointer_event_t;
 
 #endif /* UI_INPUT_H */

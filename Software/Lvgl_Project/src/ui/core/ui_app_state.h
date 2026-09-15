@@ -82,9 +82,13 @@ void ui_app_state_set_ride_state(ui_ride_state_t ride_state);
 void ui_app_state_set_status(uint8_t hour, uint8_t minute,
                              uint8_t battery_percent, bool charging,
                              bool gps_enabled, uint8_t satellites);
+void ui_app_state_set_telemetry(uint8_t hour, uint8_t minute,
+                                uint8_t battery_percent, bool charging,
+                                uint8_t satellites);
 void ui_app_state_set_clock(uint8_t hour, uint8_t minute);
 void ui_app_state_set_battery(uint8_t percent, bool charging);
 void ui_app_state_set_gnss(bool enabled, uint8_t satellites);
+void ui_app_state_set_satellites(uint8_t satellites);
 void ui_app_state_set_connectivity(bool wifi_enabled, bool wifi_connected,
                                    const char *wifi_name,
                                    bool bluetooth_enabled,

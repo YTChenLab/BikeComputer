@@ -1,6 +1,7 @@
 #include "ui_pc_services.h"
 
 #include "services/ui_system_services.h"
+#include "services/ui_state_adapter.h"
 #include "ui/core/ui_event_bridge.h"
 #include "ui/models/ui_ride_data_model.h"
 
@@ -62,6 +63,17 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
     data.satellites = (uint8_t)(5U + random_value(pc, 12U));
     data.battery = (uint8_t)(68U + random_value(pc, 32U));
     ui_ride_data_model_submit(&data);
+
+    const ui_state_adapter_snapshot_t platform_state = {
+        .clock_hour = data.clock_hour,
+        .clock_minute = data.clock_minute,
+        .battery_percent = data.battery,
+        .battery_charging = false,
+        .satellites = data.satellites
+    };
+    (void)ui_state_adapter_submit(
+        &platform_state,
+        UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_SATELLITES);
 }
 
 static bool request_gnss_fix(void *context)

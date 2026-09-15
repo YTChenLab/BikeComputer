@@ -1,28 +1,38 @@
 #include "hal.h"
-#include "../ui/ui.h"
+#include "../ui/core/ui_input_queue.h"
 #include <SDL.h>
+
+static void post_input(ui_input_event_t type)
+{
+  const ui_input_message_t message = {.type = type, .x = 0, .y = 0};
+  (void)ui_input_queue_post(&message);
+}
 
 /* PC 专用适配：滚轮只产生语义化编码器事件，UI 不依赖 SDL。 */
 static int SDLCALL simulator_event_watch(void *userdata, SDL_Event *event)
 {
   (void)userdata;
   if(event->type == SDL_MOUSEWHEEL && event->wheel.y != 0) {
-    ui_handle_input(event->wheel.y > 0 ?
-                    UI_INPUT_ENCODER_CCW : UI_INPUT_ENCODER_CW);
+    post_input(event->wheel.y > 0 ?
+               UI_INPUT_ENCODER_CCW : UI_INPUT_ENCODER_CW);
   }
   else if(event->type == SDL_KEYDOWN && event->key.repeat == 0) {
     SDL_Keycode key = event->key.keysym.sym;
-    if(key == SDLK_DOWN) ui_handle_input(UI_INPUT_ENCODER_CW);
-    else if(key == SDLK_UP) ui_handle_input(UI_INPUT_ENCODER_CCW);
+    if(key == SDLK_DOWN) post_input(UI_INPUT_ENCODER_CW);
+    else if(key == SDLK_UP) post_input(UI_INPUT_ENCODER_CCW);
     else if(key == SDLK_RETURN || key == SDLK_KP_ENTER) {
-      ui_handle_input(UI_INPUT_ENCODER_PRESS);
+      post_input(UI_INPUT_ENCODER_PRESS);
     }
     else if(key == SDLK_ESCAPE || key == SDLK_BACKSPACE) {
-      ui_handle_input(UI_INPUT_BACK);
+      post_input(UI_INPUT_BACK);
     }
-    else if(key == SDLK_LEFT) ui_handle_input(UI_INPUT_PAGE_PREV);
-    else if(key == SDLK_RIGHT) ui_handle_input(UI_INPUT_PAGE_NEXT);
-    else if(key >= 32 && key <= 126) ui_handle_key((uint32_t)key);
+    else if(key == SDLK_LEFT) post_input(UI_INPUT_PAGE_PREV);
+    else if(key == SDLK_RIGHT) post_input(UI_INPUT_PAGE_NEXT);
+    else if(key == SDLK_o) post_input(UI_INPUT_OPEN_POWER);
+    else if(key == SDLK_m) post_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+    else if(key == SDLK_p) post_input(UI_INPUT_POWER_TOGGLE);
+    else if(key == SDLK_LEFTBRACKET) post_input(UI_INPUT_OPEN_PROFILE);
+    else if(key == SDLK_RIGHTBRACKET) post_input(UI_INPUT_OPEN_SETTINGS);
   }
   return 1;
 }
@@ -47,23 +57,23 @@ static void mouse_button_timer_cb(lv_timer_t *timer)
     const ui_input_pointer_event_t input = {
       .type = UI_INPUT_TOUCH_BEGIN, .x = mouse_x, .y = mouse_y
     };
-    ui_handle_pointer(&input);
+    (void)ui_input_queue_post(&input);
   }
   else if(left_is_down) {
     const ui_input_pointer_event_t input = {
       .type = UI_INPUT_TOUCH_MOVE, .x = mouse_x, .y = mouse_y
     };
-    ui_handle_pointer(&input);
+    (void)ui_input_queue_post(&input);
   }
   else if(left_was_down) {
     const ui_input_pointer_event_t input = {
       .type = UI_INPUT_TOUCH_END, .x = mouse_x, .y = mouse_y
     };
-    ui_handle_pointer(&input);
+    (void)ui_input_queue_post(&input);
   }
 
   if(right_is_down && !right_was_down) {
-    ui_handle_input(UI_INPUT_BACK);
+    post_input(UI_INPUT_BACK);
   }
   left_was_down = left_is_down;
   right_was_down = right_is_down;

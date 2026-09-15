@@ -90,8 +90,10 @@ $env:PATH = "D:\Professional Software\Anaconda\Bike_SpeedView\msys2-x86_64\ucrt6
 - `ui_router` 负责页面历史与 `on_enter/on_leave/on_destroy` 生命周期。
 - `ui_page_common` 将所有页面状态栏绑定到统一 App State。
 - `hal.c` 只负责把 SDL 输入转换为 `UI_INPUT_*` 语义事件，页面代码不依赖 SDL。
+- `ui_state_adapter`、`ui_navigation_service` 和 `ui_input_queue` 负责把 PC/STM32 生产者数据安全地送到 UI 线程。
 
 详细设计与后续接入规则见 [docs/UI_APP_STATE_AND_ROUTER_ARCHITECTURE.md](docs/UI_APP_STATE_AND_ROUTER_ARCHITECTURE.md)。
+平台与 STM32 接入边界见 [docs/UI_SERVICE_ADAPTER_ARCHITECTURE.md](docs/UI_SERVICE_ADAPTER_ARCHITECTURE.md)。
 
 ## 版本发布约定
 

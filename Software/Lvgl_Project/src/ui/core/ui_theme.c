@@ -4,6 +4,7 @@
  */
 
 #include "ui_theme.h"
+#include "../design/ui_component_style.h"
 
 
 /**
@@ -23,12 +24,5 @@
  */
 void ui_theme_init(void)
 {
-    /*
-     * 当前阶段无需执行额外代码。
-     *
-     * 注意：
-     * 本函数不能写成 static。
-     *
-     * 因为 ui.c 会跨文件调用 ui_theme_init()。
-     */
+    ui_component_style_init();
 }

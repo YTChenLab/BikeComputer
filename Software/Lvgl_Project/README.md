@@ -23,7 +23,7 @@ Lvgl_Project/
 │  ├─ hal/                 PC Simulator 输入与显示适配
 │  ├─ platform/            平台抽象
 │  ├─ services/            PC/STM32 服务接口与模拟数据源
-│  └─ ui/                  页面、组件、Core、Dock、模型和字体
+│  └─ ui/                  页面、组件、Core、Design Token、Dock、模型和字体
 ├─ tests/                  UI Core 与 Dock 自动化测试
 ├─ tools/                  字体和资源生成工具
 ├─ CMakePresets.json       UCRT64 配置、构建和测试 preset
@@ -92,11 +92,14 @@ $env:PATH = "D:\Professional Software\Anaconda\Bike_SpeedView\msys2-x86_64\ucrt6
 - `hal.c` 只负责把 SDL 输入转换为 `UI_INPUT_*` 语义事件，页面代码不依赖 SDL。
 - `ui_state_adapter`、`ui_navigation_service` 和 `ui_input_queue` 负责把 PC/STM32 生产者数据安全地送到 UI 线程。
 - `ui_command_service` 负责把 UI 操作异步下发到 PC/STM32，并统一处理 Pending、Success、Failed、Timeout 和 Rejected。
+- `ui_bottom_surface` 是 Dynamic Card 和 Interaction 内容唯一允许使用的底部视觉容器。
+- `ui/design` 提供颜色、间距、圆角、边框、几何与动画语义 Token。
 
 详细设计与后续接入规则见 [docs/UI_APP_STATE_AND_ROUTER_ARCHITECTURE.md](docs/UI_APP_STATE_AND_ROUTER_ARCHITECTURE.md)。
 平台与 STM32 接入边界见 [docs/UI_SERVICE_ADAPTER_ARCHITECTURE.md](docs/UI_SERVICE_ADAPTER_ARCHITECTURE.md)。
 命令闭环见 [docs/UI_COMMAND_ACTION_ARCHITECTURE.md](docs/UI_COMMAND_ACTION_ARCHITECTURE.md)。
 底部唯一视觉容器约束见 [docs/BOTTOM_INTERACTION_SURFACE_ARCHITECTURE.md](docs/BOTTOM_INTERACTION_SURFACE_ARCHITECTURE.md)。
+Phase 4 实现与迁移边界见 [docs/UI_DESIGN_SYSTEM_PHASE4.md](docs/UI_DESIGN_SYSTEM_PHASE4.md)。
 
 ## 版本发布约定
 

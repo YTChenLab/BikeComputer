@@ -72,6 +72,7 @@
 
 #include "../core/ui_colors.h"
 #include "../core/ui_background.h"
+#include "../core/ui_bottom_surface.h"
 #include "../core/ui_sizes.h"
 #include "../core/ui_theme.h"
 
@@ -1489,8 +1490,11 @@ void ui_dashboard_create(void)
     dashboard_create_metrics();
 
 
-    /* 5. 底部 Dynamic Card Dock（冻结区之外的唯一替换区域） */
-    ui_dynamic_card_manager_create(s_screen);
+    /* 5. Dynamic Card 内容挂入唯一 Bottom Interaction Surface。 */
+    if(ui_bottom_surface_create(lv_layer_top())) {
+        ui_dynamic_card_manager_create(
+            ui_bottom_surface_dynamic_host());
+    }
 
 
     /*

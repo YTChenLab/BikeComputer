@@ -1,14 +1,16 @@
 #ifndef UI_SIZES_H
 #define UI_SIZES_H
 
+#include "../design/ui_design_tokens.h"
+
 /*
  * ============================================================
  * 屏幕尺寸
  * ============================================================
  */
 
-#define UI_SCREEN_W              480
-#define UI_SCREEN_H              854
+#define UI_SCREEN_W              UI_TOKEN_SCREEN_WIDTH
+#define UI_SCREEN_H              UI_TOKEN_SCREEN_HEIGHT
 
 
 /*

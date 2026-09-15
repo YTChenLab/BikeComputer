@@ -193,6 +193,17 @@ LV_FONT_DECLARE(ui_font_misans_ui_20);
 #define UI_FONT_METRIC_UNIT \
     (&ui_font_misans_unit_21)
 
+/*
+ * Bottom Interaction Surface typography roles.
+ *
+ * These aliases intentionally reuse the confirmed MiSans assets. Phase 4 only
+ * establishes semantic roles; it does not regenerate fonts or change pixels.
+ */
+#define UI_FONT_SURFACE_TITLE   UI_FONT_PAGE_TEXT
+#define UI_FONT_SURFACE_BODY    UI_FONT_PAGE_TEXT
+#define UI_FONT_SURFACE_BADGE   UI_FONT_STATUS
+#define UI_FONT_SURFACE_ACTION  UI_FONT_PAGE_TEXT
+
 
 /*
  * ============================================================

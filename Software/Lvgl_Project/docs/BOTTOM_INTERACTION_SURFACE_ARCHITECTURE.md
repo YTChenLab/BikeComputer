@@ -63,6 +63,6 @@ Bottom Interaction Surface
 
 ## 当前工程事实与迁移边界
 
-当前 `ui_dynamic_card_manager` 和旧 `ui_dock_view` 仍分别拥有自己的视觉对象，这是迁移前遗留实现，不是最终架构。Phase 3 不继续增加第三种 Popup 或新视觉层。
+Phase 4 已创建 `ui_bottom_surface`，并将 Dynamic Card 迁入 `dynamic_host`。四张 Card 不再分别控制外层背景、边框、圆角和屏幕位置。
 
-Phase 4 建立统一 Design Token 和 Surface 容器；Phase 5 将 Dynamic Card 内容与 Interaction 内容迁入该容器，并删除旧的独立 Interaction Dock 视觉根对象。迁移完成前不得把旧叠加方式扩展到新功能。
+旧 `ui_dock_view` 仍暂时使用独立 top-layer 根对象，这是 Phase 5 必须删除的迁移债务。Phase 5 将 INFO/ACTION/CONFIRM/CONTROL/NAVIGATION/MEDIA 内容迁入 `interaction_host`。迁移完成前不得把旧叠加方式扩展到新功能。

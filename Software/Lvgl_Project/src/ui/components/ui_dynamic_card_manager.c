@@ -2,8 +2,10 @@
 
 #include "../core/ui_colors.h"
 #include "../core/ui_app_state.h"
+#include "../core/ui_bottom_surface.h"
 #include "../core/ui_motion.h"
 #include "../core/ui_theme.h"
+#include "../design/ui_design_tokens.h"
 #include "../../services/ui_command_service.h"
 
 #include "lvgl/src/draw/lv_draw_line.h"
@@ -11,12 +13,10 @@
 
 #include <stddef.h>
 
-#define DOCK_X                  8
-#define DOCK_Y                  614
-#define DOCK_WIDTH              464
-#define DOCK_HEIGHT             226
-#define INDICATOR_X             17
-#define INDICATOR_Y             687
+#define DOCK_WIDTH              UI_BOTTOM_SURFACE_WIDTH
+#define DOCK_HEIGHT             UI_BOTTOM_SURFACE_NORMAL_HEIGHT
+#define INDICATOR_X             9
+#define INDICATOR_Y             73
 #define INDICATOR_DOT_SIZE      9
 #define INDICATOR_DOT_STEP      22
 #define MUSIC_CONTROL_COUNT     4
@@ -130,7 +130,7 @@ static void create_card_header(lv_obj_t *card, const char *symbol,
                                const char *title, const char *subtitle,
                                const char *page)
 {
-    const lv_color_t secondary = lv_color_hex(0x8F9495);
+    const lv_color_t secondary = UI_TOKEN_COLOR_TEXT_TERTIARY;
     create_label(card, 46, 11, 28, symbol, &lv_font_montserrat_22,
                  UI_COLOR_YELLOW, LV_TEXT_ALIGN_CENTER);
     create_label(card, 76, 9, 112, title, UI_FONT_PAGE_TEXT,
@@ -146,13 +146,9 @@ static lv_obj_t *create_card(lv_obj_t *viewport)
     lv_obj_t *card = lv_obj_create(viewport);
     lv_obj_remove_style_all(card);
     lv_obj_set_size(card, DOCK_WIDTH, DOCK_HEIGHT);
-    lv_obj_set_style_bg_color(card, lv_color_hex(0x030706), 0);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(card, lv_color_hex(0xD6D8D8), 0);
-    lv_obj_set_style_border_opa(card, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(card, 1, 0);
-    lv_obj_set_style_radius(card, 16, 0);
-    lv_obj_set_style_clip_corner(card, true, 0);
+    lv_obj_set_style_bg_opa(card, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(card, 0, 0);
+    lv_obj_set_style_radius(card, 0, 0);
     lv_obj_add_flag(card, LV_OBJ_FLAG_SNAPPABLE);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE |
                             LV_OBJ_FLAG_SCROLL_CHAIN_HOR | LV_OBJ_FLAG_GESTURE_BUBBLE);
@@ -164,7 +160,7 @@ static lv_obj_t *create_card(lv_obj_t *viewport)
 
 static void create_extended_card(lv_obj_t *card)
 {
-    const lv_color_t secondary = lv_color_hex(0xA8ACAD);
+    const lv_color_t secondary = UI_TOKEN_COLOR_TEXT_SECONDARY;
     static const char * const labels[8] = {
         "平均速度", "最大速度", "当前海拔", "累计爬升",
         "卡路里", "当前温度", "心率区间", "当前圈数"
@@ -256,7 +252,7 @@ static void navigation_arrow_draw_cb(lv_event_t *event)
 static void create_navigation_card(lv_obj_t *card)
 {
     const lv_color_t secondary = lv_color_hex(0xA9ADAE);
-    const lv_color_t border = lv_color_hex(0xD6D8D8);
+    const lv_color_t border = UI_TOKEN_COLOR_SURFACE_BORDER;
     create_card_header(card, LV_SYMBOL_GPS, "导航中", "NAVIGATION", "2/4");
 
     lv_obj_t *arrow = lv_obj_create(card);
@@ -396,7 +392,8 @@ static void create_music_card(lv_obj_t *card)
     create_rect(card, 174, 137, 160, 5, secondary, LV_OPA_60);
     create_rect(card, 174, 137, 89, 5, UI_COLOR_YELLOW, LV_OPA_COVER);
 
-    create_rect(card, 351, 50, 1, 133, lv_color_hex(0xD6D8D8), LV_OPA_70);
+    create_rect(card, 351, 50, 1, 133, UI_TOKEN_COLOR_SURFACE_BORDER,
+                UI_TOKEN_OPA_SECONDARY);
     s_manager.music_controls[0] = create_music_control(
         card, 367, 48, 72, 42, LV_SYMBOL_UP, &lv_font_montserrat_22
     );
@@ -455,7 +452,7 @@ static void create_weather_graphic(lv_obj_t *card)
 
 static void create_weather_card(lv_obj_t *card)
 {
-    const lv_color_t secondary = lv_color_hex(0xA8ACAD);
+    const lv_color_t secondary = UI_TOKEN_COLOR_TEXT_SECONDARY;
     create_card_header(card, LV_SYMBOL_CHARGE, "天气信息", "WEATHER", "4/4");
     create_weather_graphic(card);
 
@@ -468,7 +465,8 @@ static void create_weather_card(lv_obj_t *card)
     create_label(card, 194, 147, 112, "适合骑行", UI_FONT_PAGE_TEXT,
                  secondary, LV_TEXT_ALIGN_CENTER);
 
-    create_rect(card, 317, 52, 1, 129, lv_color_hex(0xD6D8D8), LV_OPA_70);
+    create_rect(card, 317, 52, 1, 129, UI_TOKEN_COLOR_SURFACE_BORDER,
+                UI_TOKEN_OPA_SECONDARY);
     create_label(card, 340, 53, 105, "风速", UI_FONT_PAGE_TEXT,
                  secondary, LV_TEXT_ALIGN_LEFT);
     create_label(card, 340, 76, 105, "12 km/h", UI_FONT_PAGE_TEXT,
@@ -487,7 +485,7 @@ static void update_indicator(void)
     {
         bool active = index == (uint8_t)s_manager.active_card;
         lv_obj_set_style_bg_color(s_manager.indicator_dots[index],
-                                  active ? UI_COLOR_YELLOW : lv_color_hex(0x909596), 0);
+                                  active ? UI_COLOR_YELLOW : UI_TOKEN_COLOR_INDICATOR, 0);
         lv_obj_set_style_bg_opa(s_manager.indicator_dots[index],
                                 active ? LV_OPA_COVER : LV_OPA_70, 0);
         lv_obj_set_style_shadow_color(s_manager.indicator_dots[index], UI_COLOR_YELLOW, 0);
@@ -499,18 +497,8 @@ static void update_indicator(void)
 
 static void update_control_visuals(void)
 {
-    for(uint8_t index = 0; index < UI_DYNAMIC_CARD_COUNT; index++)
-    {
-        bool focused_card = s_manager.mode == UI_DYNAMIC_CARD_CONTROL &&
-                            index == (uint8_t)s_manager.active_card;
-        lv_obj_set_style_border_color(s_manager.cards[index],
-                                      focused_card ? UI_COLOR_YELLOW : lv_color_hex(0xD6D8D8), 0);
-        lv_obj_set_style_border_width(s_manager.cards[index], focused_card ? 2 : 1, 0);
-        lv_obj_set_style_shadow_color(s_manager.cards[index], UI_COLOR_YELLOW, 0);
-        lv_obj_set_style_shadow_width(s_manager.cards[index], focused_card ? 8 : 0, 0);
-        lv_obj_set_style_shadow_opa(s_manager.cards[index],
-                                    focused_card ? LV_OPA_20 : LV_OPA_TRANSP, 0);
-    }
+    ui_bottom_surface_set_dynamic_focus(
+        s_manager.mode == UI_DYNAMIC_CARD_CONTROL);
 
     for(uint8_t index = 0; index < MUSIC_CONTROL_COUNT; index++)
     {
@@ -614,7 +602,7 @@ void ui_dynamic_card_manager_create(lv_obj_t *parent)
 
     s_manager.viewport = lv_obj_create(parent);
     lv_obj_remove_style_all(s_manager.viewport);
-    lv_obj_set_pos(s_manager.viewport, DOCK_X, DOCK_Y);
+    lv_obj_set_pos(s_manager.viewport, 0, 0);
     lv_obj_set_size(s_manager.viewport, DOCK_WIDTH, DOCK_HEIGHT);
     lv_obj_set_style_pad_all(s_manager.viewport, 0, 0);
     lv_obj_set_style_pad_row(s_manager.viewport, 0, 0);
@@ -654,7 +642,7 @@ void ui_dynamic_card_manager_create(lv_obj_t *parent)
         s_manager.indicator_dots[index] = create_rect(
             s_manager.indicator_overlay, 5, index * INDICATOR_DOT_STEP,
             INDICATOR_DOT_SIZE, INDICATOR_DOT_SIZE,
-            index == 0 ? UI_COLOR_YELLOW : lv_color_hex(0x909596),
+            index == 0 ? UI_COLOR_YELLOW : UI_TOKEN_COLOR_INDICATOR,
             index == 0 ? LV_OPA_COVER : LV_OPA_70
         );
         lv_obj_set_style_radius(s_manager.indicator_dots[index], LV_RADIUS_CIRCLE, 0);

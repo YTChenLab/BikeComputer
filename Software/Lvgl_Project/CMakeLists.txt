@@ -281,6 +281,23 @@ if(BUILD_TESTING)
         ${PROJECT_SOURCE_DIR}/src
     )
     add_test(NAME ui_command_service_test COMMAND ui_command_service_test)
+
+    add_executable(ui_bottom_surface_test
+        tests/ui_bottom_surface_test.c
+        src/ui/core/ui_bottom_surface.c
+        src/ui/design/ui_component_style.c
+    )
+    target_include_directories(ui_bottom_surface_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_bottom_surface_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_bottom_surface_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_bottom_surface_test m pthread)
+    endif()
+    add_test(NAME ui_bottom_surface_test COMMAND ui_bottom_surface_test)
 endif()
 
 # On Windows, GUI applications do not show a console by default,

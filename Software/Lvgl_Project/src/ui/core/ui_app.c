@@ -3,6 +3,7 @@
 #include "ui_colors.h"
 #include "ui_app_state.h"
 #include "ui_background.h"
+#include "ui_bottom_surface.h"
 #include "ui_dock.h"
 #include "ui_dock_controller.h"
 #include "ui_event_bridge.h"
@@ -354,6 +355,7 @@ static void app_dashboard_enter(ui_route_id_t route, lv_obj_t *screen,
     (void)route;
     (void)screen;
     (void)user_data;
+    ui_bottom_surface_set_normal_page_active(true);
     ui_dashboard_set_active(true);
 }
 
@@ -364,6 +366,7 @@ static void app_dashboard_leave(ui_route_id_t route, lv_obj_t *screen,
     (void)screen;
     (void)user_data;
     ui_dashboard_set_active(false);
+    ui_bottom_surface_set_normal_page_active(false);
 }
 
 static void app_navigation_enter(ui_route_id_t route, lv_obj_t *screen,
@@ -657,6 +660,7 @@ static void app_action(ui_action_t action) {
 void ui_app_init(void) {
     ui_motion_init();
     ui_sound_init();
+    ui_bottom_surface_init();
     ui_app_state_init();
     ui_state_adapter_init();
     ui_input_queue_init();

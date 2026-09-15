@@ -1,0 +1,102 @@
+#include "ui/core/ui_bottom_surface.h"
+#include "ui/design/ui_design_tokens.h"
+#include "lvgl.h"
+
+#include <assert.h>
+#include <stdio.h>
+
+static uint8_t s_draw_buffer[UI_TOKEN_SCREEN_WIDTH * 20 * 2];
+static uint32_t s_observer_calls;
+
+static void state_changed(const ui_bottom_surface_state_t *state,
+                          void *user_data)
+{
+    (void)user_data;
+    assert(state != NULL);
+    s_observer_calls++;
+}
+
+int main(void)
+{
+    lv_init();
+    lv_display_t *display = lv_display_create(UI_TOKEN_SCREEN_WIDTH,
+                                               UI_TOKEN_SCREEN_HEIGHT);
+    assert(display != NULL);
+    lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
+    lv_display_set_buffers(display, s_draw_buffer, NULL,
+                           sizeof(s_draw_buffer),
+                           LV_DISPLAY_RENDER_MODE_PARTIAL);
+
+    ui_bottom_surface_init();
+    ui_bottom_surface_set_observer(state_changed, NULL);
+    assert(ui_bottom_surface_create(lv_layer_top()));
+    assert(ui_bottom_surface_is_created());
+
+    lv_obj_t *root = ui_bottom_surface_root();
+    lv_obj_t *normal = ui_bottom_surface_dynamic_host();
+    lv_obj_t *interaction = ui_bottom_surface_interaction_host();
+    assert(root != NULL && normal != NULL && interaction != NULL);
+    assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_child_count(root) == 2U);
+
+    ui_bottom_surface_set_normal_page_active(true);
+    lv_obj_update_layout(root);
+    assert(!lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_x(root) == UI_BOTTOM_SURFACE_X);
+    assert(lv_obj_get_y(root) == UI_BOTTOM_SURFACE_NORMAL_Y);
+    assert(lv_obj_get_width(root) == UI_BOTTOM_SURFACE_WIDTH);
+    assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
+    assert(!lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_style_border_width(root, 0) == UI_TOKEN_BORDER_THIN);
+
+    ui_bottom_surface_set_dynamic_focus(true);
+    assert(lv_obj_get_style_border_width(root, 0) == UI_TOKEN_BORDER_FOCUS);
+    assert(lv_color_eq(lv_obj_get_style_border_color(root, 0),
+                       UI_TOKEN_COLOR_ACCENT));
+    ui_bottom_surface_set_dynamic_focus(false);
+    assert(lv_obj_get_style_border_width(root, 0) == UI_TOKEN_BORDER_THIN);
+
+    assert(ui_bottom_surface_present_interaction(
+        100U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
+        UI_BOTTOM_SURFACE_PRIORITY_P3_USER_ACTION, false));
+    assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
+    assert(!ui_bottom_surface_present_interaction(
+        200U, UI_BOTTOM_SURFACE_SIZE_MINI,
+        UI_BOTTOM_SURFACE_PRIORITY_P4_NORMAL, false));
+    assert(ui_bottom_surface_present_interaction(
+        200U, UI_BOTTOM_SURFACE_SIZE_MINI,
+        UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY, false));
+
+    ui_bottom_surface_state_t state;
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.owner_id == 200U && state.restore_depth == 1U);
+    assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_MINI_HEIGHT);
+
+    assert(ui_bottom_surface_dismiss_interaction(200U, false));
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.owner_id == 100U && state.restore_depth == 0U);
+    assert(ui_bottom_surface_update_interaction(
+        100U, UI_BOTTOM_SURFACE_SIZE_EXPANDED, false));
+    assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_EXPANDED_HEIGHT);
+    assert(lv_obj_get_y(root) ==
+           UI_TOKEN_SCREEN_HEIGHT - UI_BOTTOM_SURFACE_BOTTOM_MARGIN -
+           UI_BOTTOM_SURFACE_EXPANDED_HEIGHT);
+
+    assert(ui_bottom_surface_dismiss_interaction(100U, false));
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
+    assert(state.size == UI_BOTTOM_SURFACE_SIZE_NORMAL);
+    assert(!lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_y(root) == UI_BOTTOM_SURFACE_NORMAL_Y);
+
+    ui_bottom_surface_set_normal_page_active(false);
+    assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(s_observer_calls >= 6U);
+
+    lv_deinit();
+    puts("ui_bottom_surface_test: PASS");
+    return 0;
+}

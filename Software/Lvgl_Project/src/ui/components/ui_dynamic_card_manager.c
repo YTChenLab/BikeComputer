@@ -1,0 +1,743 @@
+#include "ui_dynamic_card_manager.h"
+
+#include "../core/ui_colors.h"
+#include "../core/ui_motion.h"
+#include "../core/ui_theme.h"
+
+#include "lvgl/src/draw/lv_draw_line.h"
+#include "lvgl/src/draw/lv_draw_triangle.h"
+
+#include <stddef.h>
+
+#define DOCK_X                  8
+#define DOCK_Y                  614
+#define DOCK_WIDTH              464
+#define DOCK_HEIGHT             226
+#define INDICATOR_X             17
+#define INDICATOR_Y             687
+#define INDICATOR_DOT_SIZE      9
+#define INDICATOR_DOT_STEP      22
+#define MUSIC_CONTROL_COUNT     4
+#define MUSIC_PRESS_SCALE       236
+#define MUSIC_NORMAL_SCALE      256
+
+typedef enum
+{
+    MUSIC_CONTROL_PREVIOUS = 0,
+    MUSIC_CONTROL_PLAY_PAUSE,
+    MUSIC_CONTROL_NEXT,
+    MUSIC_CONTROL_MODE
+} music_control_id_t;
+
+typedef struct
+{
+    lv_obj_t *viewport;
+    lv_obj_t *cards[UI_DYNAMIC_CARD_COUNT];
+    lv_obj_t *indicator_overlay;
+    lv_obj_t *indicator_dots[UI_DYNAMIC_CARD_COUNT];
+    lv_obj_t *music_controls[MUSIC_CONTROL_COUNT];
+    lv_obj_t *music_play_icon;
+    lv_obj_t *music_track_label;
+    lv_obj_t *music_artist_label;
+    lv_obj_t *music_mode_label;
+    ui_dynamic_card_id_t active_card;
+    ui_dynamic_card_id_t target_card;
+    ui_dynamic_card_mode_t mode;
+    int8_t control_focus;
+    uint8_t music_track;
+    uint8_t music_mode;
+    bool music_playing;
+    bool created;
+} dynamic_card_manager_t;
+
+static dynamic_card_manager_t s_manager;
+
+static void update_control_visuals(void);
+static void execute_music_control(uint8_t control_index);
+
+static const char * const s_music_tracks[] = {
+    "End of a Long Day",
+    "Speed of Light",
+    "Road to Tomorrow"
+};
+
+static const char * const s_music_artists[] = {
+    "Arknights",
+    "PRTS Cycling Mix",
+    "Rhodes Island"
+};
+
+static const char * const s_music_modes[] = {
+    "顺序播放",
+    "单曲循环",
+    "随机播放"
+};
+
+static lv_obj_t *create_rect(lv_obj_t *parent, int32_t x, int32_t y,
+                             int32_t width, int32_t height, lv_color_t color,
+                             lv_opa_t opa)
+{
+    lv_obj_t *obj = lv_obj_create(parent);
+    lv_obj_remove_style_all(obj);
+    lv_obj_set_pos(obj, x, y);
+    lv_obj_set_size(obj, width, height);
+    lv_obj_set_style_bg_color(obj, color, 0);
+    lv_obj_set_style_bg_opa(obj, opa, 0);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    return obj;
+}
+
+static lv_obj_t *create_label(lv_obj_t *parent, int32_t x, int32_t y,
+                              int32_t width, const char *text,
+                              const lv_font_t *font, lv_color_t color,
+                              lv_text_align_t align)
+{
+    lv_obj_t *label = lv_label_create(parent);
+    lv_label_set_text(label, text);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+    lv_obj_set_pos(label, x, y);
+    lv_obj_set_width(label, width);
+    lv_obj_set_style_text_font(label, font, 0);
+    lv_obj_set_style_text_color(label, color, 0);
+    lv_obj_set_style_text_align(label, align, 0);
+    lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    return label;
+}
+
+static void create_card_header(lv_obj_t *card, const char *symbol,
+                               const char *title, const char *subtitle,
+                               const char *page)
+{
+    const lv_color_t secondary = lv_color_hex(0x8F9495);
+    create_label(card, 46, 11, 28, symbol, &lv_font_montserrat_22,
+                 UI_COLOR_YELLOW, LV_TEXT_ALIGN_CENTER);
+    create_label(card, 76, 9, 112, title, UI_FONT_PAGE_TEXT,
+                 UI_COLOR_YELLOW, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 188, 12, 170, subtitle, &lv_font_montserrat_16,
+                 secondary, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 410, 12, 34, page, &lv_font_montserrat_16,
+                 secondary, LV_TEXT_ALIGN_RIGHT);
+}
+
+static lv_obj_t *create_card(lv_obj_t *viewport)
+{
+    lv_obj_t *card = lv_obj_create(viewport);
+    lv_obj_remove_style_all(card);
+    lv_obj_set_size(card, DOCK_WIDTH, DOCK_HEIGHT);
+    lv_obj_set_style_bg_color(card, lv_color_hex(0x030706), 0);
+    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(card, lv_color_hex(0xD6D8D8), 0);
+    lv_obj_set_style_border_opa(card, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(card, 1, 0);
+    lv_obj_set_style_radius(card, 16, 0);
+    lv_obj_set_style_clip_corner(card, true, 0);
+    lv_obj_add_flag(card, LV_OBJ_FLAG_SNAPPABLE);
+    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE |
+                            LV_OBJ_FLAG_SCROLL_CHAIN_HOR | LV_OBJ_FLAG_GESTURE_BUBBLE);
+    /* Clickable controls may hand a vertical drag to the viewport.  The viewport
+     * itself still disables chaining, so the gesture cannot escape the Dock. */
+    lv_obj_add_flag(card, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
+    return card;
+}
+
+static void create_extended_card(lv_obj_t *card)
+{
+    const lv_color_t secondary = lv_color_hex(0xA8ACAD);
+    static const char * const labels[8] = {
+        "平均速度", "最大速度", "当前海拔", "累计爬升",
+        "卡路里", "当前温度", "心率区间", "当前圈数"
+    };
+    static const char * const values[8] = {
+        "33.5", "56.8", "318", "692", "850", "24", "Z4", "2/5"
+    };
+    static const char * const units[8] = {
+        "km/h", "km/h", "m", "m", "kcal", "℃", "阈值区间", "圈"
+    };
+
+    create_card_header(card, LV_SYMBOL_BARS, "骑行扩展", "EXTENDED DATA", "1/4");
+    create_rect(card, 45, 124, 399, 1, secondary, LV_OPA_50);
+
+    for(uint8_t index = 0; index < 8; index++)
+    {
+        int32_t column = index % 4;
+        int32_t row = index / 4;
+        int32_t x = 48 + column * 99;
+        int32_t y = 47 + row * 83;
+
+        if(column > 0)
+        {
+            create_rect(card, x - 8, y, 1, 67, secondary, LV_OPA_50);
+        }
+
+        create_label(card, x, y, 88, labels[index], UI_FONT_PAGE_TEXT,
+                     secondary, LV_TEXT_ALIGN_LEFT);
+        create_label(card, x, y + 25, 88, values[index], &lv_font_montserrat_24,
+                     UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+        create_label(card, x, y + 52, 88, units[index], UI_FONT_PAGE_TEXT,
+                     UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    }
+}
+
+static void navigation_arrow_draw_cb(lv_event_t *event)
+{
+    if(lv_event_get_code(event) != LV_EVENT_DRAW_MAIN) return;
+
+    lv_obj_t *obj = lv_event_get_target(event);
+    lv_layer_t *layer = lv_event_get_layer(event);
+    lv_area_t area;
+    lv_obj_get_coords(obj, &area);
+
+    const lv_point_precise_t start = {area.x1 + 27, area.y2 - 10};
+    const lv_point_precise_t corner = {area.x1 + 27, area.y1 + 34};
+    const lv_point_precise_t end = {area.x1 + 68, area.y1 + 34};
+    lv_draw_line_dsc_t line;
+    lv_draw_line_dsc_init(&line);
+    line.round_start = 1;
+    line.round_end = 1;
+    line.color = UI_COLOR_YELLOW;
+    line.opa = LV_OPA_20;
+    line.width = 28;
+    line.p1 = start;
+    line.p2 = corner;
+    lv_draw_line(layer, &line);
+    line.p1 = corner;
+    line.p2 = end;
+    lv_draw_line(layer, &line);
+
+    lv_draw_triangle_dsc_t triangle;
+    lv_draw_triangle_dsc_init(&triangle);
+    triangle.bg_color = UI_COLOR_YELLOW;
+    triangle.bg_opa = LV_OPA_20;
+    triangle.p[0] = (lv_point_precise_t){area.x1 + 101, area.y1 + 34};
+    triangle.p[1] = (lv_point_precise_t){area.x1 + 66, area.y1 + 5};
+    triangle.p[2] = (lv_point_precise_t){area.x1 + 66, area.y1 + 63};
+    lv_draw_triangle(layer, &triangle);
+
+    line.color = UI_COLOR_WHITE;
+    line.opa = LV_OPA_COVER;
+    line.width = 17;
+    line.p1 = start;
+    line.p2 = corner;
+    lv_draw_line(layer, &line);
+    line.p1 = corner;
+    line.p2 = end;
+    lv_draw_line(layer, &line);
+
+    triangle.bg_color = UI_COLOR_WHITE;
+    triangle.bg_opa = LV_OPA_COVER;
+    triangle.p[0] = (lv_point_precise_t){area.x1 + 96, area.y1 + 34};
+    triangle.p[1] = (lv_point_precise_t){area.x1 + 69, area.y1 + 12};
+    triangle.p[2] = (lv_point_precise_t){area.x1 + 69, area.y1 + 56};
+    lv_draw_triangle(layer, &triangle);
+}
+
+static void create_navigation_card(lv_obj_t *card)
+{
+    const lv_color_t secondary = lv_color_hex(0xA9ADAE);
+    const lv_color_t border = lv_color_hex(0xD6D8D8);
+    create_card_header(card, LV_SYMBOL_GPS, "导航中", "NAVIGATION", "2/4");
+
+    lv_obj_t *arrow = lv_obj_create(card);
+    lv_obj_remove_style_all(arrow);
+    lv_obj_set_pos(arrow, 42, 59);
+    lv_obj_set_size(arrow, 103, 112);
+    lv_obj_clear_flag(arrow, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(arrow, navigation_arrow_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
+
+    create_label(card, 144, 55, 126, "300", UI_FONT_METRIC_VALUE_SMALL,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_RIGHT);
+    create_label(card, 273, 75, 25, "m", UI_FONT_SPEED_UNIT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 146, 108, 146, "中山路", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    create_label(card, 146, 137, 146, "右转进入中山路", UI_FONT_PAGE_TEXT,
+                 secondary, LV_TEXT_ALIGN_CENTER);
+
+    create_rect(card, 302, 52, 1, 129, border, LV_OPA_80);
+    create_label(card, 324, 50, 120, "剩余里程", UI_FONT_PAGE_TEXT,
+                 secondary, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 324, 73, 120, "12.8 km", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 324, 100, 120, "预计到达", UI_FONT_PAGE_TEXT,
+                 secondary, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 324, 123, 120, "10:52", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 324, 150, 120, "剩余爬升", UI_FONT_PAGE_TEXT,
+                 secondary, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 324, 173, 120, "156 m", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+}
+
+static lv_obj_t *create_music_control(lv_obj_t *card, int32_t x, int32_t y,
+                                      int32_t width, int32_t height,
+                                      const char *symbol, const lv_font_t *font)
+{
+    lv_obj_t *control = create_rect(card, x, y, width, height,
+                                    UI_COLOR_YELLOW, LV_OPA_TRANSP);
+    lv_obj_set_style_radius(control, height / 2, 0);
+    lv_obj_set_style_border_color(control, UI_COLOR_YELLOW, 0);
+    lv_obj_set_style_border_opa(control, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(control, 1, 0);
+    lv_obj_set_style_transform_pivot_x(control, width / 2, 0);
+    lv_obj_set_style_transform_pivot_y(control, height / 2, 0);
+    lv_obj_set_style_transform_scale(control, MUSIC_NORMAL_SCALE, 0);
+    lv_obj_add_flag(control, LV_OBJ_FLAG_CLICKABLE);
+    create_label(control, 0, (height - (int32_t)font->line_height) / 2,
+                 width, symbol, font, UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    return control;
+}
+
+static void music_control_scale_anim_cb(void *object, int32_t scale)
+{
+    lv_obj_set_style_transform_scale((lv_obj_t *)object, scale, 0);
+}
+
+static void animate_music_control_scale(lv_obj_t *control, int32_t target,
+                                        uint32_t duration)
+{
+    ui_motion_value(control, music_control_scale_anim_cb,
+                    lv_obj_get_style_transform_scale_x(control, 0), target,
+                    duration, target == MUSIC_NORMAL_SCALE ?
+                    lv_anim_path_ease_out : lv_anim_path_ease_in,
+                    NULL, NULL);
+}
+
+static void music_control_event_cb(lv_event_t *event)
+{
+    lv_event_code_t code = lv_event_get_code(event);
+    lv_obj_t *control = lv_event_get_current_target(event);
+    uint8_t control_index = (uint8_t)(uintptr_t)lv_event_get_user_data(event);
+
+    if(code == LV_EVENT_PRESSED)
+    {
+        animate_music_control_scale(control, MUSIC_PRESS_SCALE, 65);
+        lv_obj_set_style_bg_opa(control, LV_OPA_30, 0);
+        lv_obj_set_style_border_opa(control, LV_OPA_COVER, 0);
+        lv_obj_set_style_shadow_color(control, UI_COLOR_YELLOW, 0);
+        lv_obj_set_style_shadow_width(control, 12, 0);
+        lv_obj_set_style_shadow_opa(control, LV_OPA_40, 0);
+    }
+    else if(code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
+    {
+        animate_music_control_scale(control, MUSIC_NORMAL_SCALE, 145);
+        update_control_visuals();
+    }
+    else if(code == LV_EVENT_CLICKED)
+    {
+        if(s_manager.mode == UI_DYNAMIC_CARD_CONTROL)
+        {
+            s_manager.control_focus = (int8_t)control_index;
+        }
+        execute_music_control(control_index);
+        update_control_visuals();
+    }
+}
+
+static void make_music_control_interactive(lv_obj_t *control,
+                                           music_control_id_t control_id)
+{
+    lv_obj_add_flag(control, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(control, music_control_event_cb, LV_EVENT_ALL,
+                        (void *)(uintptr_t)control_id);
+}
+
+static void create_music_card(lv_obj_t *card)
+{
+    const lv_color_t secondary = lv_color_hex(0x999E9F);
+    create_card_header(card, LV_SYMBOL_AUDIO, "音乐播放", "MUSIC", "3/4");
+
+    lv_obj_t *disc = create_rect(card, 105, 67, 87, 87,
+                                 lv_color_hex(0x443D10), LV_OPA_COVER);
+    lv_obj_set_style_radius(disc, LV_RADIUS_CIRCLE, 0);
+    create_rect(disc, 34, 34, 19, 19, lv_color_hex(0x0A0D0C), LV_OPA_COVER);
+
+    lv_obj_t *cover = create_rect(card, 51, 57, 104, 104,
+                                  lv_color_hex(0x111714), LV_OPA_COVER);
+    lv_obj_set_style_border_color(cover, lv_color_hex(0x59605E), 0);
+    lv_obj_set_style_border_width(cover, 1, 0);
+    lv_obj_set_style_radius(cover, 8, 0);
+    create_label(cover, 8, 25, 88, "RIDE", &lv_font_montserrat_16,
+                 UI_COLOR_YELLOW, LV_TEXT_ALIGN_CENTER);
+    create_label(cover, 8, 48, 88, "MIX", &lv_font_montserrat_24,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+
+    s_manager.music_track_label = create_label(
+        card, 174, 57, 169, s_music_tracks[0], &lv_font_montserrat_16,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT
+    );
+    s_manager.music_artist_label = create_label(
+        card, 174, 84, 169, s_music_artists[0], &lv_font_montserrat_14,
+        secondary, LV_TEXT_ALIGN_LEFT
+    );
+    create_label(card, 174, 111, 169, "02:17 / 04:26", &lv_font_montserrat_14,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    create_rect(card, 174, 137, 160, 5, secondary, LV_OPA_60);
+    create_rect(card, 174, 137, 89, 5, UI_COLOR_YELLOW, LV_OPA_COVER);
+
+    create_rect(card, 351, 50, 1, 133, lv_color_hex(0xD6D8D8), LV_OPA_70);
+    s_manager.music_controls[0] = create_music_control(
+        card, 367, 48, 72, 42, LV_SYMBOL_UP, &lv_font_montserrat_22
+    );
+    s_manager.music_controls[1] = create_music_control(
+        card, 370, 91, 66, 54, LV_SYMBOL_PLAY, &lv_font_montserrat_24
+    );
+    lv_obj_set_style_border_opa(s_manager.music_controls[1], LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(s_manager.music_controls[1], LV_RADIUS_CIRCLE, 0);
+    s_manager.music_play_icon = lv_obj_get_child(s_manager.music_controls[1], 0);
+    s_manager.music_controls[2] = create_music_control(
+        card, 367, 146, 72, 42, LV_SYMBOL_DOWN, &lv_font_montserrat_22
+    );
+
+    s_manager.music_controls[3] = create_rect(
+        card, 174, 159, 160, 38, UI_COLOR_YELLOW, LV_OPA_TRANSP
+    );
+    lv_obj_set_style_radius(s_manager.music_controls[3], 19, 0);
+    lv_obj_set_style_border_color(s_manager.music_controls[3], UI_COLOR_YELLOW, 0);
+    lv_obj_set_style_border_width(s_manager.music_controls[3], 1, 0);
+    lv_obj_set_style_border_opa(s_manager.music_controls[3], LV_OPA_TRANSP, 0);
+    lv_obj_set_style_transform_pivot_x(s_manager.music_controls[3], 80, 0);
+    lv_obj_set_style_transform_pivot_y(s_manager.music_controls[3], 19, 0);
+    lv_obj_set_style_transform_scale(s_manager.music_controls[3], MUSIC_NORMAL_SCALE, 0);
+    create_label(s_manager.music_controls[3], 8, 8, 25, LV_SYMBOL_LOOP,
+                 &lv_font_montserrat_16, UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    s_manager.music_mode_label = create_label(
+        s_manager.music_controls[3], 34, 7, 116, s_music_modes[0],
+        UI_FONT_PAGE_TEXT, secondary, LV_TEXT_ALIGN_LEFT
+    );
+
+    make_music_control_interactive(s_manager.music_controls[0], MUSIC_CONTROL_PREVIOUS);
+    make_music_control_interactive(s_manager.music_controls[1], MUSIC_CONTROL_PLAY_PAUSE);
+    make_music_control_interactive(s_manager.music_controls[2], MUSIC_CONTROL_NEXT);
+    make_music_control_interactive(s_manager.music_controls[3], MUSIC_CONTROL_MODE);
+}
+
+static void create_weather_graphic(lv_obj_t *card)
+{
+    lv_obj_t *sun = create_rect(card, 92, 69, 62, 62,
+                                UI_COLOR_YELLOW, LV_OPA_COVER);
+    lv_obj_set_style_radius(sun, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_shadow_color(sun, UI_COLOR_YELLOW, 0);
+    lv_obj_set_style_shadow_width(sun, 15, 0);
+    lv_obj_set_style_shadow_opa(sun, LV_OPA_30, 0);
+
+    lv_obj_t *cloud_left = create_rect(card, 58, 111, 57, 47,
+                                       UI_COLOR_WHITE, LV_OPA_COVER);
+    lv_obj_set_style_radius(cloud_left, LV_RADIUS_CIRCLE, 0);
+    lv_obj_t *cloud_mid = create_rect(card, 83, 95, 65, 65,
+                                      UI_COLOR_WHITE, LV_OPA_COVER);
+    lv_obj_set_style_radius(cloud_mid, LV_RADIUS_CIRCLE, 0);
+    lv_obj_t *cloud_base = create_rect(card, 61, 128, 111, 34,
+                                       UI_COLOR_WHITE, LV_OPA_COVER);
+    lv_obj_set_style_radius(cloud_base, 17, 0);
+}
+
+static void create_weather_card(lv_obj_t *card)
+{
+    const lv_color_t secondary = lv_color_hex(0xA8ACAD);
+    create_card_header(card, LV_SYMBOL_CHARGE, "天气信息", "WEATHER", "4/4");
+    create_weather_graphic(card);
+
+    create_label(card, 178, 66, 92, "22", UI_FONT_METRIC_VALUE_SMALL,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_RIGHT);
+    create_label(card, 272, 83, 48, "℃", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 194, 119, 112, "多云", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    create_label(card, 194, 147, 112, "适合骑行", UI_FONT_PAGE_TEXT,
+                 secondary, LV_TEXT_ALIGN_CENTER);
+
+    create_rect(card, 317, 52, 1, 129, lv_color_hex(0xD6D8D8), LV_OPA_70);
+    create_label(card, 340, 53, 105, "风速", UI_FONT_PAGE_TEXT,
+                 secondary, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 340, 76, 105, "12 km/h", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 340, 108, 105, "降雨概率", UI_FONT_PAGE_TEXT,
+                 secondary, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 340, 131, 105, "10%", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    create_label(card, 340, 163, 105, "空气质量  优", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+}
+
+static void update_indicator(void)
+{
+    for(uint8_t index = 0; index < UI_DYNAMIC_CARD_COUNT; index++)
+    {
+        bool active = index == (uint8_t)s_manager.active_card;
+        lv_obj_set_style_bg_color(s_manager.indicator_dots[index],
+                                  active ? UI_COLOR_YELLOW : lv_color_hex(0x909596), 0);
+        lv_obj_set_style_bg_opa(s_manager.indicator_dots[index],
+                                active ? LV_OPA_COVER : LV_OPA_70, 0);
+        lv_obj_set_style_shadow_color(s_manager.indicator_dots[index], UI_COLOR_YELLOW, 0);
+        lv_obj_set_style_shadow_width(s_manager.indicator_dots[index], active ? 10 : 0, 0);
+        lv_obj_set_style_shadow_opa(s_manager.indicator_dots[index],
+                                    active ? LV_OPA_50 : LV_OPA_TRANSP, 0);
+    }
+}
+
+static void update_control_visuals(void)
+{
+    for(uint8_t index = 0; index < UI_DYNAMIC_CARD_COUNT; index++)
+    {
+        bool focused_card = s_manager.mode == UI_DYNAMIC_CARD_CONTROL &&
+                            index == (uint8_t)s_manager.active_card;
+        lv_obj_set_style_border_color(s_manager.cards[index],
+                                      focused_card ? UI_COLOR_YELLOW : lv_color_hex(0xD6D8D8), 0);
+        lv_obj_set_style_border_width(s_manager.cards[index], focused_card ? 2 : 1, 0);
+        lv_obj_set_style_shadow_color(s_manager.cards[index], UI_COLOR_YELLOW, 0);
+        lv_obj_set_style_shadow_width(s_manager.cards[index], focused_card ? 8 : 0, 0);
+        lv_obj_set_style_shadow_opa(s_manager.cards[index],
+                                    focused_card ? LV_OPA_20 : LV_OPA_TRANSP, 0);
+    }
+
+    for(uint8_t index = 0; index < MUSIC_CONTROL_COUNT; index++)
+    {
+        bool focused = s_manager.mode == UI_DYNAMIC_CARD_CONTROL &&
+                       s_manager.active_card == UI_DYNAMIC_CARD_MUSIC &&
+                       s_manager.control_focus == (int8_t)index;
+        lv_obj_set_style_bg_opa(s_manager.music_controls[index],
+                                focused ? LV_OPA_20 : LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_opa(s_manager.music_controls[index],
+                                    focused || index == 1 ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
+        lv_obj_set_style_shadow_color(s_manager.music_controls[index], UI_COLOR_YELLOW, 0);
+        lv_obj_set_style_shadow_width(s_manager.music_controls[index], focused ? 8 : 0, 0);
+        lv_obj_set_style_shadow_opa(s_manager.music_controls[index],
+                                    focused ? LV_OPA_30 : LV_OPA_TRANSP, 0);
+    }
+}
+
+static ui_dynamic_card_id_t centered_card(void)
+{
+    lv_area_t viewport_area;
+    lv_obj_get_coords(s_manager.viewport, &viewport_area);
+    int32_t viewport_center = (viewport_area.y1 + viewport_area.y2) / 2;
+    int32_t smallest_distance = INT32_MAX;
+    ui_dynamic_card_id_t nearest = UI_DYNAMIC_CARD_EXTENDED_DATA;
+
+    for(uint8_t index = 0; index < UI_DYNAMIC_CARD_COUNT; index++)
+    {
+        lv_area_t card_area;
+        lv_obj_get_coords(s_manager.cards[index], &card_area);
+        int32_t card_center = (card_area.y1 + card_area.y2) / 2;
+        int32_t distance = card_center - viewport_center;
+        if(distance < 0) distance = -distance;
+        if(distance < smallest_distance)
+        {
+            smallest_distance = distance;
+            nearest = (ui_dynamic_card_id_t)index;
+        }
+    }
+    return nearest;
+}
+
+static void leave_control_mode(void)
+{
+    s_manager.mode = UI_DYNAMIC_CARD_BROWSER;
+    s_manager.control_focus = -1;
+    update_control_visuals();
+}
+
+static void viewport_event_cb(lv_event_t *event)
+{
+    lv_event_code_t code = lv_event_get_code(event);
+    if(code == LV_EVENT_SCROLL_BEGIN)
+    {
+        if(s_manager.mode == UI_DYNAMIC_CARD_CONTROL) leave_control_mode();
+    }
+    else if(code == LV_EVENT_SCROLL_END)
+    {
+        s_manager.active_card = centered_card();
+        s_manager.target_card = s_manager.active_card;
+        update_indicator();
+        update_control_visuals();
+    }
+}
+
+static void scroll_to_card(ui_dynamic_card_id_t card)
+{
+    if(card >= UI_DYNAMIC_CARD_COUNT) return;
+    s_manager.target_card = card;
+    lv_obj_update_layout(s_manager.viewport);
+    lv_obj_scroll_to_view(s_manager.cards[card], LV_ANIM_ON);
+}
+
+static void execute_music_control(uint8_t control_index)
+{
+    switch(control_index)
+    {
+        case 0:
+            if(s_manager.music_track == 0) s_manager.music_track = 2;
+            else s_manager.music_track--;
+            break;
+        case 1:
+            s_manager.music_playing = !s_manager.music_playing;
+            lv_label_set_text(s_manager.music_play_icon,
+                              s_manager.music_playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY);
+            return;
+        case 2:
+            s_manager.music_track = (uint8_t)((s_manager.music_track + 1U) % 3U);
+            break;
+        case 3:
+            s_manager.music_mode = (uint8_t)((s_manager.music_mode + 1U) % 3U);
+            lv_label_set_text(s_manager.music_mode_label, s_music_modes[s_manager.music_mode]);
+            return;
+        default:
+            return;
+    }
+
+    lv_label_set_text(s_manager.music_track_label, s_music_tracks[s_manager.music_track]);
+    lv_label_set_text(s_manager.music_artist_label, s_music_artists[s_manager.music_track]);
+}
+
+void ui_dynamic_card_manager_create(lv_obj_t *parent)
+{
+    if(parent == NULL || s_manager.created) return;
+
+    s_manager.viewport = lv_obj_create(parent);
+    lv_obj_remove_style_all(s_manager.viewport);
+    lv_obj_set_pos(s_manager.viewport, DOCK_X, DOCK_Y);
+    lv_obj_set_size(s_manager.viewport, DOCK_WIDTH, DOCK_HEIGHT);
+    lv_obj_set_style_pad_all(s_manager.viewport, 0, 0);
+    lv_obj_set_style_pad_row(s_manager.viewport, 0, 0);
+    lv_obj_set_scroll_dir(s_manager.viewport, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(s_manager.viewport, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scroll_snap_x(s_manager.viewport, LV_SCROLL_SNAP_NONE);
+    lv_obj_set_scroll_snap_y(s_manager.viewport, LV_SCROLL_SNAP_CENTER);
+    lv_obj_set_flex_flow(s_manager.viewport, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(s_manager.viewport, LV_FLEX_ALIGN_START,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(s_manager.viewport, LV_OBJ_FLAG_SCROLLABLE |
+                                         LV_OBJ_FLAG_SCROLL_ONE |
+                                         LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    lv_obj_clear_flag(s_manager.viewport, LV_OBJ_FLAG_SCROLL_ELASTIC |
+                                           LV_OBJ_FLAG_SCROLL_CHAIN |
+                                           LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_add_event_cb(s_manager.viewport, viewport_event_cb, LV_EVENT_ALL, NULL);
+
+    for(uint8_t index = 0; index < UI_DYNAMIC_CARD_COUNT; index++)
+    {
+        s_manager.cards[index] = create_card(s_manager.viewport);
+    }
+    create_extended_card(s_manager.cards[UI_DYNAMIC_CARD_EXTENDED_DATA]);
+    create_navigation_card(s_manager.cards[UI_DYNAMIC_CARD_NAVIGATION]);
+    create_music_card(s_manager.cards[UI_DYNAMIC_CARD_MUSIC]);
+    create_weather_card(s_manager.cards[UI_DYNAMIC_CARD_WEATHER]);
+
+    s_manager.indicator_overlay = lv_obj_create(parent);
+    lv_obj_remove_style_all(s_manager.indicator_overlay);
+    lv_obj_set_pos(s_manager.indicator_overlay, INDICATOR_X, INDICATOR_Y);
+    lv_obj_set_size(s_manager.indicator_overlay, 20,
+                    INDICATOR_DOT_STEP * (UI_DYNAMIC_CARD_COUNT - 1) + INDICATOR_DOT_SIZE);
+    lv_obj_clear_flag(s_manager.indicator_overlay,
+                      LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    for(uint8_t index = 0; index < UI_DYNAMIC_CARD_COUNT; index++)
+    {
+        s_manager.indicator_dots[index] = create_rect(
+            s_manager.indicator_overlay, 5, index * INDICATOR_DOT_STEP,
+            INDICATOR_DOT_SIZE, INDICATOR_DOT_SIZE,
+            index == 0 ? UI_COLOR_YELLOW : lv_color_hex(0x909596),
+            index == 0 ? LV_OPA_COVER : LV_OPA_70
+        );
+        lv_obj_set_style_radius(s_manager.indicator_dots[index], LV_RADIUS_CIRCLE, 0);
+    }
+    lv_obj_move_foreground(s_manager.indicator_overlay);
+
+    s_manager.active_card = UI_DYNAMIC_CARD_EXTENDED_DATA;
+    s_manager.target_card = UI_DYNAMIC_CARD_EXTENDED_DATA;
+    s_manager.mode = UI_DYNAMIC_CARD_BROWSER;
+    s_manager.control_focus = -1;
+    s_manager.music_playing = false;
+    s_manager.created = true;
+    update_indicator();
+    update_control_visuals();
+}
+
+bool ui_dynamic_card_manager_contains_point(int32_t screen_x, int32_t screen_y)
+{
+    if(!s_manager.created || s_manager.viewport == NULL) return false;
+    lv_area_t area;
+    lv_obj_get_coords(s_manager.viewport, &area);
+    return screen_x >= area.x1 && screen_x <= area.x2 &&
+           screen_y >= area.y1 && screen_y <= area.y2;
+}
+
+bool ui_dynamic_card_manager_handle_input(ui_input_event_t input)
+{
+    if(!s_manager.created) return false;
+
+    if(input == UI_INPUT_BACK) return ui_dynamic_card_manager_back();
+
+    if(input == UI_INPUT_ENCODER_PRESS)
+    {
+        if(s_manager.mode == UI_DYNAMIC_CARD_BROWSER)
+        {
+            s_manager.mode = UI_DYNAMIC_CARD_CONTROL;
+            s_manager.control_focus = -1;
+            update_control_visuals();
+        }
+        else if(s_manager.control_focus < 0)
+        {
+            leave_control_mode();
+        }
+        else if(s_manager.active_card == UI_DYNAMIC_CARD_MUSIC)
+        {
+            execute_music_control((uint8_t)s_manager.control_focus);
+        }
+        return true;
+    }
+
+    int32_t direction = input == UI_INPUT_ENCODER_CW ? 1 :
+                        input == UI_INPUT_ENCODER_CCW ? -1 : 0;
+    if(direction == 0) return false;
+
+    if(s_manager.mode == UI_DYNAMIC_CARD_BROWSER)
+    {
+        int32_t next = (int32_t)s_manager.target_card + direction;
+        if(next < 0) next = 0;
+        if(next >= UI_DYNAMIC_CARD_COUNT) next = UI_DYNAMIC_CARD_COUNT - 1;
+        if(next != (int32_t)s_manager.target_card)
+        {
+            scroll_to_card((ui_dynamic_card_id_t)next);
+        }
+        return true;
+    }
+
+    if(s_manager.active_card == UI_DYNAMIC_CARD_MUSIC)
+    {
+        if(s_manager.control_focus < 0)
+        {
+            s_manager.control_focus = direction > 0 ? 0 : MUSIC_CONTROL_COUNT - 1;
+        }
+        else
+        {
+            int32_t next = s_manager.control_focus + direction;
+            if(next < 0) next = MUSIC_CONTROL_COUNT - 1;
+            if(next >= MUSIC_CONTROL_COUNT) next = 0;
+            s_manager.control_focus = (int8_t)next;
+        }
+        update_control_visuals();
+    }
+    return true;
+}
+
+bool ui_dynamic_card_manager_back(void)
+{
+    if(!s_manager.created || s_manager.mode != UI_DYNAMIC_CARD_CONTROL) return false;
+    leave_control_mode();
+    return true;
+}
+
+ui_dynamic_card_id_t ui_dynamic_card_manager_get_active_card(void)
+{
+    return s_manager.active_card;
+}
+
+ui_dynamic_card_mode_t ui_dynamic_card_manager_get_mode(void)
+{
+    return s_manager.mode;
+}
+
+int8_t ui_dynamic_card_manager_get_control_focus(void)
+{
+    return s_manager.control_focus;
+}

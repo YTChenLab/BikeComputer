@@ -1,0 +1,179 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.cpptools",
+            "ms-vscode.cpptools-themes",
+            "ms-vscode.cmake-tools"
+        ],
+        "unwantedRecommendations": []
+    },
+
+    "settings": {
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+
+        "files.associations": {
+            "glob.h": "c",
+            "lvgl.h": "c"
+        },
+
+        "cmake.configureOnOpen": false,
+
+        "cmake.cmakePath": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/cmake.exe",
+
+        "cmake.generator": "Ninja",
+
+        "cmake.sourceDirectory": "${workspaceFolder}",
+
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+
+        "cmake.environment": {
+            "PATH": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\bin;${env:PATH}",
+            "PKG_CONFIG_PATH": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\lib\\pkgconfig;D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\share\\pkgconfig"
+        },
+
+        "cmake.configureSettings": {
+            "CMAKE_BUILD_TYPE": "Debug",
+            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+            "CMAKE_POLICY_DEFAULT_CMP0177": "NEW",
+
+            "CMAKE_C_COMPILER": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/gcc.exe",
+
+            "CMAKE_CXX_COMPILER": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/g++.exe",
+
+            "CMAKE_MAKE_PROGRAM": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/ninja.exe"
+        },
+
+        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+
+        "C_Cpp.default.compilerPath": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/gcc.exe",
+
+        "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+
+        "C_Cpp.default.cStandard": "c99",
+
+        "C_Cpp.default.cppStandard": "c++17",
+
+        "C_Cpp.default.intelliSenseMode": "windows-gcc-x64"
+    },
+
+    "tasks": {
+        "version": "2.0.0",
+
+        "tasks": [
+            {
+                "label": "Build LVGL",
+                "type": "process",
+                "command": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/cmake.exe",
+                "args": [
+                    "--build",
+                    "${workspaceFolder}/build",
+                    "--parallel"
+                ],
+                "options": {
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\bin;${env:PATH}",
+                        "PKG_CONFIG_PATH": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\lib\\pkgconfig;D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\share\\pkgconfig"
+                    }
+                },
+                "group": {
+                    "kind": "build",
+                    "isDefault": true
+                },
+                "problemMatcher": [
+                    "$gcc"
+                ],
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "dedicated",
+                    "showReuseMessage": true,
+                    "clear": true
+                }
+            },
+            {
+                "label": "Run LVGL Simulator",
+                "type": "process",
+                "command": "${workspaceFolder}/bin/main.exe",
+                "dependsOn": [
+                    "Build LVGL"
+                ],
+                "dependsOrder": "sequence",
+                "options": {
+                    "cwd": "${workspaceFolder}",
+                    "env": {
+                        "PATH": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\bin;${env:PATH}",
+                        "PKG_CONFIG_PATH": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\lib\\pkgconfig;D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\share\\pkgconfig"
+                    }
+                },
+                "problemMatcher": [],
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "dedicated",
+                    "showReuseMessage": true,
+                    "clear": false
+                }
+            }
+        ]
+    },
+
+    "launch": {
+        "version": "0.2.0",
+
+        "configurations": [
+            {
+                "name": "LVGL Simulator",
+
+                "type": "cppdbg",
+
+                "request": "launch",
+
+                "program": "${workspaceFolder}/bin/main.exe",
+
+                "args": [],
+
+                "cwd": "${workspaceFolder}",
+
+                "preLaunchTask": "Build LVGL",
+
+                "stopAtEntry": false,
+
+                "externalConsole": false,
+
+                "environment": [
+                    {
+                        "name": "PATH",
+                        "value": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\bin;${env:PATH}"
+                    },
+                    {
+                        "name": "PKG_CONFIG_PATH",
+                        "value": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\lib\\pkgconfig;D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\share\\pkgconfig"
+                    }
+                ],
+
+                "MIMode": "gdb",
+
+                "miDebuggerPath": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/gdb.exe",
+
+                "setupCommands": [
+                    {
+                        "description": "Enable GDB pretty printing",
+                        "text": "-enable-pretty-printing",
+                        "ignoreFailures": true
+                    }
+                ]
+            }
+        ]
+    }
+}

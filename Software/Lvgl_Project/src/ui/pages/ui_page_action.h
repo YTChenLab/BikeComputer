@@ -1,0 +1,20 @@
+#ifndef UI_PAGE_ACTION_H
+#define UI_PAGE_ACTION_H
+
+typedef enum
+{
+    UI_PAGE_ACTION_HOME = 0,
+    UI_PAGE_ACTION_SAVE_RIDE,
+    UI_PAGE_ACTION_UPLOAD_RIDE,
+    UI_PAGE_ACTION_HISTORY,
+    UI_PAGE_ACTION_ACHIEVEMENT,
+    UI_PAGE_ACTION_SETTINGS,
+    UI_PAGE_ACTION_SYSTEM,
+    UI_PAGE_ACTION_POWER_OFF,
+    UI_PAGE_ACTION_POWER_RESTART,
+    UI_PAGE_ACTION_POWER_CANCEL
+} ui_page_action_t;
+
+typedef void (*ui_page_action_cb_t)(ui_page_action_t action, void *user_data);
+
+#endif /* UI_PAGE_ACTION_H */

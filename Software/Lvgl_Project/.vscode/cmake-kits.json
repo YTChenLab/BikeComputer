@@ -1,0 +1,16 @@
+[
+    {
+        "name": "Bike UI - MSYS2 UCRT64 GCC 16.2",
+        "compilers": {
+            "C": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/gcc.exe",
+            "CXX": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/g++.exe"
+        },
+        "preferredGenerator": {
+            "name": "Ninja"
+        },
+        "environmentVariables": {
+            "PATH": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin;D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/usr/bin;${env:PATH}",
+            "PKG_CONFIG_PATH": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/lib/pkgconfig;D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/share/pkgconfig"
+        }
+    }
+]

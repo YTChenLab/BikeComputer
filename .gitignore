@@ -1,0 +1,16 @@
+# Generated build products
+Software/Lvgl_Project/build/
+Software/Lvgl_Project/bin/
+Software/Lvgl_Project/.tools/
+
+# Local CMake and editor state
+**/CMakeUserPresets.json
+**/.cache/
+*.log
+*.tmp
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+

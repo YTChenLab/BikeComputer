@@ -1,0 +1,77 @@
+#ifndef UI_EVENT_H
+#define UI_EVENT_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#define UI_EVENT_TITLE_MAX    40
+#define UI_EVENT_MESSAGE_MAX  96
+#define UI_EVENT_ACTION_MAX   24
+
+typedef enum
+{
+    UI_EVENT_BOOT_COMPLETE = 0,
+    UI_EVENT_GPS_SEARCHING,
+    UI_EVENT_GPS_READY,
+    UI_EVENT_GPS_FAILED,
+    UI_EVENT_SENSOR_DISCONNECTED,
+    UI_EVENT_LOW_BATTERY,
+    UI_EVENT_RIDE_START_REQUESTED,
+    UI_EVENT_RIDE_GO,
+    UI_EVENT_RIDE_STARTED,
+    UI_EVENT_RIDE_PAUSE_REQUESTED,
+    UI_EVENT_RIDE_PAUSED,
+    UI_EVENT_RIDE_RESUME_REQUESTED,
+    UI_EVENT_RIDE_RESUMED,
+    UI_EVENT_RIDE_FINISH_REQUESTED,
+    UI_EVENT_RIDE_FINISH_CONFIRMED,
+    UI_EVENT_RIDE_FINISH_CANCELLED,
+    UI_EVENT_RIDE_SAVE_STARTED,
+    UI_EVENT_RIDE_SAVE_SUCCESS,
+    UI_EVENT_RIDE_SAVE_FAILED,
+    UI_EVENT_RIDE_SUMMARY_READY,
+    UI_EVENT_RIDE_SUMMARY_DISMISSED,
+    UI_EVENT_NAVIGATION_TURN,
+    UI_EVENT_NAVIGATION_OFF_ROUTE,
+    UI_EVENT_NAVIGATION_OPEN_REQUESTED,
+    UI_EVENT_MEDIA_CHANGED,
+    UI_EVENT_MEDIA_PREVIOUS,
+    UI_EVENT_MEDIA_TOGGLE,
+    UI_EVENT_MEDIA_NEXT,
+    UI_EVENT_MEDIA_MODE,
+    UI_EVENT_STORAGE_ERROR,
+    UI_EVENT_STORAGE_RETRY,
+    UI_EVENT_CONTROL_CHANGED,
+    UI_EVENT_COUNT
+} ui_event_type_t;
+
+typedef enum
+{
+    UI_EVENT_PRIORITY_P0_CRITICAL = 0,
+    UI_EVENT_PRIORITY_P1_RIDING_SAFETY,
+    UI_EVENT_PRIORITY_P2_RIDE_STATE,
+    UI_EVENT_PRIORITY_P3_USER_ACTION,
+    UI_EVENT_PRIORITY_P4_NORMAL
+} ui_event_priority_t;
+
+typedef struct
+{
+    ui_event_type_t type;
+    ui_event_priority_t priority;
+    uint32_t source_id;
+    uint32_t dedupe_key;
+    uint32_t timeout_ms;
+    int32_t value;
+    int32_t minimum;
+    int32_t maximum;
+    bool flag;
+    char title[UI_EVENT_TITLE_MAX];
+    char message[UI_EVENT_MESSAGE_MAX];
+    char primary_action[UI_EVENT_ACTION_MAX];
+    char secondary_action[UI_EVENT_ACTION_MAX];
+} ui_event_t;
+
+#define UI_EVENT_MASK(type) (UINT64_C(1) << (uint32_t)(type))
+#define UI_EVENT_MASK_ALL   UINT64_MAX
+
+#endif /* UI_EVENT_H */

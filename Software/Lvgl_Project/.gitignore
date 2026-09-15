@@ -1,0 +1,7 @@
+build/
+bin/
+.tools/
+CMakeUserPresets.json
+*.log
+*.tmp
+

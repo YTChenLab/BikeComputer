@@ -66,6 +66,7 @@
 #include "ui_dashboard.h"
 
 #include "../components/ui_status_bar.h"
+#include "../pages/ui_page_common.h"
 #include "../components/ui_metric_card.h"
 #include "../components/ui_dynamic_card_manager.h"
 
@@ -296,6 +297,7 @@ static float s_display_speed = 32.8f;
  * 速度平滑动画 Timer。
  */
 static lv_timer_t *s_speed_anim_timer = NULL;
+static bool s_dashboard_active = false;
 
 
 /* 已绘制的速度分段数量；-1 表示尚未绘制。 */
@@ -1327,6 +1329,12 @@ static void dashboard_layout_speed_readout(void)
 static void dashboard_speed_anim_cb(
     lv_timer_t *timer)
 {
+    if(!s_dashboard_active)
+    {
+        lv_timer_pause(timer);
+        return;
+    }
+
     /*
      * 目标值与当前显示值之间的差值。
      */
@@ -1460,6 +1468,7 @@ void ui_dashboard_create(void)
      * 1. 顶部状态栏
      */
     dashboard_create_status_bar();
+    (void)ui_page_status_register(&s_status_bar);
 
 
     /*
@@ -1498,6 +1507,7 @@ void ui_dashboard_create(void)
                 DASH_SPEED_ANIM_PERIOD_MS,
                 NULL
             );
+        lv_timer_pause(s_speed_anim_timer);
     }
 }
 
@@ -1545,10 +1555,18 @@ void ui_dashboard_set_speed(
     }
 
     s_target_speed = speed;
-    if(s_speed_anim_timer != NULL)
+    if(s_speed_anim_timer != NULL && s_dashboard_active)
     {
         lv_timer_resume(s_speed_anim_timer);
     }
+}
+
+void ui_dashboard_set_active(bool active)
+{
+    s_dashboard_active = active;
+    if(s_speed_anim_timer == NULL) return;
+    if(active) lv_timer_resume(s_speed_anim_timer);
+    else lv_timer_pause(s_speed_anim_timer);
 }
 
 
@@ -1583,60 +1601,7 @@ void ui_dashboard_set_data(
     );
 
 
-    /*
-     * ========================================================
-     * 2. 顶部状态栏
-     * ========================================================
-     */
-
-
-    /*
-     * GNSS 卫星数量
-     */
-    ui_status_bar_set_satellites(
-        &s_status_bar,
-        data->satellites
-    );
-
-
-    /*
-     * 当前时间
-     */
-    ui_status_bar_set_time(
-        &s_status_bar,
-        data->clock_hour,
-        data->clock_minute
-    );
-
-
-    /*
-     * 电池百分比
-     */
-    ui_status_bar_set_battery(
-        &s_status_bar,
-        data->battery
-    );
-
-
-    /*
-     * WiFi 状态
-     */
-    ui_status_bar_set_wifi(
-        &s_status_bar,
-        data->wifi
-    );
-
-
-    /*
-     * Bluetooth 状态
-     */
-    ui_status_bar_set_bluetooth(
-        &s_status_bar,
-        data->bluetooth
-    );
-
-
-    /* 底部状态条使用本轮真实输入数据汇总状态。 */
+    /* 顶部状态栏由 ui_app_state 统一驱动，不再从骑行数据重复写入。 */
 
 
     /*

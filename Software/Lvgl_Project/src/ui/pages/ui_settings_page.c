@@ -43,13 +43,13 @@ static void row_event(lv_event_t *event)
 }
 
 lv_obj_t *ui_settings_page_create(ui_page_action_cb_t callback,
-                                  void *user_data, bool wifi, bool bluetooth)
+                                  void *user_data)
 {
     s_callback = callback;
     s_user_data = user_data;
     s_selection = 0;
     lv_obj_t *screen = ui_page_screen_create();
-    ui_page_status_create(&s_status, screen, wifi, bluetooth);
+    ui_page_status_create(&s_status, screen);
     ui_page_title(screen, "设置", "SETTINGS");
 
     const char *group_titles[] = {"设备连接", "骑行体验", "系统"};
@@ -88,11 +88,6 @@ lv_obj_t *ui_settings_page_create(ui_page_action_cb_t callback,
         y += group_count[group] * 54 + 18;
     }
     return screen;
-}
-
-void ui_settings_page_set_connectivity(bool wifi, bool bluetooth)
-{
-    ui_page_status_set_connectivity(&s_status, wifi, bluetooth);
 }
 
 bool ui_settings_page_handle_key(uint32_t key)

@@ -1,6 +1,7 @@
 #include "ui_dynamic_card_manager.h"
 
 #include "../core/ui_colors.h"
+#include "../core/ui_app_state.h"
 #include "../core/ui_motion.h"
 #include "../core/ui_theme.h"
 
@@ -44,9 +45,7 @@ typedef struct
     ui_dynamic_card_id_t target_card;
     ui_dynamic_card_mode_t mode;
     int8_t control_focus;
-    uint8_t music_track;
-    uint8_t music_mode;
-    bool music_playing;
+    int32_t music_state_subscription;
     bool created;
 } dynamic_card_manager_t;
 
@@ -72,6 +71,28 @@ static const char * const s_music_modes[] = {
     "单曲循环",
     "随机播放"
 };
+
+static void apply_music_state(const ui_app_state_t *state)
+{
+    if(state == NULL || s_manager.music_play_icon == NULL) return;
+    uint8_t track = (uint8_t)(state->media_track % 3U);
+    uint8_t mode = state->media_mode < UI_MEDIA_MODE_COUNT ?
+                   (uint8_t)state->media_mode : 0U;
+    lv_label_set_text(s_manager.music_play_icon,
+                      state->media_playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY);
+    lv_label_set_text(s_manager.music_track_label, s_music_tracks[track]);
+    lv_label_set_text(s_manager.music_artist_label, s_music_artists[track]);
+    lv_label_set_text(s_manager.music_mode_label, s_music_modes[mode]);
+}
+
+static void music_state_changed(const ui_app_state_t *state,
+                                ui_app_state_change_mask_t changed,
+                                void *user_data)
+{
+    (void)changed;
+    (void)user_data;
+    apply_music_state(state);
+}
 
 static lv_obj_t *create_rect(lv_obj_t *parent, int32_t x, int32_t y,
                              int32_t width, int32_t height, lv_color_t color,
@@ -563,30 +584,31 @@ static void scroll_to_card(ui_dynamic_card_id_t card)
 
 static void execute_music_control(uint8_t control_index)
 {
+    ui_app_state_t state;
+    if(!ui_app_state_get(&state)) return;
+    uint8_t track = (uint8_t)(state.media_track % 3U);
+    ui_media_mode_t mode = state.media_mode;
+
     switch(control_index)
     {
         case 0:
-            if(s_manager.music_track == 0) s_manager.music_track = 2;
-            else s_manager.music_track--;
+            track = track == 0U ? 2U : (uint8_t)(track - 1U);
             break;
         case 1:
-            s_manager.music_playing = !s_manager.music_playing;
-            lv_label_set_text(s_manager.music_play_icon,
-                              s_manager.music_playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY);
+            ui_app_state_set_media(!state.media_playing, track, mode);
             return;
         case 2:
-            s_manager.music_track = (uint8_t)((s_manager.music_track + 1U) % 3U);
+            track = (uint8_t)((track + 1U) % 3U);
             break;
         case 3:
-            s_manager.music_mode = (uint8_t)((s_manager.music_mode + 1U) % 3U);
-            lv_label_set_text(s_manager.music_mode_label, s_music_modes[s_manager.music_mode]);
+            mode = (ui_media_mode_t)(((uint8_t)mode + 1U) %
+                                     UI_MEDIA_MODE_COUNT);
+            ui_app_state_set_media(state.media_playing, track, mode);
             return;
         default:
             return;
     }
-
-    lv_label_set_text(s_manager.music_track_label, s_music_tracks[s_manager.music_track]);
-    lv_label_set_text(s_manager.music_artist_label, s_music_artists[s_manager.music_track]);
+    ui_app_state_set_media(state.media_playing, track, mode);
 }
 
 void ui_dynamic_card_manager_create(lv_obj_t *parent)
@@ -646,8 +668,11 @@ void ui_dynamic_card_manager_create(lv_obj_t *parent)
     s_manager.target_card = UI_DYNAMIC_CARD_EXTENDED_DATA;
     s_manager.mode = UI_DYNAMIC_CARD_BROWSER;
     s_manager.control_focus = -1;
-    s_manager.music_playing = false;
+    s_manager.music_state_subscription = ui_app_state_subscribe(
+        UI_APP_STATE_CHANGE_MEDIA, music_state_changed, NULL);
     s_manager.created = true;
+    ui_app_state_t app_state;
+    if(ui_app_state_get(&app_state)) apply_music_state(&app_state);
     update_indicator();
     update_control_visuals();
 }

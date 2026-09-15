@@ -7,7 +7,6 @@
 #include <stdbool.h>
 
 lv_obj_t *ui_profile_page_create(ui_page_action_cb_t callback,
-                                 void *user_data, bool wifi, bool bluetooth);
-void ui_profile_page_set_connectivity(bool wifi, bool bluetooth);
+                                 void *user_data);
 
 #endif /* UI_PROFILE_PAGE_H */

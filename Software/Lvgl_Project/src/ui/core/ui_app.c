@@ -1,6 +1,7 @@
 #include "ui_app.h"
 
 #include "ui_colors.h"
+#include "ui_app_state.h"
 #include "ui_background.h"
 #include "ui_dock.h"
 #include "ui_dock_controller.h"
@@ -21,6 +22,7 @@
 #include "../pages/navigation/ui_navigation.h"
 #include "../pages/ui_boot_page.h"
 #include "../pages/ui_page_action.h"
+#include "../pages/ui_page_common.h"
 #include "../pages/ui_power_page.h"
 #include "../pages/ui_profile_page.h"
 #include "../pages/ui_settings_page.h"
@@ -55,12 +57,11 @@ typedef struct { lv_obj_t *screen; ui_status_bar_t status; } ui_page_view_t;
 static ui_page_view_t s_pages[UI_PAGE_COUNT];
 static lv_timer_t *s_boot_timer;
 static lv_timer_t *s_event_timer;
-static bool s_powered_off, s_wifi = true, s_bluetooth = true, s_gps = true, s_power_save;
+static bool s_powered_off;
 static bool s_quick_visible, s_pointer_dragging, s_pointer_opening, s_slider_dragging;
 static bool s_page_swiping, s_home_swiping;
 static bool s_dynamic_card_gesture_owned;
 static bool s_navigation_map_gesture_owned;
-static uint8_t s_sound_level = 62, s_brightness_level = 75, s_satellites = 12;
 static ui_control_center_slider_t s_active_slider;
 static lv_point_t s_pointer_start;
 static int32_t s_overlay_start_y;
@@ -80,6 +81,14 @@ static void app_control_center_action(ui_control_center_action_t action,
                                       void *user_data);
 static void app_ride_data_changed(const ui_ride_data_t *data,
                                   uint32_t version, void *user_data);
+static void app_state_changed(const ui_app_state_t *state,
+                              ui_app_state_change_mask_t changed,
+                              void *user_data);
+static void app_route_changed(ui_route_id_t previous,
+                              ui_route_id_t current, void *user_data);
+static void app_ride_state_changed(ui_ride_state_t previous,
+                                   ui_ride_state_t current,
+                                   ui_ride_event_t event, void *user_data);
 
 static bool app_publish_event(ui_event_type_t type,
                               ui_event_priority_t priority)
@@ -166,17 +175,100 @@ static lv_obj_t *app_make_screen(void) {
     return screen;
 }
 static void app_add_status(ui_page_t page) {
-    ui_status_bar_create(&s_pages[page].status, s_pages[page].screen);
-    ui_status_bar_set_satellites(&s_pages[page].status, 12); ui_status_bar_set_time(&s_pages[page].status, 10, 24);
-    ui_status_bar_set_battery(&s_pages[page].status, 82); ui_status_bar_set_wifi(&s_pages[page].status, s_wifi); ui_status_bar_set_bluetooth(&s_pages[page].status, s_bluetooth);
+    ui_page_status_create(&s_pages[page].status, s_pages[page].screen);
 }
 static void app_ride_data_changed(const ui_ride_data_t *data,
                                   uint32_t version, void *user_data) {
     (void)version;
     (void)user_data;
     if(data == NULL) return;
-    s_satellites = data->satellites;
+    ui_app_state_t state;
+    if(ui_app_state_get(&state)) {
+        ui_app_state_set_status(data->clock_hour, data->clock_minute,
+                                data->battery, state.battery_charging,
+                                state.gps_enabled, data->satellites);
+    }
     ui_dashboard_set_data(data);
+}
+
+static void app_state_changed(const ui_app_state_t *state,
+                              ui_app_state_change_mask_t changed,
+                              void *user_data)
+{
+    (void)user_data;
+    if(state == NULL) return;
+    if((changed & UI_APP_STATE_CHANGE_CONNECTIVITY) != 0U) {
+        ui_ride_data_model_set_connectivity(
+            state->wifi_enabled && state->wifi_connected,
+            state->bluetooth_enabled && state->bluetooth_connected);
+    }
+    if((changed & UI_APP_STATE_CHANGE_CONTROL) != 0U) {
+        ui_sound_set_volume(state->sound_level);
+        ui_background_set_opacity(
+            (lv_opa_t)(70 + (185 * state->brightness_level / 100)));
+    }
+    if((changed & (UI_APP_STATE_CHANGE_STATUS |
+                   UI_APP_STATE_CHANGE_CONNECTIVITY |
+                   UI_APP_STATE_CHANGE_CONTROL |
+                   UI_APP_STATE_CHANGE_RIDE)) != 0U) {
+        app_update_quick_states();
+    }
+}
+
+static void app_route_changed(ui_route_id_t previous,
+                              ui_route_id_t current, void *user_data)
+{
+    (void)previous;
+    (void)user_data;
+    ui_app_state_set_route((uint8_t)current);
+}
+
+static void app_ride_state_changed(ui_ride_state_t previous,
+                                   ui_ride_state_t current,
+                                   ui_ride_event_t event, void *user_data)
+{
+    (void)previous;
+    (void)event;
+    (void)user_data;
+    ui_app_state_set_ride_state(current);
+}
+
+static void app_dashboard_enter(ui_route_id_t route, lv_obj_t *screen,
+                                void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_dashboard_set_active(true);
+}
+
+static void app_dashboard_leave(ui_route_id_t route, lv_obj_t *screen,
+                                void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_dashboard_set_active(false);
+}
+
+static void app_navigation_enter(ui_route_id_t route, lv_obj_t *screen,
+                                 void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_navigation_set_active(true);
+    ui_app_state_set_navigation_active(true);
+}
+
+static void app_navigation_leave(ui_route_id_t route, lv_obj_t *screen,
+                                 void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_navigation_set_active(false);
+    ui_app_state_set_navigation_active(false);
 }
 static void app_quick_close_done(lv_anim_t *animation) {
     (void)animation;
@@ -238,19 +330,6 @@ static void app_back(void) {
     ui_sound_play(UI_SFX_BACK);
     (void)ui_router_back();
 }
-static void app_update_status(void) {
-    if(s_pages[UI_PAGE_NAVIGATION].screen) {
-        ui_status_bar_set_wifi(&s_pages[UI_PAGE_NAVIGATION].status, s_wifi);
-        ui_status_bar_set_bluetooth(&s_pages[UI_PAGE_NAVIGATION].status,
-                                    s_bluetooth);
-    }
-    ui_summary_page_set_connectivity(s_wifi, s_bluetooth);
-    ui_profile_page_set_connectivity(s_wifi, s_bluetooth);
-    ui_settings_page_set_connectivity(s_wifi, s_bluetooth);
-    ui_system_page_set_connectivity(s_wifi, s_bluetooth);
-    ui_ride_data_model_set_connectivity(s_wifi, s_bluetooth);
-    (void)ui_ride_data_model_process();
-}
 static void app_create_navigation(void) {
     lv_obj_t *screen = app_make_screen();
     s_pages[UI_PAGE_NAVIGATION].screen = screen;
@@ -301,10 +380,10 @@ static void app_create_screens(void) {
     ui_dashboard_create();
     s_pages[UI_PAGE_DASHBOARD].screen = ui_dashboard_get_screen();
     app_create_navigation();
-    s_pages[UI_PAGE_SUMMARY].screen = ui_summary_page_create(app_page_action, NULL, s_wifi, s_bluetooth);
-    s_pages[UI_PAGE_PROFILE].screen = ui_profile_page_create(app_page_action, NULL, s_wifi, s_bluetooth);
-    s_pages[UI_PAGE_SETTINGS].screen = ui_settings_page_create(app_page_action, NULL, s_wifi, s_bluetooth);
-    s_pages[UI_PAGE_SYSTEM].screen = ui_system_page_create(app_page_action, NULL, s_wifi, s_bluetooth);
+    s_pages[UI_PAGE_SUMMARY].screen = ui_summary_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_PROFILE].screen = ui_profile_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_SETTINGS].screen = ui_settings_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_SYSTEM].screen = ui_system_page_create(app_page_action, NULL);
     ui_control_center_create(app_control_center_action, NULL);
     s_quick_overlay = ui_control_center_root();
     s_pages[UI_PAGE_POWER].screen = ui_power_page_create(app_page_action, NULL);
@@ -315,8 +394,18 @@ static void app_create_screens(void) {
 }
 static void app_register_routes(void) {
     (void)ui_router_register(UI_ROUTE_BOOT, s_pages[UI_PAGE_BOOT].screen);
-    (void)ui_router_register(UI_ROUTE_RIDE_DASHBOARD, s_pages[UI_PAGE_DASHBOARD].screen);
-    (void)ui_router_register(UI_ROUTE_NAVIGATION, s_pages[UI_PAGE_NAVIGATION].screen);
+    const ui_router_page_t dashboard = {
+        .screen = s_pages[UI_PAGE_DASHBOARD].screen,
+        .on_enter = app_dashboard_enter,
+        .on_leave = app_dashboard_leave
+    };
+    const ui_router_page_t navigation = {
+        .screen = s_pages[UI_PAGE_NAVIGATION].screen,
+        .on_enter = app_navigation_enter,
+        .on_leave = app_navigation_leave
+    };
+    (void)ui_router_register_page(UI_ROUTE_RIDE_DASHBOARD, &dashboard);
+    (void)ui_router_register_page(UI_ROUTE_NAVIGATION, &navigation);
     (void)ui_router_register(UI_ROUTE_RIDE_SUMMARY, s_pages[UI_PAGE_SUMMARY].screen);
     (void)ui_router_register(UI_ROUTE_PROFILE, s_pages[UI_PAGE_PROFILE].screen);
     (void)ui_router_register(UI_ROUTE_SETTINGS, s_pages[UI_PAGE_SETTINGS].screen);
@@ -333,25 +422,36 @@ static void app_boot_timer_cb(lv_timer_t *timer) {
 }
 static void app_update_quick_states(void) {
     if(!s_quick_overlay) return;
-    const ui_control_center_state_t state = {
-        .wifi = s_wifi,
-        .bluetooth = s_bluetooth,
-        .gps = s_gps,
-        .power_save = s_power_save,
-        .ride_controls_enabled = ui_state_machine_is_riding(),
-        .ride_paused = ui_state_machine_is_paused(),
-        .satellites = s_satellites,
-        .sound_level = s_sound_level,
-        .brightness_level = s_brightness_level
+    ui_app_state_t app_state;
+    if(!ui_app_state_get(&app_state)) return;
+    bool riding = app_state.ride_state == UI_RIDE_STATE_RIDING ||
+                  app_state.ride_state == UI_RIDE_STATE_PAUSED ||
+                  app_state.ride_state == UI_RIDE_STATE_FINISHING;
+    const ui_control_center_state_t center_state = {
+        .wifi = app_state.wifi_enabled && app_state.wifi_connected,
+        .bluetooth = app_state.bluetooth_enabled &&
+                     app_state.bluetooth_connected,
+        .gps = app_state.gps_enabled,
+        .power_save = app_state.power_save_enabled,
+        .ride_controls_enabled = riding,
+        .ride_paused = app_state.ride_state == UI_RIDE_STATE_PAUSED,
+        .satellites = app_state.satellites,
+        .sound_level = app_state.sound_level,
+        .brightness_level = app_state.brightness_level
     };
-    ui_control_center_set_state(&state);
+    ui_control_center_set_state(&center_state);
 }
 static void app_update_slider_visuals(void) {
+    ui_app_state_t state;
+    if(!ui_app_state_get(&state)) return;
+    ui_sound_set_volume(state.sound_level);
+    ui_background_set_opacity(
+        (lv_opa_t)(70 + (185 * state.brightness_level / 100)));
     app_update_quick_states();
-    ui_sound_set_volume(s_sound_level);
-    ui_background_set_opacity((lv_opa_t)(70 + (185 * s_brightness_level / 100)));
 }
 static void app_action(ui_action_t action) {
+    ui_app_state_t state;
+    if(!ui_app_state_get(&state)) return;
     switch(action) {
         case UI_ACTION_HOME:
             ui_router_clear_history();
@@ -398,18 +498,24 @@ static void app_action(ui_action_t action) {
             }
             break;
         case UI_ACTION_WIFI:
-            s_wifi = !s_wifi;
-            app_update_status();
+            ui_app_state_set_connectivity(
+                !state.wifi_enabled, !state.wifi_enabled,
+                state.wifi_name, state.bluetooth_enabled,
+                state.bluetooth_connected, state.bluetooth_name);
             break;
         case UI_ACTION_BT:
-            s_bluetooth = !s_bluetooth;
-            app_update_status();
+            ui_app_state_set_connectivity(
+                state.wifi_enabled, state.wifi_connected, state.wifi_name,
+                !state.bluetooth_enabled, !state.bluetooth_enabled,
+                state.bluetooth_name);
             break;
         case UI_ACTION_GPS:
-            s_gps = !s_gps;
+            ui_app_state_set_gnss(!state.gps_enabled, state.satellites);
             break;
         case UI_ACTION_POWER_SAVE:
-            s_power_save = !s_power_save;
+            ui_app_state_set_controls(state.sound_level,
+                                      state.brightness_level,
+                                      !state.power_save_enabled);
             break;
         case UI_ACTION_BRIGHTNESS:
         case UI_ACTION_SOUND:
@@ -444,12 +550,16 @@ static void app_action(ui_action_t action) {
 void ui_app_init(void) {
     ui_motion_init();
     ui_sound_init();
+    ui_app_state_init();
+    ui_page_status_registry_init();
     ui_event_bridge_init();
     ui_event_bus_init();
     ui_dock_init();
     ui_state_machine_init();
+    ui_state_machine_set_changed_callback(app_ride_state_changed, NULL);
     ui_ride_data_model_init();
     ui_router_init(UI_ROUTE_RIDE_DASHBOARD);
+    ui_router_set_changed_callback(app_route_changed, NULL);
     app_create_screens();
     app_register_routes();
     ui_dock_view_init();
@@ -457,8 +567,14 @@ void ui_app_init(void) {
     ui_dock_controller_init();
     ui_ride_controller_init();
     (void)ui_event_bus_subscribe(UI_EVENT_MASK_ALL, app_event_received, NULL);
+    (void)ui_app_state_subscribe(UI_APP_STATE_CHANGE_ALL,
+                                 app_state_changed, NULL);
     (void)ui_ride_data_model_subscribe(app_ride_data_changed, NULL);
-    ui_ride_data_model_set_connectivity(s_wifi, s_bluetooth);
+    ui_app_state_t state;
+    (void)ui_app_state_get(&state);
+    ui_ride_data_model_set_connectivity(
+        state.wifi_enabled && state.wifi_connected,
+        state.bluetooth_enabled && state.bluetooth_connected);
     (void)ui_ride_data_model_process();
     app_update_slider_visuals();
     (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
@@ -475,6 +591,20 @@ void ui_app_handle_back(void) {
 void ui_app_handle_input(ui_input_event_t input) {
     if(input == UI_INPUT_BACK) {
         ui_app_handle_back();
+        return;
+    }
+    if(input == UI_INPUT_PAGE_NEXT || input == UI_INPUT_PAGE_PREV) {
+        if(s_powered_off || s_quick_visible) return;
+        bool next = input == UI_INPUT_PAGE_NEXT;
+        ui_route_id_t route = ui_router_current();
+        if(next && route == UI_PAGE_DASHBOARD)
+            app_show_slide(UI_PAGE_NAVIGATION, true);
+        else if(next && route == UI_PAGE_NAVIGATION)
+            app_show_slide(UI_PAGE_PROFILE, true);
+        else if(!next && route == UI_PAGE_PROFILE)
+            app_show_slide(UI_PAGE_NAVIGATION, false);
+        else if(!next && route == UI_PAGE_NAVIGATION)
+            app_show_slide(UI_PAGE_DASHBOARD, false);
         return;
     }
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
@@ -519,7 +649,9 @@ void ui_app_handle_key(uint32_t key) {
     }
     if(ui_router_current() == UI_PAGE_SETTINGS &&
        ui_settings_page_handle_key(key)) return;
-    if(key == LV_KEY_LEFT) app_show(UI_PAGE_NAVIGATION); else if(key == LV_KEY_RIGHT) app_show(UI_PAGE_PROFILE); else if(key == LV_KEY_ENTER) app_open_quick();
+    if(key == LV_KEY_LEFT) ui_app_handle_input(UI_INPUT_PAGE_PREV);
+    else if(key == LV_KEY_RIGHT) ui_app_handle_input(UI_INPUT_PAGE_NEXT);
+    else if(key == LV_KEY_ENTER) app_open_quick();
 }
 
 static uint8_t app_slider_level_from_y(int32_t screen_y) {
@@ -528,21 +660,24 @@ static uint8_t app_slider_level_from_y(int32_t screen_y) {
 
 static void app_update_active_slider(int32_t screen_y) {
     uint8_t value = app_slider_level_from_y(screen_y);
+    ui_app_state_t state;
+    if(!ui_app_state_get(&state)) return;
     if(s_active_slider == UI_CONTROL_CENTER_SLIDER_SOUND) {
-        s_sound_level = value;
-        ui_sound_set_volume(s_sound_level);
+        ui_app_state_set_controls(value, state.brightness_level,
+                                  state.power_save_enabled);
     } else if(s_active_slider == UI_CONTROL_CENTER_SLIDER_BRIGHTNESS) {
-        s_brightness_level = value;
+        ui_app_state_set_controls(state.sound_level, value,
+                                  state.power_save_enabled);
     }
-    app_update_slider_visuals();
 }
 
-void ui_app_handle_pointer(lv_event_code_t code, int32_t x, int32_t y) {
+void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
+    if(event == NULL) return;
     if(s_quick_overlay == NULL || s_powered_off) return;
 
-    lv_point_t point = { .x = x, .y = y };
+    lv_point_t point = { .x = event->x, .y = event->y };
 
-    if(code == LV_EVENT_PRESSED) {
+    if(event->type == UI_INPUT_TOUCH_BEGIN) {
         s_pointer_start = point;
         s_overlay_start_y = s_quick_visible ? lv_obj_get_y(s_quick_overlay) : -UI_SCREEN_H;
         s_pointer_dragging = false;
@@ -570,7 +705,7 @@ void ui_app_handle_pointer(lv_event_code_t code, int32_t x, int32_t y) {
         return;
     }
 
-    if(code == LV_EVENT_PRESSING) {
+    if(event->type == UI_INPUT_TOUCH_MOVE) {
         if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned) return;
 
         if(s_slider_dragging) {
@@ -625,7 +760,8 @@ void ui_app_handle_pointer(lv_event_code_t code, int32_t x, int32_t y) {
         return;
     }
 
-    if(code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+    if(event->type == UI_INPUT_TOUCH_END ||
+       event->type == UI_INPUT_TOUCH_CANCEL) {
         if(s_dynamic_card_gesture_owned) {
             s_dynamic_card_gesture_owned = false;
             s_pointer_dragging = false;

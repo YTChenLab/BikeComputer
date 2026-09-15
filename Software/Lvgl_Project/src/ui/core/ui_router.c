@@ -6,7 +6,7 @@
 
 typedef struct
 {
-    lv_obj_t *screens[UI_ROUTE_COUNT];
+    ui_router_page_t pages[UI_ROUTE_COUNT];
     ui_route_id_t history[UI_ROUTER_HISTORY_MAX];
     ui_route_id_t current;
     ui_route_id_t fallback;
@@ -20,6 +20,15 @@ static ui_router_context_t s_router;
 static bool valid_route(ui_route_id_t route)
 {
     return route < UI_ROUTE_COUNT;
+}
+
+static lv_obj_t *ensure_screen(ui_route_id_t route)
+{
+    if(!valid_route(route)) return NULL;
+    ui_router_page_t *page = &s_router.pages[route];
+    if(page->screen == NULL && page->create != NULL)
+        page->screen = page->create(page->user_data);
+    return page->screen;
 }
 
 static bool should_remember(ui_route_id_t route)
@@ -44,12 +53,27 @@ static void history_push(ui_route_id_t route)
 static bool load_route(ui_route_id_t route, ui_motion_page_direction_t direction,
                        bool remember_current)
 {
-    if(!valid_route(route) || s_router.screens[route] == NULL) return false;
+    lv_obj_t *screen = ensure_screen(route);
+    if(screen == NULL) return false;
     if(route == s_router.current) return true;
     ui_route_id_t previous = s_router.current;
     if(remember_current) history_push(previous);
+
+    if(valid_route(previous)) {
+        ui_router_page_t *previous_page = &s_router.pages[previous];
+        if(previous_page->on_leave != NULL) {
+            previous_page->on_leave(previous, previous_page->screen,
+                                    previous_page->user_data);
+        }
+    }
+
     s_router.current = route;
-    ui_motion_page_load(s_router.screens[route], direction);
+    ui_motion_page_load(screen, direction);
+
+    ui_router_page_t *page = &s_router.pages[route];
+    if(page->on_enter != NULL)
+        page->on_enter(route, screen, page->user_data);
+
     if(s_router.changed != NULL) {
         s_router.changed(previous, route, s_router.changed_user_data);
     }
@@ -66,13 +90,24 @@ void ui_router_init(ui_route_id_t fallback)
 bool ui_router_register(ui_route_id_t route, lv_obj_t *screen)
 {
     if(!valid_route(route) || screen == NULL) return false;
-    s_router.screens[route] = screen;
+    s_router.pages[route].screen = screen;
+    return true;
+}
+
+bool ui_router_register_page(ui_route_id_t route,
+                             const ui_router_page_t *page)
+{
+    if(!valid_route(route) || page == NULL ||
+       (page->screen == NULL && page->create == NULL)) return false;
+    s_router.pages[route] = *page;
     return true;
 }
 
 bool ui_router_is_registered(ui_route_id_t route)
 {
-    return valid_route(route) && s_router.screens[route] != NULL;
+    return valid_route(route) &&
+           (s_router.pages[route].screen != NULL ||
+            s_router.pages[route].create != NULL);
 }
 
 bool ui_router_navigate(ui_route_id_t route, ui_motion_page_direction_t direction)
@@ -117,7 +152,28 @@ uint8_t ui_router_history_depth(void)
 
 lv_obj_t *ui_router_screen(ui_route_id_t route)
 {
-    return valid_route(route) ? s_router.screens[route] : NULL;
+    return valid_route(route) ? s_router.pages[route].screen : NULL;
+}
+
+void ui_router_deinit(void)
+{
+    if(valid_route(s_router.current)) {
+        ui_router_page_t *current = &s_router.pages[s_router.current];
+        if(current->on_leave != NULL) {
+            current->on_leave(s_router.current, current->screen,
+                              current->user_data);
+        }
+    }
+
+    for(uint8_t route = 0; route < UI_ROUTE_COUNT; route++) {
+        ui_router_page_t *page = &s_router.pages[route];
+        if(page->screen != NULL && page->on_destroy != NULL) {
+            page->on_destroy((ui_route_id_t)route, page->screen,
+                             page->user_data);
+        }
+    }
+    memset(&s_router, 0, sizeof(s_router));
+    s_router.current = UI_ROUTE_NONE;
 }
 
 void ui_router_set_changed_callback(ui_router_changed_cb_t callback, void *user_data)

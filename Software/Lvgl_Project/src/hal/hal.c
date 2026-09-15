@@ -20,8 +20,8 @@ static int SDLCALL simulator_event_watch(void *userdata, SDL_Event *event)
     else if(key == SDLK_ESCAPE || key == SDLK_BACKSPACE) {
       ui_handle_input(UI_INPUT_BACK);
     }
-    else if(key == SDLK_LEFT) ui_handle_key(LV_KEY_LEFT);
-    else if(key == SDLK_RIGHT) ui_handle_key(LV_KEY_RIGHT);
+    else if(key == SDLK_LEFT) ui_handle_input(UI_INPUT_PAGE_PREV);
+    else if(key == SDLK_RIGHT) ui_handle_input(UI_INPUT_PAGE_NEXT);
     else if(key >= 32 && key <= 126) ui_handle_key((uint32_t)key);
   }
   return 1;
@@ -44,13 +44,22 @@ static void mouse_button_timer_cb(lv_timer_t *timer)
   bool right_is_down = (buttons & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
 
   if(left_is_down && !left_was_down) {
-    ui_handle_pointer(LV_EVENT_PRESSED, mouse_x, mouse_y);
+    const ui_input_pointer_event_t input = {
+      .type = UI_INPUT_TOUCH_BEGIN, .x = mouse_x, .y = mouse_y
+    };
+    ui_handle_pointer(&input);
   }
   else if(left_is_down) {
-    ui_handle_pointer(LV_EVENT_PRESSING, mouse_x, mouse_y);
+    const ui_input_pointer_event_t input = {
+      .type = UI_INPUT_TOUCH_MOVE, .x = mouse_x, .y = mouse_y
+    };
+    ui_handle_pointer(&input);
   }
   else if(left_was_down) {
-    ui_handle_pointer(LV_EVENT_RELEASED, mouse_x, mouse_y);
+    const ui_input_pointer_event_t input = {
+      .type = UI_INPUT_TOUCH_END, .x = mouse_x, .y = mouse_y
+    };
+    ui_handle_pointer(&input);
   }
 
   if(right_is_down && !right_was_down) {

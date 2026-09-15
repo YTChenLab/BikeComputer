@@ -18,12 +18,12 @@ static void action_event(lv_event_t *event)
 }
 
 lv_obj_t *ui_system_page_create(ui_page_action_cb_t callback,
-                                void *user_data, bool wifi, bool bluetooth)
+                                void *user_data)
 {
     s_callback = callback;
     s_user_data = user_data;
     lv_obj_t *screen = ui_page_screen_create();
-    ui_page_status_create(&s_status, screen, wifi, bluetooth);
+    ui_page_status_create(&s_status, screen);
     ui_page_title(screen, "系统信息", "SYSTEM INFORMATION");
     const char *keys[] = {
         "设备型号", "固件版本", "序列号", "存储空间", "系统健康"
@@ -44,9 +44,4 @@ lv_obj_t *ui_system_page_create(ui_page_action_cb_t callback,
     ui_page_button(screen, 20, 640, 440, 52, "返回设置", action_event,
                    (void *)(uintptr_t)UI_PAGE_ACTION_SETTINGS);
     return screen;
-}
-
-void ui_system_page_set_connectivity(bool wifi, bool bluetooth)
-{
-    ui_page_status_set_connectivity(&s_status, wifi, bluetooth);
 }

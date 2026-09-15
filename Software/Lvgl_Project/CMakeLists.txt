@@ -189,6 +189,14 @@ target_compile_definitions(main PRIVATE LV_CONF_INCLUDE_SIMPLE)
 target_link_libraries(main ${MAIN_LIBS})
 
 if(BUILD_TESTING)
+    add_executable(ui_app_state_test
+        tests/ui_app_state_test.c
+        src/ui/core/ui_app_state.c
+        src/ui/core/ui_concurrency.c
+    )
+    target_include_directories(ui_app_state_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_app_state_test COMMAND ui_app_state_test)
+
     add_executable(ui_core_logic_test
         tests/ui_core_logic_test.c
         src/ui/core/ui_dock.c
@@ -228,6 +236,22 @@ if(BUILD_TESTING)
         target_link_libraries(ui_dock_view_test m pthread)
     endif()
     add_test(NAME ui_dock_view_test COMMAND ui_dock_view_test)
+
+    add_executable(ui_router_lifecycle_test
+        tests/ui_router_lifecycle_test.c
+        src/ui/core/ui_router.c
+        src/ui/core/ui_motion.c
+    )
+    target_include_directories(ui_router_lifecycle_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_router_lifecycle_test PRIVATE LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_router_lifecycle_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_router_lifecycle_test m pthread)
+    endif()
+    add_test(NAME ui_router_lifecycle_test COMMAND ui_router_lifecycle_test)
 endif()
 
 # On Windows, GUI applications do not show a console by default,

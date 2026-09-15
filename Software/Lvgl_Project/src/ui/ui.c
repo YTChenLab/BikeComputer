@@ -49,9 +49,9 @@ void ui_handle_input(ui_input_event_t input)
     ui_app_handle_input(input);
 }
 
-void ui_handle_pointer(lv_event_code_t code, int32_t x, int32_t y)
+void ui_handle_pointer(const ui_input_pointer_event_t *event)
 {
-    ui_app_handle_pointer(code, x, y);
+    ui_app_handle_pointer(event);
 }
 
 void ui_handle_back(void)

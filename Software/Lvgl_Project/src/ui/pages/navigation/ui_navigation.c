@@ -41,6 +41,7 @@ typedef struct
     lv_timer_t *ui_timer;
     lv_timer_t *mock_timer;
     uint32_t mock_tick;
+    bool active;
     bool created;
 } ui_navigation_context_t;
 
@@ -160,7 +161,23 @@ void ui_navigation_create(lv_obj_t *screen)
     apply_model(&s_navigation.model);
     s_navigation.ui_timer = lv_timer_create(navigation_ui_timer_cb, NAV_UI_PERIOD_MS, NULL);
     s_navigation.mock_timer = lv_timer_create(navigation_mock_timer_cb, NAV_MOCK_PERIOD_MS, NULL);
+    lv_timer_pause(s_navigation.ui_timer);
+    lv_timer_pause(s_navigation.mock_timer);
     s_navigation.created = true;
+}
+
+void ui_navigation_set_active(bool active)
+{
+    if(!s_navigation.created) return;
+    s_navigation.active = active;
+    if(active) {
+        lv_timer_resume(s_navigation.ui_timer);
+        lv_timer_resume(s_navigation.mock_timer);
+    }
+    else {
+        lv_timer_pause(s_navigation.ui_timer);
+        lv_timer_pause(s_navigation.mock_timer);
+    }
 }
 
 bool ui_navigation_post_model(const nav_model_t *model)

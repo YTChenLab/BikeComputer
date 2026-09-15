@@ -1,9 +1,88 @@
 #include "ui_page_common.h"
 
 #include "../core/ui_background.h"
+#include "../core/ui_app_state.h"
 #include "../core/ui_colors.h"
 #include "../core/ui_sizes.h"
 #include "../core/ui_theme.h"
+
+#include <stddef.h>
+#include <string.h>
+
+#define UI_PAGE_STATUS_MAX 10
+
+static ui_status_bar_t *s_status_bars[UI_PAGE_STATUS_MAX];
+static uint8_t s_status_bar_count;
+static int32_t s_status_subscription = -1;
+
+static void apply_status(ui_status_bar_t *status,
+                         const ui_app_state_t *state)
+{
+    if(status == NULL || status->root == NULL || state == NULL) return;
+    ui_status_bar_set_satellites(status,
+                                 state->gps_enabled ? state->satellites : 0);
+    ui_status_bar_set_time(status, state->clock_hour, state->clock_minute);
+    ui_status_bar_set_battery(status, state->battery_percent);
+    ui_status_bar_set_wifi(status,
+                           state->wifi_enabled && state->wifi_connected);
+    ui_status_bar_set_bluetooth(
+        status, state->bluetooth_enabled && state->bluetooth_connected);
+}
+
+static void status_state_changed(const ui_app_state_t *state,
+                                 ui_app_state_change_mask_t changed,
+                                 void *user_data)
+{
+    (void)changed;
+    (void)user_data;
+    for(uint8_t index = 0; index < s_status_bar_count; index++)
+        apply_status(s_status_bars[index], state);
+}
+
+void ui_page_status_registry_init(void)
+{
+    if(s_status_subscription > 0)
+        (void)ui_app_state_unsubscribe(s_status_subscription);
+    memset(s_status_bars, 0, sizeof(s_status_bars));
+    s_status_bar_count = 0;
+    s_status_subscription = ui_app_state_subscribe(
+        UI_APP_STATE_CHANGE_STATUS | UI_APP_STATE_CHANGE_CONNECTIVITY,
+        status_state_changed, NULL);
+}
+
+void ui_page_status_registry_deinit(void)
+{
+    if(s_status_subscription > 0)
+        (void)ui_app_state_unsubscribe(s_status_subscription);
+    s_status_subscription = -1;
+    memset(s_status_bars, 0, sizeof(s_status_bars));
+    s_status_bar_count = 0;
+}
+
+bool ui_page_status_register(ui_status_bar_t *status)
+{
+    if(status == NULL || status->root == NULL) return false;
+    for(uint8_t index = 0; index < s_status_bar_count; index++) {
+        if(s_status_bars[index] == status) return true;
+    }
+    if(s_status_bar_count >= UI_PAGE_STATUS_MAX) return false;
+    s_status_bars[s_status_bar_count++] = status;
+    ui_app_state_t state;
+    if(ui_app_state_get(&state)) apply_status(status, &state);
+    return true;
+}
+
+bool ui_page_status_unregister(ui_status_bar_t *status)
+{
+    for(uint8_t index = 0; index < s_status_bar_count; index++) {
+        if(s_status_bars[index] != status) continue;
+        for(uint8_t next = index + 1U; next < s_status_bar_count; next++)
+            s_status_bars[next - 1U] = s_status_bars[next];
+        s_status_bar_count--;
+        return true;
+    }
+    return false;
+}
 
 lv_obj_t *ui_page_screen_create(void)
 {
@@ -92,20 +171,8 @@ lv_obj_t *ui_page_button(lv_obj_t *parent, int32_t x, int32_t y,
     return button;
 }
 
-void ui_page_status_create(ui_status_bar_t *status, lv_obj_t *screen,
-                           bool wifi, bool bluetooth)
+void ui_page_status_create(ui_status_bar_t *status, lv_obj_t *screen)
 {
     ui_status_bar_create(status, screen);
-    ui_status_bar_set_satellites(status, 12);
-    ui_status_bar_set_time(status, 10, 24);
-    ui_status_bar_set_battery(status, 82);
-    ui_page_status_set_connectivity(status, wifi, bluetooth);
-}
-
-void ui_page_status_set_connectivity(ui_status_bar_t *status,
-                                     bool wifi, bool bluetooth)
-{
-    if(status == NULL || status->root == NULL) return;
-    ui_status_bar_set_wifi(status, wifi);
-    ui_status_bar_set_bluetooth(status, bluetooth);
+    (void)ui_page_status_register(status);
 }

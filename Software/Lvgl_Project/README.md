@@ -63,8 +63,11 @@ D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin
 运行 Simulator：
 
 ```powershell
+$env:PATH = "D:\Professional Software\Anaconda\Bike_SpeedView\msys2-x86_64\ucrt64\bin;D:\Professional Software\Anaconda\Bike_SpeedView\msys2-x86_64\usr\bin;$env:PATH"
 .\bin\main.exe
 ```
+
+`main.exe` 依赖 UCRT64 的 SDL2 与运行时 DLL。若不先注入上述 `PATH`，Windows 会在创建窗口前直接退出。使用 `simulator.code-workspace` 启动时已自动配置该环境。
 
 ## VS Code 运行
 
@@ -81,6 +84,15 @@ D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin
 
 具体手势所有权和页面行为以 `src/hal/hal.c` 与 `src/ui/` 当前实现为准。
 
+## UI Core 状态架构
+
+- `ui_app_state` 是路由、骑行、状态栏、连接、控制、媒体和导航状态的统一真值来源。
+- `ui_router` 负责页面历史与 `on_enter/on_leave/on_destroy` 生命周期。
+- `ui_page_common` 将所有页面状态栏绑定到统一 App State。
+- `hal.c` 只负责把 SDL 输入转换为 `UI_INPUT_*` 语义事件，页面代码不依赖 SDL。
+
+详细设计与后续接入规则见 [docs/UI_APP_STATE_AND_ROUTER_ARCHITECTURE.md](docs/UI_APP_STATE_AND_ROUTER_ARCHITECTURE.md)。
+
 ## 版本发布约定
 
 - 修复 Bug，不改变现有功能边界：提升 PATCH，例如 `v1.0.1`
@@ -93,4 +105,3 @@ D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin
 - Navigation 当前主要是 UI 与离线地图架构原型，不等同于完整真实地图引擎。
 - STM32 工程尚未导入，PC 服务接口已经为后续硬件适配预留。
 - 当前背景、MiSans 字体和既有页面视觉均按 v1.0.0 快照保留。
-

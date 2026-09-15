@@ -19,12 +19,12 @@ static void action_event(lv_event_t *event)
 }
 
 lv_obj_t *ui_summary_page_create(ui_page_action_cb_t callback,
-                                 void *user_data, bool wifi, bool bluetooth)
+                                 void *user_data)
 {
     s_callback = callback;
     s_user_data = user_data;
     lv_obj_t *screen = ui_page_screen_create();
-    ui_page_status_create(&s_status, screen, wifi, bluetooth);
+    ui_page_status_create(&s_status, screen);
     ui_page_title(screen, "骑行完成", "RIDE SUMMARY");
     ui_page_label(screen, 24, 170, 432, "本次骑行", UI_FONT_PAGE_TEXT,
                   LV_TEXT_ALIGN_CENTER);
@@ -58,9 +58,4 @@ lv_obj_t *ui_summary_page_create(ui_page_action_cb_t callback,
     ui_page_button(screen, 322, 660, 130, 52, "返回主页", action_event,
                    (void *)(uintptr_t)UI_PAGE_ACTION_HOME);
     return screen;
-}
-
-void ui_summary_page_set_connectivity(bool wifi, bool bluetooth)
-{
-    ui_page_status_set_connectivity(&s_status, wifi, bluetooth);
 }

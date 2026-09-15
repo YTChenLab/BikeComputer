@@ -8,8 +8,7 @@
 #include <stdint.h>
 
 lv_obj_t *ui_settings_page_create(ui_page_action_cb_t callback,
-                                  void *user_data, bool wifi, bool bluetooth);
-void ui_settings_page_set_connectivity(bool wifi, bool bluetooth);
+                                  void *user_data);
 bool ui_settings_page_handle_key(uint32_t key);
 
 #endif /* UI_SETTINGS_PAGE_H */

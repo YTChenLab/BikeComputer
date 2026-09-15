@@ -52,5 +52,8 @@ void ui_dashboard_set_speed(
     float speed
 );
 
+/* Router lifecycle: hidden pages must not keep animation timers running. */
+void ui_dashboard_set_active(bool active);
+
 
 #endif /* UI_DASHBOARD_H */

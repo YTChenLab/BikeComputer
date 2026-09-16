@@ -103,6 +103,7 @@ Phase 4 实现与迁移边界见 [docs/UI_DESIGN_SYSTEM_PHASE4.md](docs/UI_DESIG
 Phase 5 Interaction Dock 统一迁移见 [docs/UI_INTERACTION_DOCK_PHASE5.md](docs/UI_INTERACTION_DOCK_PHASE5.md)。
 Phase 5.1 原位切换修正见 [docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md](docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md)。
 Phase 6 页面 Slot 与 Router 生命周期迁移见 [docs/UI_PAGE_MIGRATION_PHASE6.md](docs/UI_PAGE_MIGRATION_PHASE6.md)。
+Phase 6A Home / Ride Hub 实现与验收见 [docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md](docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md)。
 
 ## 版本发布约定
 
@@ -115,4 +116,5 @@ Phase 6 页面 Slot 与 Router 生命周期迁移见 [docs/UI_PAGE_MIGRATION_PHA
 
 - Navigation 当前主要是 UI 与离线地图架构原型，不等同于完整真实地图引擎。
 - STM32 工程尚未导入，PC 服务接口已经为后续硬件适配预留。
-- 当前背景、MiSans 字体和既有页面视觉均按 v1.0.0 快照保留。
+- Home / Ride Hub 已按 UI V4 完成第一版真实 LVGL 页面；头像、山景与最近路线仍是可替换的本地 Mock 图形资源。
+- Dashboard 的顶部状态栏、实时速度、黄色速度条、2×3 数据区、背景资源和 MiSans 字体保持冻结。

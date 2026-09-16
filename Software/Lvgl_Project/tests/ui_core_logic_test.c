@@ -548,6 +548,9 @@ static void test_ride_event_workflow(void)
     ui_state_machine_init();
     ui_dock_controller_init();
     ui_ride_controller_init();
+    s_event_count = 0U;
+    assert(ui_event_bus_subscribe(UI_EVENT_MASK_ALL,
+                                  event_callback, NULL) > 0);
 
     publish_and_process(UI_EVENT_BOOT_COMPLETE);
     assert(ui_state_machine_state() == UI_RIDE_STATE_HOME);
@@ -571,6 +574,10 @@ static void test_ride_event_workflow(void)
     assert(ui_dock_invoke(ui_dock_current()->id,
                           UI_DOCK_INTERACTION_PRIMARY, 0));
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+    assert(ui_state_machine_state() == UI_RIDE_STATE_GPS_READY);
+    assert(s_event_order[s_event_count - 1U] ==
+           UI_EVENT_RIDE_GO_REQUESTED);
+    publish_and_process(UI_EVENT_RIDE_GO);
     assert(ui_state_machine_state() == UI_RIDE_STATE_RIDING);
     assert(ui_dock_current() != NULL);
     assert(ui_dock_current()->type == UI_DOCK_TYPE_INFO);

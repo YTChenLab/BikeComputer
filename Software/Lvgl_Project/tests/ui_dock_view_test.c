@@ -210,7 +210,7 @@ int main(void)
     finish_animations();
     assert(!ui_dock_view_is_visible());
 
-    assert(ui_event_bus_subscribe(UI_EVENT_MASK(UI_EVENT_RIDE_GO),
+    assert(ui_event_bus_subscribe(UI_EVENT_MASK(UI_EVENT_RIDE_GO_REQUESTED),
                                   capture_event, NULL) > 0);
     ui_event_t gps_ready = {0};
     gps_ready.type = UI_EVENT_GPS_READY;
@@ -232,7 +232,15 @@ int main(void)
     assert(lv_obj_get_style_bg_opa(surface, LV_PART_MAIN) == LV_OPA_COVER);
     assert(lv_obj_send_event(primary_button, LV_EVENT_CLICKED, NULL) == LV_RESULT_OK);
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
-    assert(s_last_event == UI_EVENT_RIDE_GO);
+    assert(s_last_event == UI_EVENT_RIDE_GO_REQUESTED);
+    finish_animations();
+    assert(ui_dock_view_is_visible());
+
+    ui_event_t ride_started = {0};
+    ride_started.type = UI_EVENT_RIDE_GO;
+    ride_started.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
+    assert(ui_event_bus_publish(&ride_started));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1);
     finish_animations();
     assert(!ui_dock_view_is_visible());
 

@@ -11,10 +11,7 @@ typedef enum
     UI_CONTROL_CENTER_ACTION_WIFI = 0,
     UI_CONTROL_CENTER_ACTION_BLUETOOTH,
     UI_CONTROL_CENTER_ACTION_GPS,
-    UI_CONTROL_CENTER_ACTION_POWER_SAVE,
-    UI_CONTROL_CENTER_ACTION_START_RIDE,
-    UI_CONTROL_CENTER_ACTION_PAUSE_RIDE,
-    UI_CONTROL_CENTER_ACTION_END_RIDE
+    UI_CONTROL_CENTER_ACTION_POWER_SAVE
 } ui_control_center_action_t;
 
 typedef enum
@@ -30,8 +27,6 @@ typedef struct
     bool bluetooth;
     bool gps;
     bool power_save;
-    bool ride_controls_enabled;
-    bool ride_paused;
     uint8_t satellites;
     uint8_t sound_level;
     uint8_t brightness_level;

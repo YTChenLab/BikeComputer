@@ -198,6 +198,14 @@ if(BUILD_TESTING)
     target_include_directories(ui_app_state_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
     add_test(NAME ui_app_state_test COMMAND ui_app_state_test)
 
+    add_executable(ui_home_data_model_test
+        tests/ui_home_data_model_test.c
+        src/ui/models/ui_home_data_model.c
+    )
+    target_include_directories(ui_home_data_model_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_home_data_model_test COMMAND ui_home_data_model_test)
+
     add_executable(ui_core_logic_test
         tests/ui_core_logic_test.c
         src/ui/core/ui_dock.c

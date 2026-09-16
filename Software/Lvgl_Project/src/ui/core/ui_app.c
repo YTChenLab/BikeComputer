@@ -26,6 +26,7 @@
 #include "../screens/ui_dashboard.h"
 #include "../pages/navigation/ui_navigation.h"
 #include "../pages/ui_boot_page.h"
+#include "../pages/ui_home_page.h"
 #include "../pages/ui_page_action.h"
 #include "../pages/ui_page_common.h"
 #include "../pages/ui_power_page.h"
@@ -34,6 +35,7 @@
 #include "../pages/ui_summary_page.h"
 #include "../pages/ui_system_page.h"
 #include "../models/ui_ride_data_model.h"
+#include "../models/ui_home_data_model.h"
 #include "../overlays/ui_control_center.h"
 
 #include <stdbool.h>
@@ -42,6 +44,7 @@
 
 typedef ui_route_id_t ui_page_t;
 #define UI_PAGE_BOOT        UI_ROUTE_BOOT
+#define UI_PAGE_HOME        UI_ROUTE_HOME
 #define UI_PAGE_DASHBOARD   UI_ROUTE_RIDE_DASHBOARD
 #define UI_PAGE_NAVIGATION  UI_ROUTE_NAVIGATION
 #define UI_PAGE_SUMMARY     UI_ROUTE_RIDE_SUMMARY
@@ -105,6 +108,8 @@ static void app_handle_key(uint32_t key);
 static bool app_submit_command(ui_command_type_t type, int32_t value,
                                uint32_t timeout_ms);
 static void app_publish_command_feedback(const ui_command_result_t *result);
+static bool app_ride_domain_active(void);
+static void app_show_feature_info(const char *title, const char *message);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -132,6 +137,31 @@ static bool app_publish_event(ui_event_type_t type,
     return published;
 }
 
+static bool app_ride_domain_active(void)
+{
+    ui_ride_state_t state = ui_state_machine_state();
+    return state == UI_RIDE_STATE_PRE_RIDE ||
+           state == UI_RIDE_STATE_GPS_READY ||
+           state == UI_RIDE_STATE_RIDING ||
+           state == UI_RIDE_STATE_PAUSED ||
+           state == UI_RIDE_STATE_FINISHING;
+}
+
+static void app_show_feature_info(const char *title, const char *message)
+{
+    ui_event_t event = {0};
+    event.type = UI_EVENT_FEATURE_INFO;
+    event.priority = UI_EVENT_PRIORITY_P4_NORMAL;
+    event.dedupe_key = 0xF001U;
+    event.timeout_ms = 2200U;
+    snprintf(event.title, sizeof(event.title), "%s",
+             title != NULL ? title : "COMING SOON");
+    snprintf(event.message, sizeof(event.message), "%s",
+             message != NULL ? message : "FEATURE RESERVED");
+    (void)ui_event_bus_publish(&event);
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+}
+
 static void app_event_overflow(const ui_event_t *incoming,
                                const ui_event_t *displaced,
                                ui_event_overflow_reason_t reason,
@@ -151,6 +181,20 @@ static void app_event_received(const ui_event_t *event, void *user_data)
             if(!app_submit_command(UI_COMMAND_GNSS_ACQUIRE_FIX, 0, 3000U))
                 (void)app_publish_event(UI_EVENT_GPS_FAILED,
                                         UI_EVENT_PRIORITY_P1_RIDING_SAFETY);
+            break;
+        case UI_EVENT_RIDE_GO_REQUESTED:
+            if(!app_submit_command(UI_COMMAND_RIDE_START, 0, 2000U)) {
+                ui_event_t failed = {0};
+                failed.type = UI_EVENT_COMMAND_FAILED;
+                failed.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
+                failed.timeout_ms = 4000U;
+                snprintf(failed.title, sizeof(failed.title), "START FAILED");
+                snprintf(failed.message, sizeof(failed.message),
+                         "RIDE COMMAND QUEUE REJECTED");
+                snprintf(failed.primary_action,
+                         sizeof(failed.primary_action), "CLOSE");
+                (void)ui_event_bus_publish(&failed);
+            }
             break;
         case UI_EVENT_RIDE_FINISH_CONFIRMED:
             if(!app_submit_command(UI_COMMAND_RIDE_FINISH, 0, 2000U)) {
@@ -385,7 +429,7 @@ static void app_command_changed(const ui_command_result_t *result,
                 break;
             case UI_COMMAND_RIDE_START:
                 app_hide_quick_immediate();
-                (void)app_publish_event(UI_EVENT_RIDE_START_REQUESTED,
+                (void)app_publish_event(UI_EVENT_RIDE_GO,
                                         UI_EVENT_PRIORITY_P2_RIDE_STATE);
                 break;
             case UI_COMMAND_RIDE_PAUSE:
@@ -437,6 +481,27 @@ static void app_command_changed(const ui_command_result_t *result,
                                 UI_EVENT_PRIORITY_P2_RIDE_STATE);
     }
     app_update_quick_states();
+}
+
+static void app_home_enter(ui_route_id_t route, lv_obj_t *screen,
+                           void *user_data)
+{
+    (void)screen;
+    (void)user_data;
+    ui_page_view_t *page = &s_pages[route];
+    if(!ui_bottom_surface_mount(page->bottom_surface_slot, false))
+        LV_LOG_ERROR("Home Bottom Surface mount failed");
+    ui_home_page_set_active(true);
+}
+
+static void app_home_leave(ui_route_id_t route, lv_obj_t *screen,
+                           void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_home_page_set_active(false);
+    ui_bottom_surface_unmount();
 }
 
 static void app_dashboard_enter(ui_route_id_t route, lv_obj_t *screen,
@@ -553,11 +618,17 @@ static void app_back(void) {
     if(s_powered_off) {
         s_powered_off = false;
         (void)ui_state_machine_dispatch(UI_RIDE_EVENT_BOOT_COMPLETE);
-        (void)ui_router_replace(UI_PAGE_DASHBOARD, UI_MOTION_PAGE_NONE);
+        (void)ui_router_replace(UI_PAGE_HOME, UI_MOTION_PAGE_NONE);
         return;
     }
     if(s_quick_visible) {
         app_close_quick();
+        return;
+    }
+    if(app_ride_domain_active()) {
+        if(ui_router_current() == UI_PAGE_NAVIGATION)
+            (void)ui_router_replace(UI_PAGE_DASHBOARD,
+                                    UI_MOTION_PAGE_BACKWARD);
         return;
     }
     ui_sound_play(UI_SFX_BACK);
@@ -575,6 +646,12 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
     (void)user_data;
     switch(action) {
         case UI_PAGE_ACTION_HOME: app_action(UI_ACTION_HOME); break;
+        case UI_PAGE_ACTION_START_RIDE:
+            app_action(UI_ACTION_START_RIDE);
+            break;
+        case UI_PAGE_ACTION_START_NAVIGATION:
+            app_action(UI_ACTION_NAVIGATION);
+            break;
         case UI_PAGE_ACTION_SAVE_RIDE: app_action(UI_ACTION_SAVE_RIDE); break;
         case UI_PAGE_ACTION_UPLOAD_RIDE: app_action(UI_ACTION_UPLOAD_RIDE); break;
         case UI_PAGE_ACTION_HISTORY: app_action(UI_ACTION_HISTORY); break;
@@ -598,20 +675,14 @@ static void app_control_center_action(ui_control_center_action_t action,
         case UI_CONTROL_CENTER_ACTION_POWER_SAVE:
             app_action(UI_ACTION_POWER_SAVE);
             break;
-        case UI_CONTROL_CENTER_ACTION_START_RIDE:
-            app_action(UI_ACTION_START_RIDE);
-            break;
-        case UI_CONTROL_CENTER_ACTION_PAUSE_RIDE:
-            app_action(UI_ACTION_PAUSE_RIDE);
-            break;
-        case UI_CONTROL_CENTER_ACTION_END_RIDE:
-            app_action(UI_ACTION_END_RIDE);
-            break;
         default: break;
     }
 }
 static void app_create_screens(void) {
     s_pages[UI_PAGE_BOOT].screen = ui_boot_page_create();
+    s_pages[UI_PAGE_HOME].screen = ui_home_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_HOME].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_HOME].screen);
     ui_dashboard_create();
     s_pages[UI_PAGE_DASHBOARD].screen = ui_dashboard_get_screen();
     s_pages[UI_PAGE_DASHBOARD].bottom_surface_slot =
@@ -642,6 +713,11 @@ static void app_create_screens(void) {
 }
 static void app_register_routes(void) {
     (void)ui_router_register(UI_ROUTE_BOOT, s_pages[UI_PAGE_BOOT].screen);
+    const ui_router_page_t home = {
+        .screen = s_pages[UI_PAGE_HOME].screen,
+        .on_enter = app_home_enter,
+        .on_leave = app_home_leave
+    };
     const ui_router_page_t dashboard = {
         .screen = s_pages[UI_PAGE_DASHBOARD].screen,
         .on_enter = app_dashboard_enter,
@@ -677,6 +753,7 @@ static void app_register_routes(void) {
         .on_enter = app_surface_page_enter,
         .on_leave = app_surface_page_leave
     };
+    (void)ui_router_register_page(UI_ROUTE_HOME, &home);
     (void)ui_router_register_page(UI_ROUTE_RIDE_DASHBOARD, &dashboard);
     (void)ui_router_register_page(UI_ROUTE_NAVIGATION, &navigation);
     (void)ui_router_register_page(UI_ROUTE_RIDE_SUMMARY, &summary);
@@ -689,7 +766,7 @@ static void app_register_routes(void) {
 static void app_boot_timer_cb(lv_timer_t *timer) {
     (void)app_publish_event(UI_EVENT_BOOT_COMPLETE,
                             UI_EVENT_PRIORITY_P2_RIDE_STATE);
-    (void)ui_router_replace(UI_PAGE_DASHBOARD, UI_MOTION_PAGE_NONE);
+    (void)ui_router_replace(UI_PAGE_HOME, UI_MOTION_PAGE_NONE);
     s_boot_timer = NULL;
     lv_timer_delete(timer);
 }
@@ -697,17 +774,12 @@ static void app_update_quick_states(void) {
     if(!s_quick_overlay) return;
     ui_app_state_t app_state;
     if(!ui_app_state_get(&app_state)) return;
-    bool riding = app_state.ride_state == UI_RIDE_STATE_RIDING ||
-                  app_state.ride_state == UI_RIDE_STATE_PAUSED ||
-                  app_state.ride_state == UI_RIDE_STATE_FINISHING;
     const ui_control_center_state_t center_state = {
         .wifi = app_state.wifi_enabled && app_state.wifi_connected,
         .bluetooth = app_state.bluetooth_enabled &&
                      app_state.bluetooth_connected,
         .gps = app_state.gps_enabled,
         .power_save = app_state.power_save_enabled,
-        .ride_controls_enabled = riding,
-        .ride_paused = app_state.ride_state == UI_RIDE_STATE_PAUSED,
         .satellites = app_state.satellites,
         .sound_level = app_state.sound_level,
         .brightness_level = app_state.brightness_level
@@ -732,7 +804,9 @@ static void app_action(ui_action_t action) {
                 (void)app_publish_event(UI_EVENT_RIDE_SUMMARY_DISMISSED,
                                         UI_EVENT_PRIORITY_P2_RIDE_STATE);
             }
-            (void)ui_router_replace(UI_PAGE_DASHBOARD, UI_MOTION_PAGE_NONE);
+            (void)ui_router_replace(app_ride_domain_active() ?
+                                    UI_PAGE_DASHBOARD : UI_PAGE_HOME,
+                                    UI_MOTION_PAGE_NONE);
             break;
         case UI_ACTION_NAVIGATION: app_show(UI_PAGE_NAVIGATION); break;
         case UI_ACTION_SUMMARY: app_show(UI_PAGE_SUMMARY); break;
@@ -748,7 +822,12 @@ static void app_action(ui_action_t action) {
             break;
         case UI_ACTION_START_RIDE:
             if(ui_state_machine_state() == UI_RIDE_STATE_HOME) {
-                (void)app_submit_command(UI_COMMAND_RIDE_START, 0, 2000U);
+                app_hide_quick_immediate();
+                ui_router_clear_history();
+                (void)ui_router_replace(UI_PAGE_DASHBOARD,
+                                        UI_MOTION_PAGE_FORWARD);
+                (void)app_publish_event(UI_EVENT_RIDE_START_REQUESTED,
+                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
             }
             break;
         case UI_ACTION_PAUSE_RIDE:
@@ -784,8 +863,14 @@ static void app_action(ui_action_t action) {
             break;
         case UI_ACTION_BRIGHTNESS:
         case UI_ACTION_SOUND:
+            break;
         case UI_ACTION_HISTORY:
+            app_show_feature_info("RIDE HISTORY",
+                                  "PHASE 6F · HISTORY LIST RESERVED");
+            break;
         case UI_ACTION_ACHIEVEMENT:
+            app_show_feature_info("ACHIEVEMENTS",
+                                  "LIGHTWEIGHT PAGE RESERVED");
             break;
         case UI_ACTION_POWER_OFF:
             app_hide_quick_immediate();
@@ -826,8 +911,9 @@ void ui_app_init(void) {
     ui_dock_init();
     ui_state_machine_init();
     ui_state_machine_set_changed_callback(app_ride_state_changed, NULL);
+    ui_home_data_model_init();
     ui_ride_data_model_init();
-    ui_router_init(UI_ROUTE_RIDE_DASHBOARD);
+    ui_router_init(UI_ROUTE_HOME);
     ui_router_set_changed_callback(app_route_changed, NULL);
     app_create_screens();
     app_register_routes();
@@ -861,14 +947,18 @@ void ui_app_handle_input(ui_input_event_t input) {
         if(s_powered_off || s_quick_visible) return;
         bool next = input == UI_INPUT_PAGE_NEXT;
         ui_route_id_t route = ui_router_current();
-        if(next && route == UI_PAGE_DASHBOARD)
-            app_show_slide(UI_PAGE_NAVIGATION, true);
-        else if(next && route == UI_PAGE_NAVIGATION)
-            app_show_slide(UI_PAGE_PROFILE, true);
-        else if(!next && route == UI_PAGE_PROFILE)
-            app_show_slide(UI_PAGE_NAVIGATION, false);
-        else if(!next && route == UI_PAGE_NAVIGATION)
-            app_show_slide(UI_PAGE_DASHBOARD, false);
+        if(app_ride_domain_active()) {
+            if(next && route == UI_PAGE_DASHBOARD)
+                app_show_slide(UI_PAGE_NAVIGATION, true);
+            else if(!next && route == UI_PAGE_NAVIGATION)
+                app_show_slide(UI_PAGE_DASHBOARD, false);
+        }
+        else {
+            if(next && route == UI_PAGE_HOME)
+                app_show_slide(UI_PAGE_NAVIGATION, true);
+            else if(!next && route == UI_PAGE_NAVIGATION)
+                app_show_slide(UI_PAGE_HOME, false);
+        }
         return;
     }
     if(input == UI_INPUT_OPEN_POWER) {
@@ -884,7 +974,7 @@ void ui_app_handle_input(ui_input_event_t input) {
         return;
     }
     if(input == UI_INPUT_OPEN_PROFILE) {
-        if(!s_powered_off) app_show(UI_PAGE_PROFILE);
+        if(!s_powered_off && !app_ride_domain_active()) app_show(UI_PAGE_HOME);
         return;
     }
     if(input == UI_INPUT_OPEN_SETTINGS) {
@@ -893,6 +983,8 @@ void ui_app_handle_input(ui_input_event_t input) {
     }
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_handle_input(input)) return;
+    if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_HOME &&
+       ui_home_page_handle_input(input)) return;
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_NAVIGATION &&
        ui_navigation_handle_input(input)) return;
 
@@ -907,7 +999,7 @@ static void app_handle_key(uint32_t key) {
             s_powered_off = false;
             (void)app_publish_event(UI_EVENT_BOOT_COMPLETE,
                                     UI_EVENT_PRIORITY_P2_RIDE_STATE);
-            (void)ui_router_replace(UI_PAGE_DASHBOARD, UI_MOTION_PAGE_NONE);
+            (void)ui_router_replace(UI_PAGE_HOME, UI_MOTION_PAGE_NONE);
         }
         return;
     }
@@ -922,7 +1014,7 @@ static void app_handle_key(uint32_t key) {
     }
     if(key == 'o' || key == 'O') { app_show(UI_PAGE_POWER); return; }
     if(key == 'm' || key == 'M') { if(s_quick_visible) app_close_quick(); else app_open_quick(); return; }
-    if(key == '[') { app_show(UI_PAGE_PROFILE); return; }
+    if(key == '[') { app_show(UI_PAGE_HOME); return; }
     if(key == ']') { app_show(UI_PAGE_SETTINGS); return; }
     if(key == LV_KEY_ESC || key == 8) { app_back(); return; }
     if(s_quick_visible) return;
@@ -930,6 +1022,20 @@ static void app_handle_key(uint32_t key) {
         if(key == LV_KEY_UP) { ui_navigation_handle_input(UI_INPUT_ENCODER_CCW); return; }
         if(key == LV_KEY_DOWN) { ui_navigation_handle_input(UI_INPUT_ENCODER_CW); return; }
         if(key == LV_KEY_ENTER) { ui_navigation_handle_input(UI_INPUT_ENCODER_PRESS); return; }
+    }
+    if(ui_router_current() == UI_PAGE_HOME) {
+        if(key == LV_KEY_UP) {
+            ui_home_page_handle_input(UI_INPUT_ENCODER_CCW);
+            return;
+        }
+        if(key == LV_KEY_DOWN) {
+            ui_home_page_handle_input(UI_INPUT_ENCODER_CW);
+            return;
+        }
+        if(key == LV_KEY_ENTER) {
+            ui_home_page_handle_input(UI_INPUT_ENCODER_PRESS);
+            return;
+        }
     }
     if(ui_router_current() == UI_PAGE_SETTINGS &&
        ui_settings_page_handle_key(key)) return;
@@ -1001,8 +1107,9 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
 
         if(!s_pointer_dragging && !s_page_swiping && !s_home_swiping) {
             if(abs_x > QUICK_DRAG_THRESHOLD && abs_x > abs_y && !s_quick_visible &&
-               (ui_router_current() == UI_PAGE_DASHBOARD || ui_router_current() == UI_PAGE_NAVIGATION ||
-                ui_router_current() == UI_PAGE_PROFILE)) {
+               (ui_router_current() == UI_PAGE_HOME ||
+                ui_router_current() == UI_PAGE_DASHBOARD ||
+                ui_router_current() == UI_PAGE_NAVIGATION)) {
                 s_page_swiping = true;
                 return;
             }
@@ -1070,13 +1177,10 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         int32_t delta_x = point.x - s_pointer_start.x;
         int32_t delta_y = point.y - s_pointer_start.y;
         if(s_page_swiping) {
-            if(delta_x <= -72) {
-                if(ui_router_current() == UI_PAGE_DASHBOARD) app_show_slide(UI_PAGE_NAVIGATION, true);
-                else if(ui_router_current() == UI_PAGE_NAVIGATION) app_show_slide(UI_PAGE_PROFILE, true);
-            } else if(delta_x >= 72) {
-                if(ui_router_current() == UI_PAGE_PROFILE) app_show_slide(UI_PAGE_NAVIGATION, false);
-                else if(ui_router_current() == UI_PAGE_NAVIGATION) app_show_slide(UI_PAGE_DASHBOARD, false);
-            }
+            if(delta_x <= -72)
+                ui_app_handle_input(UI_INPUT_PAGE_NEXT);
+            else if(delta_x >= 72)
+                ui_app_handle_input(UI_INPUT_PAGE_PREV);
             s_page_swiping = false;
             return;
         }

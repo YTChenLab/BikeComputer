@@ -20,10 +20,9 @@
 typedef struct
 {
     lv_obj_t *root;
-    lv_obj_t *tiles[7];
+    lv_obj_t *tiles[4];
     lv_obj_t *state_labels[4];
     lv_obj_t *icon_backgrounds[4];
-    lv_obj_t *ride_icon_backgrounds[3];
     lv_obj_t *sound_fill;
     lv_obj_t *brightness_fill;
     ui_control_center_action_cb_t callback;
@@ -95,20 +94,6 @@ static void vertical_slider(int32_t x, const char *icon, lv_obj_t **fill)
            &lv_font_montserrat_24);
 }
 
-static lv_obj_t *ride_button(int32_t y, const char *icon, const char *text,
-                             ui_control_center_action_t action,
-                             lv_obj_t **icon_background)
-{
-    lv_obj_t *button = ui_page_card(s_center.root, 16, y, 448, 82);
-    lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(button, action_event, LV_EVENT_CLICKED,
-                        (void *)(uintptr_t)action);
-    *icon_background = icon_circle(button, 16, 13, icon);
-    ui_page_label(button, 92, 29, 326, text, UI_FONT_PAGE_TEXT,
-                  LV_TEXT_ALIGN_LEFT);
-    return button;
-}
-
 void ui_control_center_create(ui_control_center_action_cb_t callback,
                               void *user_data)
 {
@@ -165,15 +150,9 @@ void ui_control_center_create(ui_control_center_action_cb_t callback,
                                              "", UI_FONT_PAGE_TEXT,
                                              LV_TEXT_ALIGN_LEFT);
 
-    s_center.tiles[4] = ride_button(450, LV_SYMBOL_PLAY, "开始骑行",
-                                    UI_CONTROL_CENTER_ACTION_START_RIDE,
-                                    &s_center.ride_icon_backgrounds[0]);
-    s_center.tiles[5] = ride_button(544, LV_SYMBOL_PAUSE, "暂停骑行",
-                                    UI_CONTROL_CENTER_ACTION_PAUSE_RIDE,
-                                    &s_center.ride_icon_backgrounds[1]);
-    s_center.tiles[6] = ride_button(638, LV_SYMBOL_STOP, "结束骑行",
-                                    UI_CONTROL_CENTER_ACTION_END_RIDE,
-                                    &s_center.ride_icon_backgrounds[2]);
+    ui_page_label(s_center.root, 20, 468, 440,
+                  "SYSTEM QUICK CONTROLS",
+                  &lv_font_montserrat_14, LV_TEXT_ALIGN_CENTER);
 }
 
 lv_obj_t *ui_control_center_root(void)
@@ -210,30 +189,6 @@ void ui_control_center_set_state(const ui_control_center_state_t *state)
         lv_obj_set_style_bg_color(s_center.icon_backgrounds[i],
                                   enabled[i] ? UI_COLOR_YELLOW :
                                                UI_COLOR_DECORATION, 0);
-
-    lv_obj_set_style_opa(s_center.tiles[4], LV_OPA_COVER, 0);
-    lv_obj_set_style_opa(s_center.tiles[5],
-                         state->ride_controls_enabled ? LV_OPA_COVER :
-                                                        LV_OPA_30, 0);
-    lv_obj_set_style_opa(s_center.tiles[6],
-                         state->ride_controls_enabled ? LV_OPA_COVER :
-                                                        LV_OPA_30, 0);
-    lv_obj_set_style_bg_color(s_center.ride_icon_backgrounds[0],
-                              UI_COLOR_YELLOW, 0);
-    lv_obj_set_style_bg_color(s_center.ride_icon_backgrounds[1],
-                              state->ride_controls_enabled ? UI_COLOR_YELLOW :
-                                                             UI_COLOR_DECORATION,
-                              0);
-    lv_obj_set_style_bg_color(s_center.ride_icon_backgrounds[2],
-                              state->ride_controls_enabled ? UI_COLOR_YELLOW :
-                                                             UI_COLOR_DECORATION,
-                              0);
-    lv_obj_set_style_border_color(s_center.tiles[4],
-                                  !state->ride_controls_enabled ?
-                                  UI_COLOR_YELLOW : UI_COLOR_WHITE, 0);
-    lv_obj_set_style_border_color(s_center.tiles[5],
-                                  state->ride_paused ? UI_COLOR_YELLOW :
-                                                       UI_COLOR_WHITE, 0);
 
     uint8_t sound = state->sound_level > 100 ? 100 : state->sound_level;
     uint8_t brightness = state->brightness_level > 100 ?

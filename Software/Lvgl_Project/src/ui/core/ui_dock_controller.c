@@ -87,9 +87,9 @@ static void dock_action(uint32_t card_id, ui_dock_interaction_t interaction,
 {
     ui_event_type_t origin = (ui_event_type_t)(uintptr_t)context;
     if(card_id == DOCK_ID_GPS && interaction == UI_DOCK_INTERACTION_PRIMARY) {
-        (void)ui_dock_hide(card_id);
-        publish_action(origin == UI_EVENT_GPS_READY ? UI_EVENT_RIDE_GO :
-                       UI_EVENT_GPS_SEARCHING,
+        if(origin != UI_EVENT_GPS_READY) (void)ui_dock_hide(card_id);
+        publish_action(origin == UI_EVENT_GPS_READY ?
+                       UI_EVENT_RIDE_GO_REQUESTED : UI_EVENT_GPS_SEARCHING,
                        UI_EVENT_PRIORITY_P2_RIDE_STATE, card_id, 0);
     }
     else if(card_id == DOCK_ID_RIDE && origin == UI_EVENT_RIDE_FINISH_REQUESTED) {
@@ -296,6 +296,15 @@ static void map_event(const ui_event_t *event, void *user_data)
             if(card.maximum <= card.minimum) { card.minimum = 0; card.maximum = 100; }
             (void)present(&card, timeout ? timeout : 2500);
             break;
+        case UI_EVENT_FEATURE_INFO:
+            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
+            card.priority = UI_DOCK_PRIORITY_P4_NORMAL;
+            copy_text(card.title, sizeof(card.title), event->title,
+                      "COMING SOON");
+            copy_text(card.message, sizeof(card.message), event->message,
+                      "FEATURE RESERVED FOR A LATER PHASE");
+            (void)present(&card, timeout ? timeout : 2200);
+            break;
         case UI_EVENT_COMMAND_PENDING:
             card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
@@ -326,7 +335,12 @@ static void map_event(const ui_event_t *event, void *user_data)
                       event->primary_action, "CLOSE");
             (void)present(&card, timeout ? timeout : 6000);
             break;
+        case UI_EVENT_RIDE_GO_REQUESTED:
+            break;
         case UI_EVENT_RIDE_GO:
+            clear_timeout(DOCK_ID_GPS);
+            (void)ui_dock_hide(DOCK_ID_GPS);
+            break;
         case UI_EVENT_RIDE_FINISH_CONFIRMED:
         case UI_EVENT_RIDE_FINISH_CANCELLED:
             clear_timeout(DOCK_ID_RIDE);

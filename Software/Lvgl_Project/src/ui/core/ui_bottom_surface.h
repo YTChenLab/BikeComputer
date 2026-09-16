@@ -75,6 +75,7 @@ bool ui_bottom_surface_replace_interaction(
     bool animated);
 bool ui_bottom_surface_dismiss_interaction(uint32_t owner_id,
                                            bool animated);
+void ui_bottom_surface_reset_to_dynamic(bool animated);
 
 bool ui_bottom_surface_get_state(ui_bottom_surface_state_t *state);
 void ui_bottom_surface_set_observer(ui_bottom_surface_observer_cb_t observer,

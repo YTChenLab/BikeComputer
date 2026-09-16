@@ -5,6 +5,7 @@
 #include "../../core/ui_dock.h"
 #include "../../core/ui_motion.h"
 #include "../../core/ui_sound.h"
+#include "../../design/ui_design_tokens.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -18,6 +19,53 @@ typedef struct
 } ui_dock_view_context_t;
 
 static ui_dock_view_context_t s_view;
+
+static void content_opacity_animation(void *object, int32_t value)
+{
+    lv_obj_set_style_opa((lv_obj_t *)object, (lv_opa_t)value, 0);
+}
+
+static void content_scale_animation(void *object, int32_t value)
+{
+    lv_obj_set_style_transform_scale((lv_obj_t *)object, value, 0);
+}
+
+static void content_y_animation(void *object, int32_t value)
+{
+    lv_obj_set_y((lv_obj_t *)object, value);
+}
+
+static void animate_content_settle(lv_obj_t *root, bool refresh)
+{
+    if(root == NULL) return;
+    lv_anim_delete(root, content_opacity_animation);
+    lv_anim_delete(root, content_scale_animation);
+    lv_anim_delete(root, content_y_animation);
+
+    int32_t from_scale = refresh ? 251 : 246;
+    int32_t from_y = refresh ? UI_TOKEN_SPACE_4 : UI_TOKEN_SPACE_8;
+    lv_opa_t from_opa = refresh ? LV_OPA_60 : UI_TOKEN_OPA_HIDDEN;
+    lv_obj_set_style_transform_pivot_x(
+        root, UI_BOTTOM_SURFACE_WIDTH / 2, 0);
+    lv_obj_set_style_transform_pivot_y(
+        root, UI_BOTTOM_SURFACE_NORMAL_HEIGHT / 2, 0);
+    lv_obj_set_style_transform_scale(root, from_scale, 0);
+    lv_obj_set_style_opa(root, from_opa, 0);
+    lv_obj_set_y(root, from_y);
+
+    ui_motion_value(root, content_opacity_animation,
+                    from_opa, UI_TOKEN_OPA_PRIMARY,
+                    UI_TOKEN_MOTION_SURFACE_FADE_MS,
+                    lv_anim_path_ease_in_out, NULL, NULL);
+    ui_motion_value(root, content_scale_animation,
+                    from_scale, 256,
+                    UI_TOKEN_MOTION_DOCK_CONTENT_MS,
+                    lv_anim_path_ease_out, NULL, NULL);
+    ui_motion_value(root, content_y_animation,
+                    from_y, 0,
+                    UI_TOKEN_MOTION_DOCK_CONTENT_MS,
+                    lv_anim_path_ease_out, NULL, NULL);
+}
 
 static ui_bottom_surface_size_t surface_size(ui_dock_type_t type)
 {
@@ -97,7 +145,11 @@ static bool present_on_surface(ui_dock_event_t event,
     ui_bottom_surface_state_t state;
     (void)ui_bottom_surface_get_state(&state);
 
-    if(event == UI_DOCK_EVENT_REPLACED)
+    /* ui_dock is the single owner of priority/restore state. The visual
+     * Surface must not maintain a second restore stack for the same cards,
+     * otherwise removing a non-active Dock card can resurrect a stale frame. */
+    if(state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE &&
+       state.owner_id != card->id)
         return ui_bottom_surface_replace_interaction(
             card->id, size, priority, true);
     if((event == UI_DOCK_EVENT_UPDATED ||
@@ -122,17 +174,25 @@ static void dock_observer(ui_dock_event_t event, const ui_dock_card_t *card,
     if(event == UI_DOCK_EVENT_HIDDEN) {
         lv_obj_add_flag(template->root, LV_OBJ_FLAG_HIDDEN);
         s_view.active_type = UI_DOCK_TYPE_COUNT;
-        if(!ui_bottom_surface_dismiss_interaction(card->id, true))
+        if(!ui_bottom_surface_dismiss_interaction(card->id, true)) {
             LV_LOG_WARN("Bottom Surface rejected Dock dismiss id=%lu",
                         (unsigned long)card->id);
+            /* Recover from an owner/restore-stack mismatch instead of
+             * leaving an empty interaction frame mounted on later pages. */
+            ui_bottom_surface_reset_to_dynamic(true);
+        }
         return;
     }
 
     ui_dock_template_update(template, card);
     if(event == UI_DOCK_EVENT_UPDATED) {
-        if(!present_on_surface(event, card))
+        if(!present_on_surface(event, card)) {
             LV_LOG_WARN("Bottom Surface rejected Dock update id=%lu",
                         (unsigned long)card->id);
+        }
+        else {
+            animate_content_settle(template->root, true);
+        }
         return;
     }
 
@@ -143,6 +203,8 @@ static void dock_observer(ui_dock_event_t event, const ui_dock_card_t *card,
                     (int)event, (unsigned long)card->id);
         return;
     }
+    animate_content_settle(template->root,
+                           event == UI_DOCK_EVENT_RESTORED);
 }
 
 void ui_dock_view_init(void)

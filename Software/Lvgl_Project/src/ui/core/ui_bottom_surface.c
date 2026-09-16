@@ -33,6 +33,8 @@ typedef struct
 
 static ui_bottom_surface_context_t s_surface;
 
+static bool should_be_visible(void);
+
 static int32_t surface_height(ui_bottom_surface_size_t size)
 {
     switch(size) {
@@ -109,10 +111,56 @@ static void animate_host_opacity(lv_obj_t *host, lv_opa_t from, lv_opa_t to,
     lv_anim_set_var(&animation, host);
     lv_anim_set_exec_cb(&animation, opacity_animation);
     lv_anim_set_values(&animation, from, to);
-    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_FAST_MS);
+    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_SURFACE_FADE_MS);
     lv_anim_set_path_cb(&animation, lv_anim_path_ease_in_out);
     lv_anim_set_user_data(&animation, host);
     if(completed != NULL) lv_anim_set_completed_cb(&animation, completed);
+    lv_anim_start(&animation);
+}
+
+static void root_opacity_animation(void *object, int32_t value)
+{
+    lv_obj_set_style_opa((lv_obj_t *)object, (lv_opa_t)value, 0);
+}
+
+static void surface_scale_animation(void *object, int32_t value)
+{
+    lv_obj_set_style_transform_scale((lv_obj_t *)object, value, 0);
+}
+
+static void root_hide_completed(lv_anim_t *animation)
+{
+    (void)animation;
+    if(s_surface.created && !should_be_visible())
+        lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void animate_root_opacity(lv_opa_t from, lv_opa_t to,
+                                 lv_anim_completed_cb_t completed)
+{
+    lv_anim_delete(s_surface.root, root_opacity_animation);
+    lv_anim_t animation;
+    lv_anim_init(&animation);
+    lv_anim_set_var(&animation, s_surface.root);
+    lv_anim_set_exec_cb(&animation, root_opacity_animation);
+    lv_anim_set_values(&animation, from, to);
+    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_SURFACE_FADE_MS);
+    lv_anim_set_path_cb(&animation, lv_anim_path_ease_in_out);
+    if(completed != NULL) lv_anim_set_completed_cb(&animation, completed);
+    lv_anim_start(&animation);
+}
+
+static void animate_surface_scale(int32_t from)
+{
+    lv_anim_delete(s_surface.root, surface_scale_animation);
+    lv_obj_set_style_transform_scale(s_surface.root, from, 0);
+    lv_anim_t animation;
+    lv_anim_init(&animation);
+    lv_anim_set_var(&animation, s_surface.root);
+    lv_anim_set_exec_cb(&animation, surface_scale_animation);
+    lv_anim_set_values(&animation, from, 256);
+    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_SURFACE_MS);
+    lv_anim_set_path_cb(&animation, lv_anim_path_ease_out);
     lv_anim_start(&animation);
 }
 
@@ -198,22 +246,53 @@ static void apply_geometry(bool animated)
     int32_t y = UI_BOTTOM_SURFACE_NORMAL_HEIGHT - height;
     bool visible = should_be_visible();
     if(!visible) {
-        lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
+        if(animated &&
+           !lv_obj_has_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN)) {
+            animate_y(s_surface.root, y + UI_TOKEN_SPACE_12);
+            animate_root_opacity(
+                lv_obj_get_style_opa(s_surface.root, 0),
+                UI_TOKEN_OPA_HIDDEN, root_hide_completed);
+            animate_surface_scale(252);
+        }
+        else {
+            lv_anim_delete(s_surface.root, root_opacity_animation);
+            lv_anim_delete(s_surface.root, surface_scale_animation);
+            lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_opa(s_surface.root, UI_TOKEN_OPA_PRIMARY, 0);
+            lv_obj_set_style_transform_scale(s_surface.root, 256, 0);
+        }
         return;
     }
 
     bool was_hidden = lv_obj_has_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
+    lv_anim_delete(s_surface.root, root_opacity_animation);
     lv_obj_clear_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(s_surface.root);
-    if(animated && !was_hidden) {
+    if(animated && was_hidden) {
+        lv_obj_set_pos(s_surface.root, 0, y + UI_TOKEN_SPACE_12);
+        lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH,
+                        LV_MAX(height - UI_TOKEN_SPACE_8, 1));
+        lv_obj_set_style_opa(s_surface.root, UI_TOKEN_OPA_HIDDEN, 0);
         animate_y(s_surface.root, y);
         animate_height(s_surface.root, height);
+        animate_root_opacity(UI_TOKEN_OPA_HIDDEN,
+                             UI_TOKEN_OPA_PRIMARY, NULL);
+        animate_surface_scale(246);
+    }
+    else if(animated) {
+        animate_y(s_surface.root, y);
+        animate_height(s_surface.root, height);
+        lv_obj_set_style_opa(s_surface.root, UI_TOKEN_OPA_PRIMARY, 0);
+        animate_surface_scale(251);
     }
     else {
         lv_anim_delete(s_surface.root, y_animation);
         lv_anim_delete(s_surface.root, height_animation);
+        lv_anim_delete(s_surface.root, surface_scale_animation);
         lv_obj_set_pos(s_surface.root, 0, y);
         lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH, height);
+        lv_obj_set_style_opa(s_surface.root, UI_TOKEN_OPA_PRIMARY, 0);
+        lv_obj_set_style_transform_scale(s_surface.root, 256, 0);
         lv_obj_update_layout(s_surface.root);
     }
 }
@@ -255,6 +334,11 @@ bool ui_bottom_surface_create(lv_obj_t *parent)
     lv_obj_set_pos(s_surface.root, 0, 0);
     lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH,
                     UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
+    lv_obj_set_style_transform_pivot_x(
+        s_surface.root, UI_BOTTOM_SURFACE_WIDTH / 2, 0);
+    lv_obj_set_style_transform_pivot_y(
+        s_surface.root, UI_BOTTOM_SURFACE_NORMAL_HEIGHT / 2, 0);
+    lv_obj_set_style_transform_scale(s_surface.root, 256, 0);
     lv_obj_clear_flag(s_surface.root,
                       LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
 
@@ -323,6 +407,8 @@ void ui_bottom_surface_unmount(void)
     s_surface.dynamic_content_visible = false;
     lv_anim_delete(s_surface.root, y_animation);
     lv_anim_delete(s_surface.root, height_animation);
+    lv_anim_delete(s_surface.root, root_opacity_animation);
+    lv_anim_delete(s_surface.root, surface_scale_animation);
     lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
     emit_state();
 }
@@ -412,6 +498,18 @@ bool ui_bottom_surface_dismiss_interaction(uint32_t owner_id,
     }
     apply_state(animated);
     return true;
+}
+
+void ui_bottom_surface_reset_to_dynamic(bool animated)
+{
+    if(!s_surface.created) return;
+    s_surface.restore_depth = 0U;
+    memset(s_surface.restore, 0, sizeof(s_surface.restore));
+    s_surface.current.mode = UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE;
+    s_surface.current.size = UI_BOTTOM_SURFACE_SIZE_NORMAL;
+    s_surface.current.priority = UI_BOTTOM_SURFACE_PRIORITY_P4_NORMAL;
+    s_surface.current.owner_id = UI_BOTTOM_SURFACE_NO_OWNER;
+    apply_state(animated);
 }
 
 bool ui_bottom_surface_get_state(ui_bottom_surface_state_t *state)

@@ -2,6 +2,7 @@
 
 #include "ui_dock.h"
 #include "ui_event_bus.h"
+#include "../../services/ui_command_service.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -38,6 +39,17 @@ typedef struct
 } ui_dock_controller_context_t;
 
 static ui_dock_controller_context_t s_controller;
+
+static bool is_ride_toggle_command(int32_t value)
+{
+    return value == (int32_t)UI_COMMAND_RIDE_PAUSE ||
+           value == (int32_t)UI_COMMAND_RIDE_RESUME;
+}
+
+static bool is_pause_command(int32_t value)
+{
+    return value == (int32_t)UI_COMMAND_RIDE_PAUSE;
+}
 
 static void copy_text(char *destination, size_t capacity,
                       const char *preferred, const char *fallback)
@@ -132,6 +144,11 @@ static void dock_action(uint32_t card_id, ui_dock_interaction_t interaction,
                        UI_EVENT_PRIORITY_P3_USER_ACTION, card_id, value);
     }
     else if(card_id == DOCK_ID_COMMAND &&
+            interaction == UI_DOCK_INTERACTION_PRIMARY) {
+        (void)ui_dock_hide(card_id);
+    }
+    else if(card_id == DOCK_ID_RIDE &&
+            origin == UI_EVENT_COMMAND_FAILED &&
             interaction == UI_DOCK_INTERACTION_PRIMARY) {
         (void)ui_dock_hide(card_id);
     }
@@ -318,18 +335,36 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 2200);
             break;
         case UI_EVENT_COMMAND_PENDING:
-            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
-            card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
-            copy_text(card.title, sizeof(card.title), event->title,
-                      "PROCESSING");
-            copy_text(card.message, sizeof(card.message), event->message,
-                      "DEVICE REQUEST");
+            if(is_ride_toggle_command(event->value)) {
+                card = base_card(event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
+                card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
+                copy_text(card.title, sizeof(card.title), NULL,
+                          is_pause_command(event->value) ?
+                          "正在暂停骑行" : "正在恢复骑行");
+                copy_text(card.message, sizeof(card.message), NULL,
+                          is_pause_command(event->value) ?
+                          "正在暂停计时与里程记录" :
+                          "正在恢复骑行数据记录");
+            }
+            else {
+                card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
+                card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+                copy_text(card.title, sizeof(card.title), event->title,
+                          "PROCESSING");
+                copy_text(card.message, sizeof(card.message), event->message,
+                          "DEVICE REQUEST");
+            }
             card.dismissible = false;
             (void)present(&card, 0);
             break;
         case UI_EVENT_COMMAND_SUCCESS:
-            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
-            card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+            card = base_card(event,
+                             is_ride_toggle_command(event->value) ?
+                             DOCK_ID_RIDE : DOCK_ID_COMMAND,
+                             UI_DOCK_TYPE_INFO);
+            card.priority = is_ride_toggle_command(event->value) ?
+                            UI_DOCK_PRIORITY_P2_RIDE_STATE :
+                            UI_DOCK_PRIORITY_P3_USER_ACTION;
             copy_text(card.title, sizeof(card.title), event->title,
                       "DONE");
             copy_text(card.message, sizeof(card.message), event->message,
@@ -337,12 +372,27 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 1200);
             break;
         case UI_EVENT_COMMAND_FAILED:
-            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_ACTION);
-            card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
-            copy_text(card.title, sizeof(card.title), event->title,
-                      "FAILED");
-            copy_text(card.message, sizeof(card.message), event->message,
-                      "DEVICE REQUEST FAILED");
+            if(is_ride_toggle_command(event->value)) {
+                card = base_card(event, DOCK_ID_RIDE,
+                                 UI_DOCK_TYPE_ACTION);
+                card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
+                copy_text(card.title, sizeof(card.title), NULL,
+                          is_pause_command(event->value) ?
+                          "暂停失败" : "恢复失败");
+                copy_text(card.message, sizeof(card.message), NULL,
+                          is_pause_command(event->value) ?
+                          "骑行仍在记录，请重试" :
+                          "骑行保持暂停，请重试");
+            }
+            else {
+                card = base_card(event, DOCK_ID_COMMAND,
+                                 UI_DOCK_TYPE_ACTION);
+                card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+                copy_text(card.title, sizeof(card.title), event->title,
+                          "FAILED");
+                copy_text(card.message, sizeof(card.message), event->message,
+                          "DEVICE REQUEST FAILED");
+            }
             copy_text(card.primary_action, sizeof(card.primary_action),
                       event->primary_action, "CLOSE");
             (void)present(&card, timeout ? timeout : 6000);

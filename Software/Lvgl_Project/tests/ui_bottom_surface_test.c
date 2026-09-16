@@ -81,7 +81,7 @@ int main(void)
     assert(lv_obj_get_x(root) == 0 && lv_obj_get_y(root) == 0);
     assert(!lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
-    lv_tick_inc(UI_TOKEN_MOTION_FAST_MS);
+    lv_tick_inc(UI_TOKEN_MOTION_SURFACE_FADE_MS);
     lv_anim_refr_now();
     assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
@@ -128,6 +128,21 @@ int main(void)
     assert(!lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_get_y(root) == 0);
+
+    assert(ui_bottom_surface_present_interaction(
+        250U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
+        UI_BOTTOM_SURFACE_PRIORITY_P2_RIDE_STATE, false));
+    assert(ui_bottom_surface_present_interaction(
+        251U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
+        UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY, false));
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE);
+    assert(state.restore_depth == 1U);
+    ui_bottom_surface_reset_to_dynamic(false);
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
+    assert(state.owner_id == UI_BOTTOM_SURFACE_NO_OWNER);
+    assert(state.restore_depth == 0U);
 
     assert(ui_bottom_surface_mount(other_slot, false));
     assert(lv_obj_get_parent(root) == other_slot);

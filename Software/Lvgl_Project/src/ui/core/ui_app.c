@@ -460,6 +460,9 @@ static void app_publish_command_feedback(const ui_command_result_t *result)
     event.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
     event.source_id = result->id;
     event.dedupe_key = 0xC001U;
+    /* Let Dock map ride pause/resume command feedback back to the same
+     * DOCK_ID_RIDE owner used by the resulting ride-state event. */
+    event.value = (int32_t)result->type;
     snprintf(event.message, sizeof(event.message), "%s",
              app_command_label(result->type));
     if(result->status == UI_COMMAND_STATUS_PENDING) {

@@ -7,6 +7,7 @@
 #include "ui/core/ui_sound.h"
 #include "ui/core/ui_theme.h"
 #include "ui/design/ui_design_tokens.h"
+#include "services/ui_command_service.h"
 #include "lvgl.h"
 
 #include <assert.h>
@@ -201,7 +202,7 @@ int main(void)
     assert(ui_dock_show(&same_priority_b));
     assert(ui_bottom_surface_get_state(&restored_state));
     assert(restored_state.owner_id == same_priority_b.id);
-    assert(restored_state.restore_depth == 1U);
+    assert(restored_state.restore_depth == 0U);
     assert(ui_dock_hide(same_priority_b.id));
     assert(ui_bottom_surface_get_state(&restored_state));
     assert(restored_state.owner_id == same_priority_a.id);
@@ -267,6 +268,70 @@ int main(void)
 
     assert(lv_obj_send_event(no_button, LV_EVENT_CLICKED, NULL) == LV_RESULT_OK);
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+
+    ui_event_t pause_pending = {0};
+    pause_pending.type = UI_EVENT_COMMAND_PENDING;
+    pause_pending.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
+    pause_pending.value = UI_COMMAND_RIDE_PAUSE;
+    assert(ui_event_bus_publish(&pause_pending));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    assert(ui_dock_current() != NULL);
+    assert(strcmp(ui_dock_current()->title, "正在暂停骑行") == 0);
+    ui_event_t paused = {0};
+    paused.type = UI_EVENT_RIDE_PAUSED;
+    paused.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
+    paused.timeout_ms = 1800U;
+    assert(ui_event_bus_publish(&paused));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    assert(ui_dock_restore_depth() == 0U);
+    assert(strcmp(ui_dock_current()->title, "骑行已暂停") == 0);
+    ui_dock_controller_tick(1800U);
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+
+    assert(ui_event_bus_publish(&finish_request));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    finish_animations();
+    confirm_root = lv_obj_get_child(host, UI_DOCK_TYPE_CONFIRM);
+    yes_button = lv_obj_get_child(confirm_root, 7);
+    assert(lv_obj_send_event(yes_button, LV_EVENT_CLICKED, NULL) ==
+           LV_RESULT_OK);
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+    assert(ui_dock_current() != NULL);
+    assert(strcmp(ui_dock_current()->title, "正在结束骑行") == 0);
+    ui_event_t save_started = {0};
+    save_started.type = UI_EVENT_RIDE_SAVE_STARTED;
+    save_started.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
+    assert(ui_event_bus_publish(&save_started));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    assert(strcmp(ui_dock_current()->title, "正在保存骑行数据") == 0);
+    ui_event_t save_success = {0};
+    save_success.type = UI_EVENT_RIDE_SAVE_SUCCESS;
+    save_success.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
+    assert(ui_event_bus_publish(&save_success));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+    ui_bottom_surface_state_t ride_finished_state;
+    assert(ui_bottom_surface_get_state(&ride_finished_state));
+    assert(ride_finished_state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
+    assert(ride_finished_state.owner_id == UI_BOTTOM_SURFACE_NO_OWNER);
+    assert(ride_finished_state.restore_depth == 0U);
+
+    ui_event_t resume_pending = pause_pending;
+    resume_pending.value = UI_COMMAND_RIDE_RESUME;
+    assert(ui_event_bus_publish(&resume_pending));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    assert(strcmp(ui_dock_current()->title, "正在恢复骑行") == 0);
+    ui_event_t resumed = paused;
+    resumed.type = UI_EVENT_RIDE_RESUMED;
+    assert(ui_event_bus_publish(&resumed));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    assert(ui_dock_restore_depth() == 0U);
+    assert(strcmp(ui_dock_current()->title, "骑行已恢复") == 0);
+    ui_dock_controller_tick(1800U);
     finish_animations();
     assert(!ui_dock_view_is_visible());
 

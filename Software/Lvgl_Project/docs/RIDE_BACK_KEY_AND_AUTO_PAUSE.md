@@ -35,6 +35,15 @@
 
 命令失败或超时也进入同一 Surface 的失败反馈，并保留原骑行状态。
 
+暂停、恢复的 Pending/Success/Failed 与结束确认统一使用 `DOCK_ID_RIDE`。业务优先级、抢占和恢复栈只由 `ui_dock` 保存；`ui_bottom_surface` 不再为 Dock 卡维护第二套恢复关系。这避免了保存阶段 Storage 卡移除后，Surface 又恢复已删除 Ride 卡的状态分裂问题。
+
+Surface 的出现、内容刷新和恢复采用组合过渡：
+
+- 首次出现：短距离上移、透明度淡入、约 96% 到 100% 的柔和回弹；
+- 原位刷新：约 98% 到 100% 的轻微收缩回弹，文字与控件同步淡入；
+- 消失：轻微下移、收缩并淡出；
+- 动画只改变统一 Bottom Interaction Surface，不创建额外浮层。
+
 ## 输入层边界
 
 `ui_back_key_gesture` 只识别物理按键按下/释放与时间，不依赖 SDL 或 LVGL：

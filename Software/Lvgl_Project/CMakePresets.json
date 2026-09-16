@@ -8,6 +8,7 @@
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "CMAKE_C_COMPILER": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/gcc.exe",
                 "CMAKE_CXX_COMPILER": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/g++.exe",
                 "CMAKE_MAKE_PROGRAM": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/ninja.exe"

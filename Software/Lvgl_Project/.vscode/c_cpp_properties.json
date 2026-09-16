@@ -1,9 +1,11 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "Bike UI - UCRT64",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/include",
+                "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/include/SDL2"
             ],
             "defines": [
                 "_DEBUG",
@@ -11,6 +13,8 @@
                 "_UNICODE"
             ],
             "compilerPath": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\bin\\gcc.exe",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools",
             "cStandard": "c99",
             "cppStandard": "gnu++17",
             "intelliSenseMode": "windows-gcc-x64"

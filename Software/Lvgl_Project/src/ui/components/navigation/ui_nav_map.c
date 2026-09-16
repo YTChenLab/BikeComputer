@@ -2,14 +2,15 @@
 
 #include "ui_nav_animation.h"
 #include "ui_nav_geometry.h"
+#include "ui_nav_layout.h"
 #include "../../core/ui_colors.h"
 #include "../../core/ui_motion.h"
 #include "../../core/ui_theme.h"
 
 #include <stdio.h>
 
-#define NAV_MAP_W             460
-#define NAV_MAP_H             460
+#define NAV_MAP_W             UI_NAV_MAP_WIDTH
+#define NAV_MAP_H             UI_NAV_MAP_HEIGHT
 #define NAV_CONTENT_SIZE      620
 #define NAV_CONTENT_CENTER_X  310
 #define NAV_CONTENT_CENTER_Y  310
@@ -153,6 +154,22 @@ static void map_set_state(ui_nav_map_t *map, nav_state_t state)
     ui_nav_control_set_active(&map->locate, state == NAV_EXPLORE);
 }
 
+void ui_nav_map_set_focus(ui_nav_map_t *map, ui_nav_focus_t focus,
+                          bool visible)
+{
+    if(map == NULL || focus >= UI_NAV_FOCUS_COUNT) return;
+    map->focused_control = focus;
+    map->focus_visible = visible;
+    ui_nav_control_set_focused(&map->compass,
+                               visible && focus == UI_NAV_FOCUS_COMPASS);
+    ui_nav_control_set_focused(&map->zoom_in,
+                               visible && focus == UI_NAV_FOCUS_ZOOM_IN);
+    ui_nav_control_set_focused(&map->zoom_out,
+                               visible && focus == UI_NAV_FOCUS_ZOOM_OUT);
+    ui_nav_control_set_focused(&map->locate,
+                               visible && focus == UI_NAV_FOCUS_LOCATE);
+}
+
 static void recenter_done(lv_anim_t *animation)
 {
     ui_nav_map_t *map = lv_anim_get_user_data(animation);
@@ -181,6 +198,7 @@ static void compass_clicked(void *user_data)
 {
     ui_nav_map_t *map = user_data;
     if(map == NULL) return;
+    ui_nav_map_set_focus(map, UI_NAV_FOCUS_COMPASS, true);
     map->north_up = !map->north_up;
     int32_t rotation = map->north_up ? 0 : -(int32_t)(map->heading * 10.0f);
     ui_nav_animation_value(map, set_map_rotation, map->render_rotation,
@@ -191,18 +209,25 @@ static void compass_clicked(void *user_data)
 static void zoom_in_clicked(void *user_data)
 {
     ui_nav_map_t *map = user_data;
-    if(map != NULL && map->zoom < NAV_ZOOM_MAX) nav_map_zoom(map, map->zoom + 1, true);
+    if(map == NULL) return;
+    ui_nav_map_set_focus(map, UI_NAV_FOCUS_ZOOM_IN, true);
+    if(map->zoom < NAV_ZOOM_MAX) nav_map_zoom(map, map->zoom + 1, true);
 }
 
 static void zoom_out_clicked(void *user_data)
 {
     ui_nav_map_t *map = user_data;
-    if(map != NULL && map->zoom > NAV_ZOOM_MIN) nav_map_zoom(map, map->zoom - 1, true);
+    if(map == NULL) return;
+    ui_nav_map_set_focus(map, UI_NAV_FOCUS_ZOOM_OUT, true);
+    if(map->zoom > NAV_ZOOM_MIN) nav_map_zoom(map, map->zoom - 1, true);
 }
 
 static void locate_clicked(void *user_data)
 {
-    recenter((ui_nav_map_t *)user_data);
+    ui_nav_map_t *map = user_data;
+    if(map == NULL) return;
+    ui_nav_map_set_focus(map, UI_NAV_FOCUS_LOCATE, true);
+    recenter(map);
 }
 
 static void map_pointer_cb(lv_event_t *event)
@@ -286,12 +311,12 @@ void ui_nav_map_create(ui_nav_map_t *map, lv_obj_t *parent, int32_t x, int32_t y
     lv_obj_remove_style_all(map->root);
     lv_obj_set_pos(map->root, x, y);
     lv_obj_set_size(map->root, NAV_MAP_W, NAV_MAP_H);
-    lv_obj_set_style_bg_color(map->root, UI_COLOR_BG, 0);
+    lv_obj_set_style_bg_color(map->root, UI_TOKEN_COLOR_SURFACE, 0);
     lv_obj_set_style_bg_opa(map->root, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(map->root, UI_COLOR_WHITE, 0);
+    lv_obj_set_style_border_color(map->root, UI_TOKEN_COLOR_SURFACE_BORDER, 0);
     lv_obj_set_style_border_opa(map->root, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(map->root, 1, 0);
-    lv_obj_set_style_radius(map->root, 12, 0);
+    lv_obj_set_style_radius(map->root, UI_TOKEN_RADIUS_MEDIUM, 0);
     lv_obj_add_flag(map->root, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(map->root, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(map->root, map_pointer_cb, LV_EVENT_ALL, map);
@@ -339,6 +364,8 @@ void ui_nav_map_create(ui_nav_map_t *map, lv_obj_t *parent, int32_t x, int32_t y
     map->heading = 0.0f;
     map->north_up = true;
     create_hud(map);
+    map->focused_control = UI_NAV_FOCUS_LOCATE;
+    map->focus_visible = false;
 
     const lv_point_precise_t default_route[] = {
         {72, 515}, {205, 485}, {226, 392}, {348, 390}, {350, 300}, {430, 298}, {432, 240}
@@ -448,6 +475,19 @@ void ui_nav_map_apply_model(ui_nav_map_t *map, const nav_model_t *model)
 void ui_nav_map_handle_input(ui_nav_map_t *map, int32_t zoom_delta, bool locate)
 {
     if(map == NULL) return;
-    if(locate) recenter(map);
-    else if(zoom_delta != 0) nav_map_zoom(map, (uint8_t)((int32_t)map->zoom + zoom_delta), true);
+    ui_nav_control_t *control = NULL;
+    if(locate) {
+        ui_nav_map_set_focus(map, UI_NAV_FOCUS_LOCATE, true);
+        control = &map->locate;
+    }
+    else if(zoom_delta > 0) {
+        ui_nav_map_set_focus(map, UI_NAV_FOCUS_ZOOM_IN, true);
+        control = &map->zoom_in;
+    }
+    else if(zoom_delta < 0) {
+        ui_nav_map_set_focus(map, UI_NAV_FOCUS_ZOOM_OUT, true);
+        control = &map->zoom_out;
+    }
+    if(control == NULL) return;
+    ui_nav_control_activate(control);
 }

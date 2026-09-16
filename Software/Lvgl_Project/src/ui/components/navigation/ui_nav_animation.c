@@ -18,6 +18,17 @@ void ui_nav_animation_button_release(lv_obj_t *button)
     ui_motion_button_release(button);
 }
 
+void ui_nav_animation_move_y(lv_obj_t *object, int32_t from_y, int32_t to_y,
+                             uint32_t duration,
+                             lv_anim_completed_cb_t completed,
+                             void *user_data)
+{
+    if(object == NULL) return;
+    lv_obj_set_y(object, from_y);
+    ui_motion_move_y(object, to_y, duration, lv_anim_path_ease_out,
+                     completed, user_data);
+}
+
 void ui_nav_animation_fade_move(lv_obj_t *object, int32_t from_y, int32_t to_y,
                                 lv_opa_t from_opa, lv_opa_t to_opa,
                                 uint32_t duration,

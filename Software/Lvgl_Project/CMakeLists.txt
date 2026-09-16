@@ -290,6 +290,35 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME ui_control_center_test COMMAND ui_control_center_test)
 
+    add_executable(ui_navigation_test
+        tests/ui_navigation_test.c
+        src/ui/pages/navigation/ui_navigation.c
+        src/ui/components/navigation/ui_nav_animation.c
+        src/ui/components/navigation/ui_nav_card.c
+        src/ui/components/navigation/ui_nav_control.c
+        src/ui/components/navigation/ui_nav_geometry.c
+        src/ui/components/navigation/ui_nav_map.c
+        src/ui/core/ui_concurrency.c
+        src/ui/core/ui_event_bus.c
+        src/ui/core/ui_motion.c
+        src/services/ui_navigation_service.c
+        src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_en_18.c
+        src/ui/fonts/ui_font_misans_metric_60.c
+        src/ui/fonts/ui_font_misans_num_48.c
+    )
+    target_include_directories(ui_navigation_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_navigation_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_navigation_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_navigation_test m pthread)
+    endif()
+    add_test(NAME ui_navigation_test COMMAND ui_navigation_test)
+
     add_executable(ui_router_lifecycle_test
         tests/ui_router_lifecycle_test.c
         src/ui/core/ui_router.c

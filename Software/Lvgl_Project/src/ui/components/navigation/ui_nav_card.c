@@ -1,16 +1,18 @@
 #include "ui_nav_card.h"
 
 #include "ui_nav_animation.h"
+#include "ui_nav_layout.h"
 #include "../../core/ui_colors.h"
 #include "../../core/ui_theme.h"
+#include "../../design/ui_design_tokens.h"
 #include "lvgl/src/draw/lv_draw_line.h"
 #include "lvgl/src/draw/lv_draw_triangle.h"
 
 #include <stdio.h>
 
-#define NAV_CARD_W       227
-#define NAV_CARD_H       154
-#define NAV_CARD_RADIUS  10
+#define NAV_CARD_W       UI_NAV_CARD_WIDTH
+#define NAV_CARD_H       UI_NAV_CARD_HEIGHT
+#define NAV_CARD_RADIUS  UI_TOKEN_RADIUS_MEDIUM
 #define NAV_CARD_PADDING       12
 #define NAV_CARD_TITLE_Y       9
 #define NAV_VALUE_BOTTOM       10
@@ -80,9 +82,9 @@ void nav_card_create(ui_nav_card_t *card, lv_obj_t *grid,
     lv_obj_set_size(card->root, NAV_CARD_W, NAV_CARD_H);
     lv_obj_set_grid_cell(card->root, LV_GRID_ALIGN_STRETCH, column, 1,
                          LV_GRID_ALIGN_STRETCH, row, 1);
-    lv_obj_set_style_bg_color(card->root, UI_COLOR_BG, 0);
+    lv_obj_set_style_bg_color(card->root, UI_TOKEN_COLOR_SURFACE, 0);
     lv_obj_set_style_bg_opa(card->root, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(card->root, UI_COLOR_WHITE, 0);
+    lv_obj_set_style_border_color(card->root, UI_TOKEN_COLOR_SURFACE_BORDER, 0);
     lv_obj_set_style_border_opa(card->root, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(card->root, 1, 0);
     lv_obj_set_style_radius(card->root, NAV_CARD_RADIUS, 0);
@@ -245,10 +247,9 @@ static void direction_fade_out_done(lv_anim_t *animation)
                           (unsigned long)card->pending_distance,
                           direction_name(card->direction));
     lv_obj_invalidate(card->arrow);
-    ui_nav_animation_fade_move(card->content, NAV_DIRECTION_TOP + 8, NAV_DIRECTION_TOP,
-                               LV_OPA_TRANSP,
-                               LV_OPA_COVER, UI_ANIM_NORMAL / 2,
-                               direction_fade_in_done, card);
+    ui_nav_animation_move_y(card->content, NAV_DIRECTION_TOP + 8,
+                            NAV_DIRECTION_TOP, UI_ANIM_NORMAL / 2,
+                            direction_fade_in_done, card);
 }
 
 void ui_nav_card_set_direction(ui_nav_card_t *card, nav_direction_t direction,
@@ -264,8 +265,10 @@ void ui_nav_card_set_direction(ui_nav_card_t *card, nav_direction_t direction,
         lv_obj_invalidate(card->arrow);
         return;
     }
-    ui_nav_animation_fade_move(card->content, NAV_DIRECTION_TOP,
-                               NAV_DIRECTION_TOP - 8, LV_OPA_COVER,
-                               LV_OPA_TRANSP, UI_ANIM_NORMAL / 2,
-                               direction_fade_out_done, card);
+    /* Moving the content is intentionally used instead of full-card opacity.
+     * LVGL otherwise allocates an ARGB intermediate layer for this 227 x 114
+     * object, which is unnecessary on the MCU memory budget. */
+    ui_nav_animation_move_y(card->content, NAV_DIRECTION_TOP,
+                            NAV_DIRECTION_TOP - 8, UI_ANIM_NORMAL / 2,
+                            direction_fade_out_done, card);
 }

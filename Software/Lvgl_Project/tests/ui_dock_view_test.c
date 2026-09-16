@@ -357,6 +357,36 @@ int main(void)
     finish_animations();
     assert(!ui_dock_view_is_visible());
 
+    ui_event_t navigation_turn = {0};
+    navigation_turn.type = UI_EVENT_NAVIGATION_TURN;
+    navigation_turn.priority = UI_EVENT_PRIORITY_P1_RIDING_SAFETY;
+    navigation_turn.source_id = 0x4E415600UL;
+    navigation_turn.dedupe_key = navigation_turn.source_id;
+    navigation_turn.timeout_ms = 5000U;
+    snprintf(navigation_turn.title, sizeof(navigation_turn.title),
+             "前方转向");
+    snprintf(navigation_turn.message, sizeof(navigation_turn.message),
+             "前方 180 m 左转");
+    snprintf(navigation_turn.primary_action,
+             sizeof(navigation_turn.primary_action), "查看");
+    assert(ui_event_bus_publish(&navigation_turn));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    finish_animations();
+    assert(ui_dock_view_is_visible());
+    assert(ui_dock_current() != NULL);
+    assert(ui_dock_current()->type == UI_DOCK_TYPE_NAVIGATION);
+    assert(strcmp(ui_dock_current()->message, "前方 180 m 左转") == 0);
+    ui_bottom_surface_state_t navigation_state;
+    assert(ui_bottom_surface_get_state(&navigation_state));
+    assert(navigation_state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE);
+    assert(navigation_state.priority ==
+           UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY);
+    ui_dock_controller_tick(5000U);
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+    assert(ui_bottom_surface_get_state(&navigation_state));
+    assert(navigation_state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
+
     ui_event_t command_pending = {0};
     command_pending.type = UI_EVENT_COMMAND_PENDING;
     command_pending.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;

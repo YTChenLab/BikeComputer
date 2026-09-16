@@ -9,6 +9,15 @@
 
 #define UI_NAV_ROUTE_POINT_MAX 16
 
+typedef enum
+{
+    UI_NAV_FOCUS_COMPASS = 0,
+    UI_NAV_FOCUS_ZOOM_IN,
+    UI_NAV_FOCUS_ZOOM_OUT,
+    UI_NAV_FOCUS_LOCATE,
+    UI_NAV_FOCUS_COUNT
+} ui_nav_focus_t;
+
 typedef struct
 {
     lv_obj_t *root;
@@ -39,12 +48,16 @@ typedef struct
     uint8_t zoom;
     float heading;
     bool north_up;
+    ui_nav_focus_t focused_control;
+    bool focus_visible;
 } ui_nav_map_t;
 
 void ui_nav_map_create(ui_nav_map_t *map, lv_obj_t *parent, int32_t x, int32_t y);
 bool ui_nav_map_contains_point(const ui_nav_map_t *map, int32_t x, int32_t y);
 void ui_nav_map_apply_model(ui_nav_map_t *map, const nav_model_t *model);
 void ui_nav_map_handle_input(ui_nav_map_t *map, int32_t zoom_delta, bool locate);
+void ui_nav_map_set_focus(ui_nav_map_t *map, ui_nav_focus_t focus,
+                          bool visible);
 
 void nav_map_set_tile(ui_nav_map_t *map, uint16_t tile_id);
 void nav_map_move(ui_nav_map_t *map, int32_t delta_x, int32_t delta_y, bool animated);

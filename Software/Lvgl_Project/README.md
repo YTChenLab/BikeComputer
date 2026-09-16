@@ -108,6 +108,7 @@ Phase 5.1 原位切换修正见 [docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md](docs/UI
 Phase 6 页面 Slot 与 Router 生命周期迁移见 [docs/UI_PAGE_MIGRATION_PHASE6.md](docs/UI_PAGE_MIGRATION_PHASE6.md)。
 Phase 6A Home / Ride Hub 实现与验收见 [docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md](docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md)。
 Phase 6B Quick Control Center 实现与验收见 [docs/PHASE_6B_CONTROL_CENTER_REPORT.md](docs/PHASE_6B_CONTROL_CENTER_REPORT.md)。
+Phase 6C Navigation 视觉与交互统一见 [docs/PHASE_6C_NAVIGATION_REPORT.md](docs/PHASE_6C_NAVIGATION_REPORT.md)。
 返回键骑行控制与自动暂停规则见 [docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md](docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md)。
 
 ## 版本发布约定
@@ -119,7 +120,7 @@ Phase 6B Quick Control Center 实现与验收见 [docs/PHASE_6B_CONTROL_CENTER_R
 
 ## 当前边界
 
-- Navigation 当前主要是 UI 与离线地图架构原型，不等同于完整真实地图引擎。
+- Navigation 已完成 Phase 6C 视觉、Focus、转向抢占和低内存动画统一；当前地图仍是离线数据接口原型，不等同于完整真实地图引擎。
 - STM32 工程尚未导入，PC 服务接口已经为后续硬件适配预留。
 - Home / Ride Hub 已按 UI V4 完成第一版真实 LVGL 页面；头像、山景与最近路线仍是可替换的本地 Mock 图形资源。
 - Dashboard 的顶部状态栏、实时速度、黄色速度条、2×3 数据区、背景资源和 MiSans 字体保持冻结。

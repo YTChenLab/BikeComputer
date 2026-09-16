@@ -67,7 +67,7 @@ Dynamic Card 的四张卡已经改为透明内容对象，不再分别绘制外�
 - Dashboard `on_enter` 显示 Normal Dynamic Card Mode。
 - Dashboard `on_leave` 隐藏 Normal 内容。
 - Interaction Mode 后续可以在任何页面显示，因此不依赖 Dashboard Screen 的生命周期。
-- Surface 位于 top layer，但其根对象只覆盖底部区域，不创建全屏透明点击层。
+- Phase 4 初版 Surface 位于 top layer；该挂载方式已在 Phase 5.1 被 Dashboard 页面内固定 Slot 取代。
 
 ## 当前迁移边界
 

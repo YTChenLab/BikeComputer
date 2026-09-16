@@ -21,17 +21,9 @@ static ui_dock_view_context_t s_view;
 
 static ui_bottom_surface_size_t surface_size(ui_dock_type_t type)
 {
-    switch(type) {
-        case UI_DOCK_TYPE_INFO:
-        case UI_DOCK_TYPE_ACTION:
-            return UI_BOTTOM_SURFACE_SIZE_MINI;
-        case UI_DOCK_TYPE_CONFIRM:
-        case UI_DOCK_TYPE_CONTROL:
-        case UI_DOCK_TYPE_NAVIGATION:
-        case UI_DOCK_TYPE_MEDIA:
-        default:
-            return UI_BOTTOM_SURFACE_SIZE_NORMAL;
-    }
+    (void)type;
+    /* 首页交互只替换内容，绝不因类型改变 Surface 的位置或尺寸。 */
+    return UI_BOTTOM_SURFACE_SIZE_NORMAL;
 }
 
 static ui_bottom_surface_priority_t surface_priority(
@@ -55,8 +47,11 @@ static ui_bottom_surface_priority_t surface_priority(
 static void hide_all_except(ui_dock_type_t type)
 {
     for(uint8_t i = 0; i < UI_DOCK_TYPE_COUNT; i++) {
-        if(i == type) lv_obj_clear_flag(s_view.templates[i].root,
-                                        LV_OBJ_FLAG_HIDDEN);
+        if(i == type) {
+            lv_obj_set_style_opa(s_view.templates[i].root, LV_OPA_COVER, 0);
+            lv_obj_set_y(s_view.templates[i].root, 0);
+            lv_obj_clear_flag(s_view.templates[i].root, LV_OBJ_FLAG_HIDDEN);
+        }
         else lv_obj_add_flag(s_view.templates[i].root, LV_OBJ_FLAG_HIDDEN);
     }
 }
@@ -148,7 +143,6 @@ static void dock_observer(ui_dock_event_t event, const ui_dock_card_t *card,
                     (int)event, (unsigned long)card->id);
         return;
     }
-    ui_motion_dock_enter(template->root, 0);
 }
 
 void ui_dock_view_init(void)

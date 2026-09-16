@@ -66,3 +66,5 @@ Bottom Interaction Surface
 Phase 4 已创建 `ui_bottom_surface`，并将 Dynamic Card 迁入 `dynamic_host`。Phase 5 已将 INFO/ACTION/CONFIRM/CONTROL/NAVIGATION/MEDIA 迁入 `interaction_host`，并删除旧 Interaction Dock 的独立 top-layer 根对象。
 
 当前底部视觉层只允许存在一个 `ui_bottom_surface.root`。后续页面或功能不得重新创建独立 Popup/Dock 与其叠加。
+
+Phase 5.1 起，Dashboard 通过页面内固定 Slot 承载该根对象，Normal/Interaction 切换不得改变容器坐标和尺寸。top layer 仅作为尚未迁移页面的安全事件临时备用挂载点，不是 Dashboard 的常态视觉路径。

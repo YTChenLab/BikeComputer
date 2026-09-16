@@ -33,14 +33,14 @@ lv_layer_top
 
 | Dock 类型 | Surface 尺寸 |
 | --- | --- |
-| INFO | Mini，156 px |
-| ACTION | Mini，156 px |
+| INFO | Normal，226 px |
+| ACTION | Normal，226 px |
 | CONFIRM | Normal，226 px |
 | CONTROL | Normal，226 px |
 | NAVIGATION | Normal，226 px |
 | MEDIA | Normal，226 px |
 
-Expanded 继续由 Surface 保留，供后续复杂确认、列表或输入类交互使用。本阶段不为填满空间而滥用 Expanded。
+Phase 5.1 已取消 INFO/ACTION 的 Mini 位移。Dashboard 内所有模式只在固定 Slot 中原位换内容。Expanded 继续由 Surface 保留，供后续复杂确认、列表或输入类交互使用。
 
 ## 优先级视觉
 
@@ -65,13 +65,15 @@ GNSS 定位、骑行结束和数据保存继续使用已有的领域专用 Dock 
 ## 验证覆盖
 
 - 六类 Dock 模板均只存在于 `interaction_host`。
-- Mini / Normal 尺寸映射正确。
+- Dashboard 六类 Interaction 均保持固定 Normal 尺寸。
 - Show / Update / Replace / Override / Restore / Hide 与 Surface owner 同步。
 - P0/P1/P2 优先级边框正确。
 - Pending → Success → 自动恢复。
 - Failed → CLOSE → Dynamic Card 恢复。
 - Dashboard 不活跃时，高优先级 Interaction 仍可显示；结束后 Surface 正确隐藏。
-- top layer 只保留一个 Bottom Surface 根对象。
+- 不存在旧 Interaction Dock 独立 top-layer 根对象。
+
+Phase 5.1 进一步规定：Dashboard 激活时 Bottom Surface 必须属于页面 Slot，top layer 不得包含该根对象。
 
 ## 后续边界
 
@@ -81,7 +83,7 @@ Phase 6 才开始逐页迁移页面到 Design Token 与统一 Router 生命周�
 
 - Anaconda/MSYS2 UCRT64 全量编译通过。
 - CTest 7/7 通过。
-- Simulator 静态场景：平均 59 FPS，最低 58 FPS，LVGL 忙碌度平均 5%，峰值 11%。
-- Simulator 100 ms 数据更新场景：平均 59 FPS，最低 59 FPS，LVGL 忙碌度平均 6%，峰值 13%。
+- Phase 5.1 Simulator 静态场景：平均 59 FPS，最低 58 FPS，LVGL 忙碌度平均 4%，峰值 8%。
+- Phase 5.1 Simulator 100 ms 数据更新场景：平均 59 FPS，最低 58 FPS，LVGL 忙碌度平均 6%，峰值 10%。
 
 CPU 数值来自 `100 - lv_timer_get_idle()`，代表 LVGL handler 忙碌度，不等同于 Windows 整机 CPU 使用率。

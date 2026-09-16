@@ -101,6 +101,7 @@ $env:PATH = "D:\Professional Software\Anaconda\Bike_SpeedView\msys2-x86_64\ucrt6
 底部唯一视觉容器约束见 [docs/BOTTOM_INTERACTION_SURFACE_ARCHITECTURE.md](docs/BOTTOM_INTERACTION_SURFACE_ARCHITECTURE.md)。
 Phase 4 实现与迁移边界见 [docs/UI_DESIGN_SYSTEM_PHASE4.md](docs/UI_DESIGN_SYSTEM_PHASE4.md)。
 Phase 5 Interaction Dock 统一迁移见 [docs/UI_INTERACTION_DOCK_PHASE5.md](docs/UI_INTERACTION_DOCK_PHASE5.md)。
+Phase 5.1 原位切换修正见 [docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md](docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md)。
 
 ## 版本发布约定
 

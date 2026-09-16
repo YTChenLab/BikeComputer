@@ -117,8 +117,13 @@ int main(void)
     ui_motion_init();
     ui_sound_init();
     ui_event_bus_init();
+    lv_obj_t *slot = lv_obj_create(lv_screen_active());
+    lv_obj_remove_style_all(slot);
+    lv_obj_set_pos(slot, UI_BOTTOM_SURFACE_X, UI_BOTTOM_SURFACE_NORMAL_Y);
+    lv_obj_set_size(slot, UI_BOTTOM_SURFACE_WIDTH,
+                    UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
     ui_bottom_surface_init();
-    assert(ui_bottom_surface_create(lv_layer_top()));
+    assert(ui_bottom_surface_create(slot));
     ui_bottom_surface_set_normal_page_active(true);
     ui_dock_init();
     ui_dock_view_init();
@@ -128,6 +133,8 @@ int main(void)
     lv_obj_t *surface = ui_bottom_surface_root();
     lv_obj_t *host = ui_dock_view_root();
     assert(surface != NULL && host == ui_bottom_surface_interaction_host());
+    assert(lv_obj_get_parent(surface) == slot);
+    assert(lv_obj_get_x(surface) == 0 && lv_obj_get_y(surface) == 0);
     assert(lv_obj_has_flag(host, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_get_child_count(surface) == 2U);
     assert(lv_obj_get_child_count(host) == UI_DOCK_TYPE_COUNT);
@@ -143,10 +150,10 @@ int main(void)
         assert(ui_bottom_surface_get_state(&state));
         assert(state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE);
         assert(state.owner_id == card.id);
-        int32_t expected_height = type <= UI_DOCK_TYPE_ACTION ?
-                                  UI_BOTTOM_SURFACE_MINI_HEIGHT :
-                                  UI_BOTTOM_SURFACE_NORMAL_HEIGHT;
-        assert(lv_obj_get_height(surface) == expected_height);
+        assert(lv_obj_get_parent(surface) == slot);
+        assert(lv_obj_get_x(surface) == 0 && lv_obj_get_y(surface) == 0);
+        assert(lv_obj_get_width(surface) == UI_BOTTOM_SURFACE_WIDTH);
+        assert(lv_obj_get_height(surface) == UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
 
         for(uint8_t child_index = 0; child_index < UI_DOCK_TYPE_COUNT;
             child_index++) {
@@ -283,7 +290,9 @@ int main(void)
     ui_bottom_surface_state_t final_state;
     assert(ui_bottom_surface_get_state(&final_state));
     assert(final_state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
-    assert(lv_obj_get_child_count(lv_layer_top()) == 1U);
+    assert(lv_obj_get_parent(surface) == slot);
+    assert(lv_obj_get_x(surface) == 0 && lv_obj_get_y(surface) == 0);
+    assert(lv_obj_get_child_count(lv_layer_top()) == 0U);
 
     ui_dock_controller_deinit();
     ui_dock_view_deinit();

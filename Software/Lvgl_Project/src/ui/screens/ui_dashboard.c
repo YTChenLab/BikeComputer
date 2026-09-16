@@ -75,6 +75,7 @@
 #include "../core/ui_bottom_surface.h"
 #include "../core/ui_sizes.h"
 #include "../core/ui_theme.h"
+#include "../design/ui_design_tokens.h"
 
 #include "lvgl/src/draw/lv_draw_triangle.h"
 
@@ -208,6 +209,7 @@
  * Dashboard 根 Screen。
  */
 static lv_obj_t *s_screen = NULL;
+static lv_obj_t *s_bottom_surface_slot = NULL;
 
 
 /*
@@ -1490,8 +1492,17 @@ void ui_dashboard_create(void)
     dashboard_create_metrics();
 
 
-    /* 5. Dynamic Card 内容挂入唯一 Bottom Interaction Surface。 */
-    if(ui_bottom_surface_create(lv_layer_top())) {
+    /* 5. 首页底部真实槽位：Surface 在这里原位替换内容，不作为弹窗叠加。 */
+    s_bottom_surface_slot = lv_obj_create(s_screen);
+    lv_obj_remove_style_all(s_bottom_surface_slot);
+    lv_obj_set_pos(s_bottom_surface_slot, UI_BOTTOM_SURFACE_X,
+                   UI_BOTTOM_SURFACE_NORMAL_Y);
+    lv_obj_set_size(s_bottom_surface_slot, UI_BOTTOM_SURFACE_WIDTH,
+                    UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
+    lv_obj_clear_flag(s_bottom_surface_slot,
+                      LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(s_bottom_surface_slot, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+    if(ui_bottom_surface_create(s_bottom_surface_slot)) {
         ui_dynamic_card_manager_create(
             ui_bottom_surface_dynamic_host());
     }

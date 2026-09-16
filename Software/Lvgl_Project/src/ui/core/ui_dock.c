@@ -193,8 +193,8 @@ bool ui_dock_hide(uint32_t id)
     if(id == 0) return false;
     if(s_dock.visible && s_dock.active.id == id) {
         ui_dock_card_t hidden = s_dock.active;
-        notify(UI_DOCK_EVENT_HIDDEN, &hidden);
         s_dock.visible = false;
+        notify(UI_DOCK_EVENT_HIDDEN, &hidden);
         (void)activate_next();
         return true;
     }
@@ -274,7 +274,11 @@ void ui_dock_clear(void)
     ui_dock_observer_cb_t observer = s_dock.observer;
     void *user_data = s_dock.observer_user_data;
     uint32_t dropped_count = s_dock.dropped_count;
-    if(s_dock.visible) notify(UI_DOCK_EVENT_HIDDEN, &s_dock.active);
+    if(s_dock.visible) {
+        ui_dock_card_t hidden = s_dock.active;
+        s_dock.visible = false;
+        notify(UI_DOCK_EVENT_HIDDEN, &hidden);
+    }
     memset(&s_dock, 0, sizeof(s_dock));
     s_dock.observer = observer;
     s_dock.observer_user_data = user_data;

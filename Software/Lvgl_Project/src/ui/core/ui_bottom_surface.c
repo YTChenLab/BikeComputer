@@ -111,19 +111,34 @@ static void apply_dynamic_focus(void)
     bool focused = s_surface.dynamic_focused &&
                    s_surface.current.mode ==
                        UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE;
+    bool interaction = s_surface.current.mode ==
+                       UI_BOTTOM_SURFACE_INTERACTION_MODE;
+    lv_color_t border = UI_TOKEN_COLOR_SURFACE_BORDER;
+    int32_t width = UI_TOKEN_BORDER_THIN;
+    if(interaction &&
+       s_surface.current.priority == UI_BOTTOM_SURFACE_PRIORITY_P0_CRITICAL) {
+        border = UI_TOKEN_COLOR_CRITICAL;
+        width = UI_TOKEN_BORDER_FOCUS;
+    }
+    else if(interaction &&
+            s_surface.current.priority <=
+                UI_BOTTOM_SURFACE_PRIORITY_P2_RIDE_STATE) {
+        border = UI_TOKEN_COLOR_ACCENT;
+        width = UI_TOKEN_BORDER_FOCUS;
+    }
+    else if(focused) {
+        border = UI_TOKEN_COLOR_ACCENT;
+        width = UI_TOKEN_BORDER_FOCUS;
+    }
     lv_obj_set_style_border_color(
-        s_surface.root,
-        focused ? UI_TOKEN_COLOR_ACCENT : UI_TOKEN_COLOR_SURFACE_BORDER,
-        0);
-    lv_obj_set_style_border_width(
-        s_surface.root,
-        focused ? UI_TOKEN_BORDER_FOCUS : UI_TOKEN_BORDER_THIN,
-        0);
-    lv_obj_set_style_shadow_color(s_surface.root, UI_TOKEN_COLOR_ACCENT, 0);
-    lv_obj_set_style_shadow_width(s_surface.root, focused ? 8 : 0, 0);
+        s_surface.root, border, 0);
+    lv_obj_set_style_border_width(s_surface.root, width, 0);
+    lv_obj_set_style_shadow_color(s_surface.root, border, 0);
+    lv_obj_set_style_shadow_width(s_surface.root,
+                                  focused || interaction ? 8 : 0, 0);
     lv_obj_set_style_shadow_opa(
         s_surface.root,
-        focused ? UI_TOKEN_OPA_DISABLED : UI_TOKEN_OPA_HIDDEN,
+        focused || interaction ? UI_TOKEN_OPA_DISABLED : UI_TOKEN_OPA_HIDDEN,
         0);
 }
 
@@ -268,7 +283,7 @@ bool ui_bottom_surface_present_interaction(
             apply_state(animated);
             return true;
         }
-        if(priority >= s_surface.current.priority ||
+        if(priority > s_surface.current.priority ||
            s_surface.restore_depth >= UI_BOTTOM_SURFACE_STACK_MAX)
             return false;
         s_surface.restore[s_surface.restore_depth++] = s_surface.current;
@@ -290,6 +305,25 @@ bool ui_bottom_surface_update_interaction(uint32_t owner_id,
        s_surface.current.owner_id != owner_id ||
        size >= UI_BOTTOM_SURFACE_SIZE_COUNT) return false;
     s_surface.current.size = size;
+    apply_state(animated);
+    return true;
+}
+
+bool ui_bottom_surface_replace_interaction(
+    uint32_t owner_id,
+    ui_bottom_surface_size_t size,
+    ui_bottom_surface_priority_t priority,
+    bool animated)
+{
+    if(owner_id == UI_BOTTOM_SURFACE_NO_OWNER ||
+       size >= UI_BOTTOM_SURFACE_SIZE_COUNT ||
+       priority > UI_BOTTOM_SURFACE_PRIORITY_P4_NORMAL) return false;
+    if(s_surface.current.mode != UI_BOTTOM_SURFACE_INTERACTION_MODE)
+        return ui_bottom_surface_present_interaction(owner_id, size, priority,
+                                                     animated);
+    s_surface.current.owner_id = owner_id;
+    s_surface.current.size = size;
+    s_surface.current.priority = priority;
     apply_state(animated);
     return true;
 }

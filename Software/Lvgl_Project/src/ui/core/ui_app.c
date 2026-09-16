@@ -99,6 +99,7 @@ static void app_command_changed(const ui_command_result_t *result,
 static void app_handle_key(uint32_t key);
 static bool app_submit_command(ui_command_type_t type, int32_t value,
                                uint32_t timeout_ms);
+static void app_publish_command_feedback(const ui_command_result_t *result);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -281,11 +282,95 @@ static bool app_submit_command(ui_command_type_t type, int32_t value,
     return command_id != 0U;
 }
 
+static const char *app_command_label(ui_command_type_t type)
+{
+    switch(type) {
+        case UI_COMMAND_WIFI_SET_ENABLED: return "WIFI";
+        case UI_COMMAND_BLUETOOTH_SET_ENABLED: return "BLUETOOTH";
+        case UI_COMMAND_GNSS_SET_ENABLED: return "GPS";
+        case UI_COMMAND_POWER_SAVE_SET_ENABLED: return "POWER SAVE";
+        case UI_COMMAND_SOUND_SET_LEVEL: return "VOLUME";
+        case UI_COMMAND_BRIGHTNESS_SET_LEVEL: return "BRIGHTNESS";
+        case UI_COMMAND_RIDE_START: return "START RIDE";
+        case UI_COMMAND_RIDE_PAUSE: return "PAUSE RIDE";
+        case UI_COMMAND_RIDE_RESUME: return "RESUME RIDE";
+        case UI_COMMAND_RIDE_UPLOAD: return "UPLOAD RIDE DATA";
+        case UI_COMMAND_MEDIA_SET_PLAYING:
+        case UI_COMMAND_MEDIA_SET_TRACK:
+        case UI_COMMAND_MEDIA_SET_MODE:
+        case UI_COMMAND_MEDIA_PREVIOUS:
+        case UI_COMMAND_MEDIA_TOGGLE_PLAYBACK:
+        case UI_COMMAND_MEDIA_NEXT:
+        case UI_COMMAND_MEDIA_CYCLE_MODE:
+            return "MEDIA CONTROL";
+        default: return "DEVICE REQUEST";
+    }
+}
+
+static bool app_command_feedback_needed(const ui_command_result_t *result)
+{
+    if(result == NULL) return false;
+    switch(result->type) {
+        case UI_COMMAND_GNSS_ACQUIRE_FIX:
+        case UI_COMMAND_RIDE_FINISH:
+        case UI_COMMAND_RIDE_SAVE:
+            return false;
+        case UI_COMMAND_RIDE_START:
+        case UI_COMMAND_RIDE_PAUSE:
+        case UI_COMMAND_RIDE_RESUME:
+        case UI_COMMAND_MEDIA_SET_PLAYING:
+        case UI_COMMAND_MEDIA_SET_TRACK:
+        case UI_COMMAND_MEDIA_SET_MODE:
+        case UI_COMMAND_MEDIA_PREVIOUS:
+        case UI_COMMAND_MEDIA_TOGGLE_PLAYBACK:
+        case UI_COMMAND_MEDIA_NEXT:
+        case UI_COMMAND_MEDIA_CYCLE_MODE:
+            return result->status != UI_COMMAND_STATUS_PENDING &&
+                   result->status != UI_COMMAND_STATUS_SUCCESS;
+        default:
+            return true;
+    }
+}
+
+static void app_publish_command_feedback(const ui_command_result_t *result)
+{
+    if(!app_command_feedback_needed(result)) return;
+    ui_event_t event = {0};
+    event.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
+    event.source_id = result->id;
+    event.dedupe_key = 0xC001U;
+    snprintf(event.message, sizeof(event.message), "%s",
+             app_command_label(result->type));
+    if(result->status == UI_COMMAND_STATUS_PENDING) {
+        event.type = UI_EVENT_COMMAND_PENDING;
+        snprintf(event.title, sizeof(event.title), "PROCESSING");
+    }
+    else if(result->status == UI_COMMAND_STATUS_SUCCESS) {
+        event.type = UI_EVENT_COMMAND_SUCCESS;
+        event.timeout_ms = 1200U;
+        snprintf(event.title, sizeof(event.title), "DONE");
+    }
+    else {
+        event.type = UI_EVENT_COMMAND_FAILED;
+        event.timeout_ms = 6000U;
+        snprintf(event.title, sizeof(event.title), "%s",
+                 result->status == UI_COMMAND_STATUS_TIMEOUT ?
+                 "TIMEOUT" :
+                 (result->status == UI_COMMAND_STATUS_REJECTED ?
+                  "REJECTED" : "FAILED"));
+        snprintf(event.primary_action, sizeof(event.primary_action), "CLOSE");
+    }
+    (void)ui_event_bus_publish(&event);
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+}
+
 static void app_command_changed(const ui_command_result_t *result,
-                                void *user_data)
+                                 void *user_data)
 {
     (void)user_data;
-    if(result == NULL || result->status == UI_COMMAND_STATUS_PENDING) return;
+    if(result == NULL) return;
+    app_publish_command_feedback(result);
+    if(result->status == UI_COMMAND_STATUS_PENDING) return;
 
     if(result->status == UI_COMMAND_STATUS_SUCCESS) {
         switch(result->type) {

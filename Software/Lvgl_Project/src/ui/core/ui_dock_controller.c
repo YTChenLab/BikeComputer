@@ -19,7 +19,8 @@ enum
     DOCK_ID_NAVIGATION = 0x1005,
     DOCK_ID_MEDIA = 0x1006,
     DOCK_ID_STORAGE = 0x1007,
-    DOCK_ID_CONTROL = 0x1008
+    DOCK_ID_CONTROL = 0x1008,
+    DOCK_ID_COMMAND = 0x1009
 };
 
 typedef struct
@@ -131,6 +132,10 @@ static void dock_action(uint32_t card_id, ui_dock_interaction_t interaction,
         publish_action(UI_EVENT_CONTROL_CHANGED,
                        UI_EVENT_PRIORITY_P3_USER_ACTION, card_id, value);
     }
+    else if(card_id == DOCK_ID_COMMAND &&
+            interaction == UI_DOCK_INTERACTION_PRIMARY) {
+        (void)ui_dock_hide(card_id);
+    }
 }
 
 static ui_dock_card_t base_card(const ui_event_t *event, uint32_t id,
@@ -151,7 +156,8 @@ static ui_dock_card_t base_card(const ui_event_t *event, uint32_t id,
 
 static bool present(ui_dock_card_t *card, uint32_t timeout_ms)
 {
-    bool shown = ui_dock_show(card);
+    bool shown = ui_dock_update(card);
+    if(!shown) shown = ui_dock_show(card);
     if(shown) schedule_timeout(card->id, timeout_ms);
     else s_controller.mapping_failures++;
     return shown;
@@ -289,6 +295,36 @@ static void map_event(const ui_event_t *event, void *user_data)
             copy_text(card.message, sizeof(card.message), event->message, "拖动滑条进行调整");
             if(card.maximum <= card.minimum) { card.minimum = 0; card.maximum = 100; }
             (void)present(&card, timeout ? timeout : 2500);
+            break;
+        case UI_EVENT_COMMAND_PENDING:
+            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
+            card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+            copy_text(card.title, sizeof(card.title), event->title,
+                      "PROCESSING");
+            copy_text(card.message, sizeof(card.message), event->message,
+                      "DEVICE REQUEST");
+            card.dismissible = false;
+            (void)present(&card, 0);
+            break;
+        case UI_EVENT_COMMAND_SUCCESS:
+            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
+            card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+            copy_text(card.title, sizeof(card.title), event->title,
+                      "DONE");
+            copy_text(card.message, sizeof(card.message), event->message,
+                      "DEVICE STATE UPDATED");
+            (void)present(&card, timeout ? timeout : 1200);
+            break;
+        case UI_EVENT_COMMAND_FAILED:
+            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_ACTION);
+            card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+            copy_text(card.title, sizeof(card.title), event->title,
+                      "FAILED");
+            copy_text(card.message, sizeof(card.message), event->message,
+                      "DEVICE REQUEST FAILED");
+            copy_text(card.primary_action, sizeof(card.primary_action),
+                      event->primary_action, "CLOSE");
+            (void)present(&card, timeout ? timeout : 6000);
             break;
         case UI_EVENT_RIDE_GO:
         case UI_EVENT_RIDE_FINISH_CONFIRMED:

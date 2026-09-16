@@ -57,11 +57,20 @@ int main(void)
     ui_bottom_surface_set_dynamic_focus(false);
     assert(lv_obj_get_style_border_width(root, 0) == UI_TOKEN_BORDER_THIN);
 
+    ui_bottom_surface_state_t state;
     assert(ui_bottom_surface_present_interaction(
         100U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
         UI_BOTTOM_SURFACE_PRIORITY_P3_USER_ACTION, false));
     assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_present_interaction(
+        150U, UI_BOTTOM_SURFACE_SIZE_MINI,
+        UI_BOTTOM_SURFACE_PRIORITY_P3_USER_ACTION, false));
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.owner_id == 150U && state.restore_depth == 1U);
+    assert(ui_bottom_surface_dismiss_interaction(150U, false));
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.owner_id == 100U && state.restore_depth == 0U);
     assert(!ui_bottom_surface_present_interaction(
         200U, UI_BOTTOM_SURFACE_SIZE_MINI,
         UI_BOTTOM_SURFACE_PRIORITY_P4_NORMAL, false));
@@ -69,7 +78,6 @@ int main(void)
         200U, UI_BOTTOM_SURFACE_SIZE_MINI,
         UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY, false));
 
-    ui_bottom_surface_state_t state;
     assert(ui_bottom_surface_get_state(&state));
     assert(state.owner_id == 200U && state.restore_depth == 1U);
     assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_MINI_HEIGHT);
@@ -77,14 +85,21 @@ int main(void)
     assert(ui_bottom_surface_dismiss_interaction(200U, false));
     assert(ui_bottom_surface_get_state(&state));
     assert(state.owner_id == 100U && state.restore_depth == 0U);
+    assert(ui_bottom_surface_replace_interaction(
+        101U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
+        UI_BOTTOM_SURFACE_PRIORITY_P0_CRITICAL, false));
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.owner_id == 101U && state.restore_depth == 0U);
+    assert(lv_color_eq(lv_obj_get_style_border_color(root, 0),
+                       UI_TOKEN_COLOR_CRITICAL));
     assert(ui_bottom_surface_update_interaction(
-        100U, UI_BOTTOM_SURFACE_SIZE_EXPANDED, false));
+        101U, UI_BOTTOM_SURFACE_SIZE_EXPANDED, false));
     assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_EXPANDED_HEIGHT);
     assert(lv_obj_get_y(root) ==
            UI_TOKEN_SCREEN_HEIGHT - UI_BOTTOM_SURFACE_BOTTOM_MARGIN -
            UI_BOTTOM_SURFACE_EXPANDED_HEIGHT);
 
-    assert(ui_bottom_surface_dismiss_interaction(100U, false));
+    assert(ui_bottom_surface_dismiss_interaction(101U, false));
     assert(ui_bottom_surface_get_state(&state));
     assert(state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
     assert(state.size == UI_BOTTOM_SURFACE_SIZE_NORMAL);
@@ -93,6 +108,12 @@ int main(void)
     assert(lv_obj_get_y(root) == UI_BOTTOM_SURFACE_NORMAL_Y);
 
     ui_bottom_surface_set_normal_page_active(false);
+    assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_present_interaction(
+        300U, UI_BOTTOM_SURFACE_SIZE_MINI,
+        UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY, false));
+    assert(!lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_dismiss_interaction(300U, false));
     assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
     assert(s_observer_calls >= 6U);
 

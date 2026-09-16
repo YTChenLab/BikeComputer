@@ -1,10 +1,12 @@
 #include "ui/components/dock/ui_dock_view.h"
+#include "ui/core/ui_bottom_surface.h"
 #include "ui/core/ui_dock.h"
 #include "ui/core/ui_dock_controller.h"
 #include "ui/core/ui_event_bus.h"
 #include "ui/core/ui_motion.h"
 #include "ui/core/ui_sound.h"
 #include "ui/core/ui_theme.h"
+#include "ui/design/ui_design_tokens.h"
 #include "lvgl.h"
 
 #include <assert.h>
@@ -13,11 +15,6 @@
 
 #define TEST_DISPLAY_W 480
 #define TEST_DISPLAY_H 854
-#define TEST_DOCK_X      12
-#define TEST_DOCK_Y     682
-#define TEST_DOCK_W     456
-#define TEST_DOCK_H     156
-
 static uint8_t s_draw_buffer[TEST_DISPLAY_W * 20 * 2];
 static ui_event_type_t s_last_event = UI_EVENT_COUNT;
 
@@ -85,7 +82,12 @@ static void test_dock_font_coverage(void)
         "音乐播放", "未提供曲目信息", "存储异常", "骑行数据保存失败",
         "参数调节", "拖动滑条进行调整", "重试", "检查", "结束",
         "取消", "打开", "模式", "稍后", "正在保存骑行数据",
-        "保存完成后自动进入骑行总结"
+        "保存完成后自动进入骑行总结",
+        "PROCESSING", "DEVICE REQUEST", "DONE", "DEVICE STATE UPDATED",
+        "FAILED", "DEVICE REQUEST FAILED", "TIMEOUT", "REJECTED", "CLOSE",
+        "WIFI", "BLUETOOTH", "GPS", "POWER SAVE", "VOLUME", "BRIGHTNESS",
+        "START RIDE", "PAUSE RIDE", "RESUME RIDE", "UPLOAD RIDE DATA",
+        "MEDIA CONTROL"
     };
     for(uint32_t text_index = 0;
         text_index < sizeof(texts) / sizeof(texts[0]); text_index++) {
@@ -115,37 +117,44 @@ int main(void)
     ui_motion_init();
     ui_sound_init();
     ui_event_bus_init();
+    ui_bottom_surface_init();
+    assert(ui_bottom_surface_create(lv_layer_top()));
+    ui_bottom_surface_set_normal_page_active(true);
     ui_dock_init();
     ui_dock_view_init();
     ui_dock_controller_init();
     test_dock_font_coverage();
 
-    lv_obj_t *layer = ui_dock_view_root();
-    assert(layer != NULL);
-    assert(lv_obj_has_flag(layer, LV_OBJ_FLAG_HIDDEN));
-    assert(lv_obj_get_child_count(layer) == 1);
-    lv_obj_t *viewport = lv_obj_get_child(layer, 0);
-    lv_obj_update_layout(layer);
-    assert(lv_obj_get_x(viewport) == TEST_DOCK_X);
-    assert(lv_obj_get_y(viewport) == TEST_DOCK_Y);
-    assert(lv_obj_get_width(viewport) == TEST_DOCK_W);
-    assert(lv_obj_get_height(viewport) == TEST_DOCK_H);
-    assert(lv_obj_get_child_count(viewport) == UI_DOCK_TYPE_COUNT);
+    lv_obj_t *surface = ui_bottom_surface_root();
+    lv_obj_t *host = ui_dock_view_root();
+    assert(surface != NULL && host == ui_bottom_surface_interaction_host());
+    assert(lv_obj_has_flag(host, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_child_count(surface) == 2U);
+    assert(lv_obj_get_child_count(host) == UI_DOCK_TYPE_COUNT);
 
     for(uint8_t type = 0; type < UI_DOCK_TYPE_COUNT; type++) {
         ui_dock_card_t card = make_card((ui_dock_type_t)type);
         if(type == 0) assert(ui_dock_show(&card));
         else assert(ui_dock_replace(&card));
         finish_animations();
+        lv_obj_update_layout(surface);
         assert(ui_dock_view_is_visible());
+        ui_bottom_surface_state_t state;
+        assert(ui_bottom_surface_get_state(&state));
+        assert(state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE);
+        assert(state.owner_id == card.id);
+        int32_t expected_height = type <= UI_DOCK_TYPE_ACTION ?
+                                  UI_BOTTOM_SURFACE_MINI_HEIGHT :
+                                  UI_BOTTOM_SURFACE_NORMAL_HEIGHT;
+        assert(lv_obj_get_height(surface) == expected_height);
 
         for(uint8_t child_index = 0; child_index < UI_DOCK_TYPE_COUNT;
             child_index++) {
-            lv_obj_t *card_root = lv_obj_get_child(viewport, child_index);
+            lv_obj_t *card_root = lv_obj_get_child(host, child_index);
             bool hidden = lv_obj_has_flag(card_root, LV_OBJ_FLAG_HIDDEN);
             assert(hidden == (child_index != type));
-            assert(lv_obj_get_width(card_root) == TEST_DOCK_W);
-            assert(lv_obj_get_height(card_root) == TEST_DOCK_H);
+            assert(lv_obj_get_width(card_root) == lv_obj_get_width(host));
+            assert(lv_obj_get_height(card_root) == lv_obj_get_height(host));
             if(child_index == type) assert(lv_obj_get_y(card_root) == 0);
         }
     }
@@ -153,6 +162,26 @@ int main(void)
     const ui_dock_card_t *current = ui_dock_current();
     assert(current != NULL);
     assert(ui_dock_hide(current->id));
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+    ui_bottom_surface_state_t restored_state;
+    assert(ui_bottom_surface_get_state(&restored_state));
+    assert(restored_state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
+
+    ui_dock_card_t same_priority_a = make_card(UI_DOCK_TYPE_INFO);
+    ui_dock_card_t same_priority_b = make_card(UI_DOCK_TYPE_ACTION);
+    same_priority_a.id = 500U;
+    same_priority_b.id = 501U;
+    assert(ui_dock_show(&same_priority_a));
+    assert(ui_dock_show(&same_priority_b));
+    assert(ui_bottom_surface_get_state(&restored_state));
+    assert(restored_state.owner_id == same_priority_b.id);
+    assert(restored_state.restore_depth == 1U);
+    assert(ui_dock_hide(same_priority_b.id));
+    assert(ui_bottom_surface_get_state(&restored_state));
+    assert(restored_state.owner_id == same_priority_a.id);
+    assert(restored_state.restore_depth == 0U);
+    assert(ui_dock_hide(same_priority_a.id));
     finish_animations();
     assert(!ui_dock_view_is_visible());
 
@@ -165,7 +194,7 @@ int main(void)
     assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1);
     finish_animations();
     assert(ui_dock_view_is_visible());
-    lv_obj_t *action_root = lv_obj_get_child(viewport, UI_DOCK_TYPE_ACTION);
+    lv_obj_t *action_root = lv_obj_get_child(host, UI_DOCK_TYPE_ACTION);
     assert(!lv_obj_has_flag(action_root, LV_OBJ_FLAG_HIDDEN));
     lv_obj_t *primary_button = lv_obj_get_child(action_root, 6);
     assert(primary_button != NULL);
@@ -175,7 +204,7 @@ int main(void)
     assert(strcmp(lv_label_get_text(primary_label), "GO") == 0);
     assert(lv_obj_get_width(primary_label) == lv_obj_get_content_width(primary_button));
     assert(lv_obj_get_height(primary_label) > 0);
-    assert(lv_obj_get_style_bg_opa(action_root, LV_PART_MAIN) == LV_OPA_COVER);
+    assert(lv_obj_get_style_bg_opa(surface, LV_PART_MAIN) == LV_OPA_COVER);
     assert(lv_obj_send_event(primary_button, LV_EVENT_CLICKED, NULL) == LV_RESULT_OK);
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
     assert(s_last_event == UI_EVENT_RIDE_GO);
@@ -188,7 +217,7 @@ int main(void)
     assert(ui_event_bus_publish(&finish_request));
     assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1);
     finish_animations();
-    lv_obj_t *confirm_root = lv_obj_get_child(viewport, UI_DOCK_TYPE_CONFIRM);
+    lv_obj_t *confirm_root = lv_obj_get_child(host, UI_DOCK_TYPE_CONFIRM);
     assert(!lv_obj_has_flag(confirm_root, LV_OBJ_FLAG_HIDDEN));
     lv_obj_t *badge = lv_obj_get_child(confirm_root, 4);
     lv_obj_t *close_button = lv_obj_get_child(confirm_root, 5);
@@ -197,10 +226,64 @@ int main(void)
     assert(strcmp(lv_label_get_text(badge), "CONFIRM") == 0);
     assert(lv_obj_get_x(badge) + lv_obj_get_width(badge) <
            lv_obj_get_x(close_button));
-    assert(lv_text_get_width("CONFIRM", 7, &lv_font_montserrat_16, 0) <=
+    assert(lv_text_get_width("CONFIRM", 7, UI_FONT_SURFACE_BADGE, 0) <=
            lv_obj_get_width(badge));
     assert(strcmp(lv_label_get_text(lv_obj_get_child(no_button, 0)), "NO") == 0);
     assert(strcmp(lv_label_get_text(lv_obj_get_child(yes_button, 0)), "YES") == 0);
+
+    assert(lv_obj_send_event(no_button, LV_EVENT_CLICKED, NULL) == LV_RESULT_OK);
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+
+    ui_event_t command_pending = {0};
+    command_pending.type = UI_EVENT_COMMAND_PENDING;
+    command_pending.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
+    snprintf(command_pending.title, sizeof(command_pending.title),
+             "PROCESSING");
+    snprintf(command_pending.message, sizeof(command_pending.message), "WIFI");
+    assert(ui_event_bus_publish(&command_pending));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    finish_animations();
+    assert(ui_dock_view_is_visible());
+    assert(ui_dock_current() != NULL);
+    assert(ui_dock_current()->type == UI_DOCK_TYPE_INFO);
+    assert(strcmp(ui_dock_current()->title, "PROCESSING") == 0);
+
+    ui_event_t command_success = command_pending;
+    command_success.type = UI_EVENT_COMMAND_SUCCESS;
+    command_success.timeout_ms = 1200U;
+    snprintf(command_success.title, sizeof(command_success.title), "DONE");
+    assert(ui_event_bus_publish(&command_success));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    assert(strcmp(ui_dock_current()->title, "DONE") == 0);
+    ui_dock_controller_tick(1200U);
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+
+    ui_event_t command_failed = command_pending;
+    command_failed.type = UI_EVENT_COMMAND_FAILED;
+    snprintf(command_failed.title, sizeof(command_failed.title), "FAILED");
+    snprintf(command_failed.primary_action,
+             sizeof(command_failed.primary_action), "CLOSE");
+    assert(ui_event_bus_publish(&command_failed));
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+    finish_animations();
+    assert(ui_dock_current() != NULL);
+    assert(ui_dock_current()->type == UI_DOCK_TYPE_ACTION);
+    action_root = lv_obj_get_child(host, UI_DOCK_TYPE_ACTION);
+    primary_button = lv_obj_get_child(action_root, 6);
+    assert(strcmp(lv_label_get_text(lv_obj_get_child(primary_button, 0)),
+                  "CLOSE") == 0);
+    assert(lv_obj_send_event(primary_button, LV_EVENT_CLICKED, NULL) ==
+           LV_RESULT_OK);
+    finish_animations();
+    assert(!ui_dock_view_is_visible());
+
+    ui_bottom_surface_state_t final_state;
+    assert(ui_bottom_surface_get_state(&final_state));
+    assert(final_state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
+    assert(lv_obj_get_child_count(lv_layer_top()) == 1U);
 
     ui_dock_controller_deinit();
     ui_dock_view_deinit();

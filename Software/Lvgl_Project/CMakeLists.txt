@@ -224,13 +224,16 @@ if(BUILD_TESTING)
         tests/ui_dock_view_test.c
         src/ui/components/dock/ui_dock_templates.c
         src/ui/components/dock/ui_dock_view.c
+        src/ui/core/ui_bottom_surface.c
         src/ui/core/ui_dock.c
         src/ui/core/ui_dock_controller.c
         src/ui/core/ui_event_bus.c
         src/ui/core/ui_motion.c
         src/ui/core/ui_sound.c
+        src/ui/design/ui_component_style.c
         src/ui/fonts/ui_font_misans_ui_20.c
         src/ui/fonts/ui_font_misans_en_18.c
+        src/ui/fonts/ui_font_misans_status_16.c
     )
     target_include_directories(ui_dock_view_test PRIVATE
         ${PROJECT_SOURCE_DIR}/src

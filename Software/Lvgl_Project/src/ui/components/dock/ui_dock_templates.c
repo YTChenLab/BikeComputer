@@ -2,13 +2,11 @@
 
 #include "../../core/ui_colors.h"
 #include "../../core/ui_theme.h"
+#include "../../design/ui_design_tokens.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#define DOCK_CARD_W 456
-#define DOCK_CARD_H 156
 
 static lv_obj_t *make_label(lv_obj_t *parent, int32_t x, int32_t y,
                             int32_t width, const char *text,
@@ -34,11 +32,11 @@ static lv_obj_t *make_button(lv_obj_t *parent, int32_t x, int32_t y,
     lv_obj_remove_style_all(button);
     lv_obj_set_pos(button, x, y);
     lv_obj_set_size(button, width, height);
-    lv_obj_set_style_bg_color(button, UI_COLOR_BG, 0);
-    lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(button, UI_COLOR_WHITE, 0);
-    lv_obj_set_style_border_width(button, 1, 0);
-    lv_obj_set_style_radius(button, 12, 0);
+    lv_obj_set_style_bg_color(button, UI_TOKEN_COLOR_CANVAS, 0);
+    lv_obj_set_style_bg_opa(button, UI_TOKEN_OPA_PRIMARY, 0);
+    lv_obj_set_style_border_color(button, UI_TOKEN_COLOR_SURFACE_BORDER, 0);
+    lv_obj_set_style_border_width(button, UI_TOKEN_BORDER_THIN, 0);
+    lv_obj_set_style_radius(button, UI_TOKEN_RADIUS_MEDIUM, 0);
     lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(button, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(button, event_cb, LV_EVENT_ALL,
@@ -58,7 +56,7 @@ static void add_button_label(lv_obj_t *button, lv_obj_t **label,
     lv_label_set_text(*label, text);
     lv_label_set_long_mode(*label, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(*label, LV_PCT(100));
-    lv_obj_set_style_text_color(*label, UI_COLOR_WHITE, 0);
+    lv_obj_set_style_text_color(*label, UI_TOKEN_COLOR_TEXT_PRIMARY, 0);
     lv_obj_set_style_text_font(*label, font, 0);
     lv_obj_set_style_text_align(*label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_center(*label);
@@ -72,49 +70,45 @@ static void create_common(ui_dock_template_t *view, lv_obj_t *parent,
     view->type = type;
     view->root = lv_obj_create(parent);
     lv_obj_remove_style_all(view->root);
-    lv_obj_set_size(view->root, DOCK_CARD_W, DOCK_CARD_H);
+    lv_obj_set_size(view->root, LV_PCT(100), LV_PCT(100));
     lv_obj_set_pos(view->root, 0, 0);
-    lv_obj_set_style_bg_color(view->root, UI_COLOR_BG, 0);
-    /* A system Dock is a foreground surface, never a translucent page. */
-    lv_obj_set_style_bg_opa(view->root, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(view->root, UI_COLOR_WHITE, 0);
-    lv_obj_set_style_border_width(view->root, 1, 0);
-    lv_obj_set_style_radius(view->root, 16, 0);
-    lv_obj_set_style_clip_corner(view->root, true, 0);
+    lv_obj_set_style_bg_opa(view->root, UI_TOKEN_OPA_HIDDEN, 0);
+    lv_obj_set_style_border_width(view->root, 0, 0);
+    lv_obj_set_style_radius(view->root, 0, 0);
     lv_obj_clear_flag(view->root, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(view->root, LV_OBJ_FLAG_CLICKABLE);
 
     view->accent = lv_obj_create(view->root);
     lv_obj_remove_style_all(view->accent);
-    lv_obj_set_pos(view->accent, 0, 22);
-    lv_obj_set_size(view->accent, 4, 112);
-    lv_obj_set_style_bg_color(view->accent, UI_COLOR_YELLOW, 0);
-    lv_obj_set_style_bg_opa(view->accent, LV_OPA_COVER, 0);
+    lv_obj_set_pos(view->accent, 0, 18);
+    lv_obj_set_size(view->accent, UI_TOKEN_SPACE_4, 120);
+    lv_obj_set_style_bg_color(view->accent, UI_TOKEN_COLOR_ACCENT, 0);
+    lv_obj_set_style_bg_opa(view->accent, UI_TOKEN_OPA_PRIMARY, 0);
 
     view->icon_bg = lv_obj_create(view->root);
     lv_obj_remove_style_all(view->icon_bg);
     lv_obj_set_pos(view->icon_bg, 16, 45);
     lv_obj_set_size(view->icon_bg, 46, 46);
-    lv_obj_set_style_bg_color(view->icon_bg, UI_COLOR_BG, 0);
-    lv_obj_set_style_bg_opa(view->icon_bg, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(view->icon_bg, UI_COLOR_YELLOW, 0);
-    lv_obj_set_style_border_width(view->icon_bg, 2, 0);
+    lv_obj_set_style_bg_color(view->icon_bg, UI_TOKEN_COLOR_CANVAS, 0);
+    lv_obj_set_style_bg_opa(view->icon_bg, UI_TOKEN_OPA_PRIMARY, 0);
+    lv_obj_set_style_border_color(view->icon_bg, UI_TOKEN_COLOR_ACCENT, 0);
+    lv_obj_set_style_border_width(view->icon_bg, UI_TOKEN_BORDER_FOCUS, 0);
     lv_obj_set_style_radius(view->icon_bg, LV_RADIUS_CIRCLE, 0);
     lv_obj_clear_flag(view->icon_bg, LV_OBJ_FLAG_SCROLLABLE);
 
     view->icon = make_label(view->icon_bg, 0, 11, 46, LV_SYMBOL_OK,
                             LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
     view->title = make_label(view->root, 76, 16, 230, "",
-                             UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_LEFT);
+                             UI_FONT_SURFACE_TITLE, LV_TEXT_ALIGN_LEFT);
     view->message = make_label(view->root, 76, 52, 350, "",
-                               UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_LEFT);
+                               UI_FONT_SURFACE_BODY, LV_TEXT_ALIGN_LEFT);
     /* Reserve an explicit gap before the close button; CONFIRM is the widest. */
-    view->badge = make_label(view->root, 310, 18, 94, "INFO",
-                             &lv_font_montserrat_16, LV_TEXT_ALIGN_RIGHT);
-    lv_obj_set_style_text_color(view->badge, UI_COLOR_WHITE, 0);
-    lv_obj_set_style_text_opa(view->badge, LV_OPA_70, 0);
+    view->badge = make_label(view->root, 316, 18, 98, "INFO",
+                             UI_FONT_SURFACE_BADGE, LV_TEXT_ALIGN_RIGHT);
+    lv_obj_set_style_text_color(view->badge, UI_TOKEN_COLOR_TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_opa(view->badge, UI_TOKEN_OPA_SECONDARY, 0);
 
-    view->close_button = make_button(view->root, 416, 10, 30, 30,
+    view->close_button = make_button(view->root, 424, 10, 30, 30,
                                      UI_DOCK_INTERACTION_DISMISS, event_cb);
     lv_obj_set_style_border_width(view->close_button, 0, 0);
     lv_obj_t *close_icon = make_label(view->close_button, 0, 6, 30,
@@ -141,27 +135,29 @@ static void create_action(ui_dock_template_t *view, lv_event_cb_t event_cb)
 
 static void create_confirm(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
+    lv_obj_set_height(view->accent, 184);
     lv_obj_set_width(view->message, 344);
-    view->secondary_button = make_button(view->root, 196, 94, 112, 46,
+    view->secondary_button = make_button(view->root, 204, 158, 112, 48,
                                          UI_DOCK_INTERACTION_SECONDARY,
                                          event_cb);
     add_button_label(view->secondary_button, &view->secondary_label, "NO",
                      UI_FONT_PAGE_TEXT);
-    view->primary_button = make_button(view->root, 320, 94, 112, 46,
+    view->primary_button = make_button(view->root, 328, 158, 112, 48,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "YES",
                      UI_FONT_PAGE_TEXT);
-    lv_obj_set_pos(view->message, 76, 54);
+    lv_obj_set_pos(view->message, 76, 66);
 }
 
 static void create_control(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
+    lv_obj_set_height(view->accent, 184);
     lv_obj_set_width(view->message, 245);
-    view->value_label = make_label(view->root, 338, 52, 80, "0%",
-                                   UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_RIGHT);
+    view->value_label = make_label(view->root, 346, 72, 80, "0%",
+                                   UI_FONT_SURFACE_BODY, LV_TEXT_ALIGN_RIGHT);
     view->slider = lv_slider_create(view->root);
-    lv_obj_set_pos(view->slider, 76, 104);
-    lv_obj_set_size(view->slider, 342, 14);
+    lv_obj_set_pos(view->slider, 76, 158);
+    lv_obj_set_size(view->slider, 350, 14);
     lv_obj_set_style_bg_color(view->slider, UI_COLOR_DECORATION, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(view->slider, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(view->slider, UI_COLOR_YELLOW, LV_PART_INDICATOR);
@@ -175,12 +171,14 @@ static void create_control(ui_dock_template_t *view, lv_event_cb_t event_cb)
 static void create_navigation(ui_dock_template_t *view,
                               lv_event_cb_t event_cb)
 {
-    lv_obj_set_pos(view->icon_bg, 16, 50);
-    lv_obj_set_size(view->icon_bg, 52, 52);
-    lv_obj_set_pos(view->icon, 0, 13);
-    lv_obj_set_width(view->icon, 52);
-    lv_obj_set_width(view->message, 246);
-    view->primary_button = make_button(view->root, 342, 78, 90, 52,
+    lv_obj_set_height(view->accent, 184);
+    lv_obj_set_pos(view->icon_bg, 18, 82);
+    lv_obj_set_size(view->icon_bg, 58, 58);
+    lv_obj_set_pos(view->icon, 0, 16);
+    lv_obj_set_width(view->icon, 58);
+    lv_obj_set_pos(view->message, 92, 82);
+    lv_obj_set_width(view->message, 236);
+    view->primary_button = make_button(view->root, 342, 142, 98, 54,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "OPEN",
                      &lv_font_montserrat_16);
@@ -188,22 +186,23 @@ static void create_navigation(ui_dock_template_t *view,
 
 static void create_media(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
+    lv_obj_set_height(view->accent, 184);
     lv_obj_set_width(view->message, 330);
-    view->decrement_button = make_button(view->root, 76, 92, 48, 46,
+    view->decrement_button = make_button(view->root, 76, 150, 50, 50,
                                          UI_DOCK_INTERACTION_DECREMENT,
                                          event_cb);
     make_label(view->decrement_button, 0, 11, 48, LV_SYMBOL_PREV,
                LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
-    view->toggle_button = make_button(view->root, 134, 92, 48, 46,
+    view->toggle_button = make_button(view->root, 138, 150, 50, 50,
                                       UI_DOCK_INTERACTION_TOGGLE, event_cb);
     make_label(view->toggle_button, 0, 11, 48, LV_SYMBOL_PLAY,
                LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
-    view->increment_button = make_button(view->root, 192, 92, 48, 46,
+    view->increment_button = make_button(view->root, 200, 150, 50, 50,
                                          UI_DOCK_INTERACTION_INCREMENT,
                                          event_cb);
     make_label(view->increment_button, 0, 11, 48, LV_SYMBOL_NEXT,
                LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
-    view->secondary_button = make_button(view->root, 256, 92, 112, 46,
+    view->secondary_button = make_button(view->root, 268, 150, 112, 50,
                                          UI_DOCK_INTERACTION_SECONDARY,
                                          event_cb);
     add_button_label(view->secondary_button, &view->secondary_label, "MODE",
@@ -249,7 +248,6 @@ void ui_dock_template_update(ui_dock_template_t *view,
     lv_color_t accent = priority_color(card->priority);
     lv_obj_set_style_bg_color(view->accent, accent, 0);
     lv_obj_set_style_border_color(view->icon_bg, accent, 0);
-    lv_obj_set_style_border_color(view->root, accent, 0);
     lv_label_set_text(view->icon, icons[card->type]);
     lv_label_set_text(view->title, card->title);
     lv_label_set_text(view->message, card->message);

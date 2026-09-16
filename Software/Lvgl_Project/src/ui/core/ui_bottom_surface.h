@@ -65,6 +65,11 @@ bool ui_bottom_surface_present_interaction(
 bool ui_bottom_surface_update_interaction(uint32_t owner_id,
                                           ui_bottom_surface_size_t size,
                                           bool animated);
+bool ui_bottom_surface_replace_interaction(
+    uint32_t owner_id,
+    ui_bottom_surface_size_t size,
+    ui_bottom_surface_priority_t priority,
+    bool animated);
 bool ui_bottom_surface_dismiss_interaction(uint32_t owner_id,
                                            bool animated);
 

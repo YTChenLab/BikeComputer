@@ -13,6 +13,7 @@
 #define UI_TOKEN_COLOR_TEXT_SECONDARY    lv_color_hex(0xA8ACAD)
 #define UI_TOKEN_COLOR_TEXT_TERTIARY     lv_color_hex(0x8F9495)
 #define UI_TOKEN_COLOR_ACCENT            lv_color_hex(0xFFD900)
+#define UI_TOKEN_COLOR_CRITICAL          lv_color_hex(0xFF4D4F)
 #define UI_TOKEN_COLOR_LINE              lv_color_hex(0xA7D8EF)
 #define UI_TOKEN_COLOR_SURFACE_BORDER    lv_color_hex(0xD6D8D8)
 #define UI_TOKEN_COLOR_SEGMENT_INACTIVE  lv_color_hex(0x30424F)

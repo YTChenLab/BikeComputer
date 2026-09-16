@@ -469,6 +469,19 @@ static void test_async_pc_services(void)
     ui_app_state_init();
     ui_state_adapter_init();
     ui_pc_services_register();
+    assert(!ui_pc_services_is_stationary());
+    assert(ui_pc_services_toggle_stationary());
+    ui_system_services_tick(1U);
+    assert(ui_ride_data_model_process());
+    ui_ride_data_t stopped_data;
+    assert(ui_ride_data_model_get(&stopped_data, NULL));
+    assert(stopped_data.speed == 0.0f);
+    assert(!ui_pc_services_toggle_stationary());
+    ui_system_services_tick(800U);
+    assert(ui_ride_data_model_process());
+    ui_ride_data_t moving_data;
+    assert(ui_ride_data_model_get(&moving_data, NULL));
+    assert(moving_data.speed >= 12.0f);
     s_event_count = 0;
     assert(ui_event_bus_subscribe(UI_EVENT_MASK_ALL, event_callback, NULL) > 0);
 
@@ -584,8 +597,14 @@ static void test_ride_event_workflow(void)
     ui_dock_controller_tick(1800);
     assert(!ui_dock_is_visible());
 
-    publish_and_process(UI_EVENT_RIDE_PAUSE_REQUESTED);
+    ui_event_t auto_pause = event_value(
+        UI_EVENT_RIDE_PAUSE_REQUESTED,
+        UI_EVENT_PRIORITY_P2_RIDE_STATE,
+        0, UI_RIDE_PAUSE_REASON_AUTO);
+    assert(ui_event_bus_publish(&auto_pause));
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
     assert(ui_state_machine_state() == UI_RIDE_STATE_PAUSED);
+    assert(strcmp(ui_dock_current()->title, "自动暂停") == 0);
     publish_and_process(UI_EVENT_RIDE_FINISH_REQUESTED);
     assert(ui_state_machine_state() == UI_RIDE_STATE_FINISHING);
     assert(ui_dock_current()->type == UI_DOCK_TYPE_CONFIRM);
@@ -605,6 +624,9 @@ static void test_ride_event_workflow(void)
                           UI_DOCK_INTERACTION_PRIMARY, 0));
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
     assert(ui_state_machine_state() == UI_RIDE_STATE_FINISHING);
+    assert(ui_dock_current() != NULL);
+    assert(ui_dock_current()->type == UI_DOCK_TYPE_INFO);
+    assert(strcmp(ui_dock_current()->title, "正在结束骑行") == 0);
     publish_and_process(UI_EVENT_RIDE_SAVE_STARTED);
     assert(ui_dock_current() != NULL);
     assert(ui_dock_current()->type == UI_DOCK_TYPE_INFO);

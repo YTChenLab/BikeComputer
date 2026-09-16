@@ -206,6 +206,22 @@ if(BUILD_TESTING)
         ${PROJECT_SOURCE_DIR}/src)
     add_test(NAME ui_home_data_model_test COMMAND ui_home_data_model_test)
 
+    add_executable(ui_back_key_gesture_test
+        tests/ui_back_key_gesture_test.c
+        src/ui/core/ui_back_key_gesture.c
+    )
+    target_include_directories(ui_back_key_gesture_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_back_key_gesture_test COMMAND ui_back_key_gesture_test)
+
+    add_executable(ui_auto_pause_test
+        tests/ui_auto_pause_test.c
+        src/ui/core/ui_auto_pause.c
+    )
+    target_include_directories(ui_auto_pause_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_auto_pause_test COMMAND ui_auto_pause_test)
+
     add_executable(ui_core_logic_test
         tests/ui_core_logic_test.c
         src/ui/core/ui_dock.c

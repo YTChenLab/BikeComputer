@@ -78,9 +78,12 @@ $env:PATH = "D:\Professional Software\Anaconda\Bike_SpeedView\msys2-x86_64\ucrt6
 ## PC 输入映射
 
 - 鼠标左键：模拟触摸按下、拖动和释放
-- 鼠标右键 / `Esc`：返回
+- 鼠标右键 / `Esc` / `Backspace` 单击：返回上一级（为识别双击，释放后约 280 ms 执行）
+- 鼠标右键 / `Esc` / `Backspace` 双击：骑行中手动暂停；暂停后再次双击恢复
+- 鼠标右键 / `Esc` / `Backspace` 长按约 1.2 s：骑行中打开“结束骑行”确认
 - 鼠标滚轮 / 方向键：模拟 Encoder 旋转
 - `Enter`：模拟 Encoder 按下
+- `S`：PC 调试专用，切换“移动/停止”；停止 3 s 后自动暂停，恢复移动 1 s 后自动恢复
 
 具体手势所有权和页面行为以 `src/hal/hal.c` 与 `src/ui/` 当前实现为准。
 
@@ -104,6 +107,7 @@ Phase 5 Interaction Dock 统一迁移见 [docs/UI_INTERACTION_DOCK_PHASE5.md](do
 Phase 5.1 原位切换修正见 [docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md](docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md)。
 Phase 6 页面 Slot 与 Router 生命周期迁移见 [docs/UI_PAGE_MIGRATION_PHASE6.md](docs/UI_PAGE_MIGRATION_PHASE6.md)。
 Phase 6A Home / Ride Hub 实现与验收见 [docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md](docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md)。
+返回键骑行控制与自动暂停规则见 [docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md](docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md)。
 
 ## 版本发布约定
 

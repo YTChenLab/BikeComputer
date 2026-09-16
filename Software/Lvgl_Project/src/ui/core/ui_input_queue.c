@@ -21,7 +21,8 @@ static bool valid_message(const ui_input_message_t *message)
 static bool release_class(ui_input_event_t type)
 {
     return type == UI_INPUT_TOUCH_END || type == UI_INPUT_TOUCH_CANCEL ||
-           type == UI_INPUT_BACK;
+           type == UI_INPUT_BACK || type == UI_INPUT_BACK_DOUBLE ||
+           type == UI_INPUT_BACK_LONG;
 }
 
 static bool remove_oldest_move(void)

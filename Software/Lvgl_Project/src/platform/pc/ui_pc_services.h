@@ -19,4 +19,8 @@ void ui_pc_services_set_next_command_result(bool success);
 bool ui_pc_services_gnss_busy(void);
 bool ui_pc_services_storage_busy(void);
 
+/* PC-only sensor test hook. S toggles moving/stationary in the simulator. */
+bool ui_pc_services_toggle_stationary(void);
+bool ui_pc_services_is_stationary(void);
+
 #endif /* UI_PC_SERVICES_H */

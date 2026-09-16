@@ -26,6 +26,8 @@ typedef struct
     bool next_storage_success;
     bool next_command_success;
     bool ride_data_initialized;
+    bool ride_recording;
+    bool simulate_stationary;
 } ui_pc_services_context_t;
 
 static ui_pc_services_context_t s_pc;
@@ -58,14 +60,17 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
         data.clock_minute = (uint8_t)random_value(pc, 60U);
         pc->ride_data_initialized = true;
     }
-    else {
+    else if(pc->ride_recording && !pc->simulate_stationary) {
         data.distance += (float)(1U + random_value(pc, 8U)) / 100.0f;
         data.ride_seconds += 1U;
     }
-    data.speed = (float)(120U + random_value(pc, 361U)) / 10.0f;
+    data.speed = pc->simulate_stationary ? 0.0f :
+        (float)(120U + random_value(pc, 361U)) / 10.0f;
     data.heart_rate = (uint16_t)(105U + random_value(pc, 76U));
-    data.power = (uint16_t)(90U + random_value(pc, 331U));
-    data.cadence = (uint16_t)(60U + random_value(pc, 56U));
+    data.power = pc->simulate_stationary ? 0U :
+        (uint16_t)(90U + random_value(pc, 331U));
+    data.cadence = pc->simulate_stationary ? 0U :
+        (uint16_t)(60U + random_value(pc, 56U));
     data.grade = (float)((int32_t)random_value(pc, 151U) - 50) / 10.0f;
     data.satellites = (uint8_t)(5U + random_value(pc, 12U));
     data.battery = (uint8_t)(68U + random_value(pc, 32U));
@@ -203,6 +208,14 @@ static void apply_command_state(ui_pc_services_context_t *pc)
                 ((uint8_t)pc->device_state.media_mode + 1U) %
                 UI_MEDIA_MODE_COUNT);
             fields = UI_STATE_ADAPTER_MEDIA;
+            break;
+        case UI_COMMAND_RIDE_START:
+        case UI_COMMAND_RIDE_RESUME:
+            pc->ride_recording = true;
+            break;
+        case UI_COMMAND_RIDE_PAUSE:
+        case UI_COMMAND_RIDE_FINISH:
+            pc->ride_recording = false;
             break;
         default:
             break;
@@ -353,4 +366,15 @@ bool ui_pc_services_gnss_busy(void)
 bool ui_pc_services_storage_busy(void)
 {
     return s_pc.storage_busy;
+}
+
+bool ui_pc_services_toggle_stationary(void)
+{
+    s_pc.simulate_stationary = !s_pc.simulate_stationary;
+    return s_pc.simulate_stationary;
+}
+
+bool ui_pc_services_is_stationary(void)
+{
+    return s_pc.simulate_stationary;
 }

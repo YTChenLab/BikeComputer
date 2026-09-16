@@ -2,6 +2,7 @@
 
 #include "ui_colors.h"
 #include "ui_app_state.h"
+#include "ui_auto_pause.h"
 #include "ui_background.h"
 #include "ui_bottom_surface.h"
 #include "ui_dock.h"
@@ -80,6 +81,10 @@ static lv_point_t s_pointer_start;
 static int32_t s_overlay_start_y;
 static lv_obj_t *s_off_screen;
 static lv_obj_t *s_quick_overlay;
+static ui_auto_pause_t s_auto_pause;
+static ui_ride_pause_reason_t s_pending_pause_reason;
+static ui_auto_pause_action_t s_pending_auto_pause_action;
+static bool s_pause_command_pending;
 static void app_action(ui_action_t action);
 static void app_page_action(ui_page_action_t action, void *user_data);
 static void app_show(ui_page_t page);
@@ -110,6 +115,8 @@ static bool app_submit_command(ui_command_type_t type, int32_t value,
 static void app_publish_command_feedback(const ui_command_result_t *result);
 static bool app_ride_domain_active(void);
 static void app_show_feature_info(const char *title, const char *message);
+static void app_auto_pause_tick(uint32_t elapsed_ms);
+static bool app_request_pause_toggle(ui_ride_pause_reason_t reason);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -131,6 +138,20 @@ static bool app_publish_event(ui_event_type_t type,
     ui_event_t event = {0};
     event.type = type;
     event.priority = priority;
+    event.dedupe_key = 0xA000U + (uint32_t)type;
+    bool published = ui_event_bus_publish(&event);
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+    return published;
+}
+
+static bool app_publish_event_value(ui_event_type_t type,
+                                    ui_event_priority_t priority,
+                                    int32_t value)
+{
+    ui_event_t event = {0};
+    event.type = type;
+    event.priority = priority;
+    event.value = value;
     event.dedupe_key = 0xA000U + (uint32_t)type;
     bool published = ui_event_bus_publish(&event);
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
@@ -256,6 +277,7 @@ static void app_event_timer_cb(lv_timer_t *timer)
     ui_command_service_process(20);
     (void)ui_state_adapter_process();
     (void)ui_ride_data_model_process();
+    app_auto_pause_tick(20U);
     (void)ui_navigation_service_process();
     (void)ui_input_queue_drain(UI_INPUT_QUEUE_MAX,
                                app_input_received, NULL);
@@ -281,7 +303,47 @@ static void app_ride_data_changed(const ui_ride_data_t *data,
     (void)version;
     (void)user_data;
     if(data == NULL) return;
+    ui_auto_pause_set_speed(&s_auto_pause, data->speed);
     ui_dashboard_set_data(data);
+}
+
+static bool app_request_pause_toggle(ui_ride_pause_reason_t reason)
+{
+    if(s_pause_command_pending) return false;
+    ui_ride_state_t state = ui_state_machine_state();
+    ui_command_type_t command;
+    if(state == UI_RIDE_STATE_RIDING)
+        command = UI_COMMAND_RIDE_PAUSE;
+    else if(state == UI_RIDE_STATE_PAUSED)
+        command = UI_COMMAND_RIDE_RESUME;
+    else return false;
+
+    if(reason == UI_RIDE_PAUSE_REASON_MANUAL)
+        ui_auto_pause_manual_override(&s_auto_pause);
+    s_pending_pause_reason = reason;
+    s_pending_auto_pause_action = reason == UI_RIDE_PAUSE_REASON_AUTO ?
+        (command == UI_COMMAND_RIDE_PAUSE ? UI_AUTO_PAUSE_ACTION_PAUSE :
+                                            UI_AUTO_PAUSE_ACTION_RESUME) :
+        UI_AUTO_PAUSE_ACTION_NONE;
+    s_pause_command_pending = app_submit_command(command, 0, 2000U);
+    if(!s_pause_command_pending &&
+       s_pending_auto_pause_action != UI_AUTO_PAUSE_ACTION_NONE) {
+        ui_auto_pause_complete(&s_auto_pause,
+                               s_pending_auto_pause_action, false);
+    }
+    return s_pause_command_pending;
+}
+
+static void app_auto_pause_tick(uint32_t elapsed_ms)
+{
+    if(s_pause_command_pending) return;
+    ui_auto_pause_action_t action = ui_auto_pause_tick(
+        &s_auto_pause, ui_state_machine_state(), elapsed_ms);
+    if(action == UI_AUTO_PAUSE_ACTION_PAUSE ||
+       action == UI_AUTO_PAUSE_ACTION_RESUME) {
+        if(!app_request_pause_toggle(UI_RIDE_PAUSE_REASON_AUTO))
+            ui_auto_pause_complete(&s_auto_pause, action, false);
+    }
 }
 
 static void app_state_changed(const ui_app_state_t *state,
@@ -319,6 +381,13 @@ static void app_ride_state_changed(ui_ride_state_t previous,
     (void)event;
     (void)user_data;
     ui_app_state_set_ride_state(current);
+    if(current != UI_RIDE_STATE_RIDING &&
+       current != UI_RIDE_STATE_PAUSED &&
+       current != UI_RIDE_STATE_FINISHING) {
+        ui_auto_pause_manual_override(&s_auto_pause);
+        s_pause_command_pending = false;
+        s_pending_auto_pause_action = UI_AUTO_PAUSE_ACTION_NONE;
+    }
 }
 
 static bool app_submit_command(ui_command_type_t type, int32_t value,
@@ -374,6 +443,9 @@ static bool app_command_feedback_needed(const ui_command_result_t *result)
         case UI_COMMAND_MEDIA_TOGGLE_PLAYBACK:
         case UI_COMMAND_MEDIA_NEXT:
         case UI_COMMAND_MEDIA_CYCLE_MODE:
+            if(result->type == UI_COMMAND_RIDE_PAUSE ||
+               result->type == UI_COMMAND_RIDE_RESUME)
+                return result->status != UI_COMMAND_STATUS_SUCCESS;
             return result->status != UI_COMMAND_STATUS_PENDING &&
                    result->status != UI_COMMAND_STATUS_SUCCESS;
         default:
@@ -421,6 +493,16 @@ static void app_command_changed(const ui_command_result_t *result,
     app_publish_command_feedback(result);
     if(result->status == UI_COMMAND_STATUS_PENDING) return;
 
+    if(result->type == UI_COMMAND_RIDE_PAUSE ||
+       result->type == UI_COMMAND_RIDE_RESUME) {
+        bool success = result->status == UI_COMMAND_STATUS_SUCCESS;
+        if(s_pending_auto_pause_action != UI_AUTO_PAUSE_ACTION_NONE) {
+            ui_auto_pause_complete(&s_auto_pause,
+                                   s_pending_auto_pause_action, success);
+        }
+        s_pause_command_pending = false;
+    }
+
     if(result->status == UI_COMMAND_STATUS_SUCCESS) {
         switch(result->type) {
             case UI_COMMAND_GNSS_ACQUIRE_FIX:
@@ -434,15 +516,23 @@ static void app_command_changed(const ui_command_result_t *result,
                 break;
             case UI_COMMAND_RIDE_PAUSE:
                 app_hide_quick_immediate();
-                (void)app_publish_event(UI_EVENT_RIDE_PAUSE_REQUESTED,
-                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                (void)app_publish_event_value(
+                    UI_EVENT_RIDE_PAUSE_REQUESTED,
+                    UI_EVENT_PRIORITY_P2_RIDE_STATE,
+                    (int32_t)s_pending_pause_reason);
+                s_pending_auto_pause_action = UI_AUTO_PAUSE_ACTION_NONE;
                 break;
             case UI_COMMAND_RIDE_RESUME:
                 app_hide_quick_immediate();
-                (void)app_publish_event(UI_EVENT_RIDE_RESUME_REQUESTED,
-                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                (void)app_publish_event_value(
+                    UI_EVENT_RIDE_RESUME_REQUESTED,
+                    UI_EVENT_PRIORITY_P2_RIDE_STATE,
+                    (int32_t)s_pending_pause_reason);
+                s_pending_auto_pause_action = UI_AUTO_PAUSE_ACTION_NONE;
                 break;
             case UI_COMMAND_RIDE_FINISH:
+                (void)app_publish_event(UI_EVENT_RIDE_SAVE_STARTED,
+                                        UI_EVENT_PRIORITY_P2_RIDE_STATE);
                 if(!app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U))
                     (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
                                             UI_EVENT_PRIORITY_P0_CRITICAL);
@@ -480,6 +570,9 @@ static void app_command_changed(const ui_command_result_t *result,
         (void)app_publish_event(UI_EVENT_RIDE_FINISH_CANCELLED,
                                 UI_EVENT_PRIORITY_P2_RIDE_STATE);
     }
+    if(result->type == UI_COMMAND_RIDE_PAUSE ||
+       result->type == UI_COMMAND_RIDE_RESUME)
+        s_pending_auto_pause_action = UI_AUTO_PAUSE_ACTION_NONE;
     app_update_quick_states();
 }
 
@@ -623,6 +716,11 @@ static void app_back(void) {
     }
     if(s_quick_visible) {
         app_close_quick();
+        return;
+    }
+    if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING) {
+        (void)app_publish_event(UI_EVENT_RIDE_FINISH_CANCELLED,
+                                UI_EVENT_PRIORITY_P2_RIDE_STATE);
         return;
     }
     if(app_ride_domain_active()) {
@@ -831,12 +929,7 @@ static void app_action(ui_action_t action) {
             }
             break;
         case UI_ACTION_PAUSE_RIDE:
-            if(ui_state_machine_state() == UI_RIDE_STATE_RIDING) {
-                (void)app_submit_command(UI_COMMAND_RIDE_PAUSE, 0, 2000U);
-            }
-            else if(ui_state_machine_state() == UI_RIDE_STATE_PAUSED) {
-                (void)app_submit_command(UI_COMMAND_RIDE_RESUME, 0, 2000U);
-            }
+            (void)app_request_pause_toggle(UI_RIDE_PAUSE_REASON_MANUAL);
             break;
         case UI_ACTION_END_RIDE:
             if(ui_state_machine_is_riding()) {
@@ -909,6 +1002,10 @@ void ui_app_init(void) {
     ui_event_bridge_init();
     ui_event_bus_init();
     ui_dock_init();
+    ui_auto_pause_init(&s_auto_pause);
+    s_pending_pause_reason = UI_RIDE_PAUSE_REASON_MANUAL;
+    s_pending_auto_pause_action = UI_AUTO_PAUSE_ACTION_NONE;
+    s_pause_command_pending = false;
     ui_state_machine_init();
     ui_state_machine_set_changed_callback(app_ride_state_changed, NULL);
     ui_home_data_model_init();
@@ -933,12 +1030,31 @@ void ui_app_init(void) {
     s_event_timer = lv_timer_create(app_event_timer_cb, 20, NULL);
 }
 void ui_app_handle_back(void) {
+    /* A visible finish confirmation owns BACK before any hidden page/card
+     * focus state. One click must always cancel the confirmation and restore
+     * the previous Bottom Interaction Surface content. */
+    if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING) {
+        app_back();
+        return;
+    }
     if(!s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_back()) return;
     app_back();
 }
 
 void ui_app_handle_input(ui_input_event_t input) {
+    if(input == UI_INPUT_BACK_DOUBLE) {
+        if(ui_state_machine_state() == UI_RIDE_STATE_RIDING ||
+           ui_state_machine_state() == UI_RIDE_STATE_PAUSED)
+            app_action(UI_ACTION_PAUSE_RIDE);
+        return;
+    }
+    if(input == UI_INPUT_BACK_LONG) {
+        if(ui_state_machine_state() == UI_RIDE_STATE_RIDING ||
+           ui_state_machine_state() == UI_RIDE_STATE_PAUSED)
+            app_action(UI_ACTION_END_RIDE);
+        return;
+    }
     if(input == UI_INPUT_BACK) {
         ui_app_handle_back();
         return;

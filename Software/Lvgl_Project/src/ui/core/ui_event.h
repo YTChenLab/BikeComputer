@@ -10,6 +10,12 @@
 
 typedef enum
 {
+    UI_RIDE_PAUSE_REASON_MANUAL = 0,
+    UI_RIDE_PAUSE_REASON_AUTO
+} ui_ride_pause_reason_t;
+
+typedef enum
+{
     UI_EVENT_BOOT_COMPLETE = 0,
     UI_EVENT_GPS_SEARCHING,
     UI_EVENT_GPS_READY,

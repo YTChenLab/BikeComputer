@@ -7,13 +7,15 @@
 
 static int32_t s_subscription_id = -1;
 
-static void publish_ride_event(ui_event_type_t type, uint32_t timeout_ms)
+static void publish_ride_event(ui_event_type_t type, uint32_t timeout_ms,
+                               int32_t value)
 {
     ui_event_t event = {0};
     event.type = type;
     event.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
     event.dedupe_key = 0x2000U + (uint32_t)type;
     event.timeout_ms = timeout_ms;
+    event.value = value;
     (void)ui_event_bus_publish(&event);
 }
 
@@ -26,22 +28,24 @@ static void handle_event(const ui_event_t *event, void *user_data)
             break;
         case UI_EVENT_RIDE_START_REQUESTED:
             if(ui_state_machine_dispatch(UI_RIDE_EVENT_START_REQUEST))
-                publish_ride_event(UI_EVENT_GPS_SEARCHING, 0);
+                publish_ride_event(UI_EVENT_GPS_SEARCHING, 0, 0);
             break;
         case UI_EVENT_GPS_READY:
             (void)ui_state_machine_dispatch(UI_RIDE_EVENT_GPS_READY);
             break;
         case UI_EVENT_RIDE_GO:
             if(ui_state_machine_dispatch(UI_RIDE_EVENT_GO))
-                publish_ride_event(UI_EVENT_RIDE_STARTED, 1800);
+                publish_ride_event(UI_EVENT_RIDE_STARTED, 1800, 0);
             break;
         case UI_EVENT_RIDE_PAUSE_REQUESTED:
             if(ui_state_machine_dispatch(UI_RIDE_EVENT_PAUSE))
-                publish_ride_event(UI_EVENT_RIDE_PAUSED, 1800);
+                publish_ride_event(UI_EVENT_RIDE_PAUSED, 1800,
+                                   event->value);
             break;
         case UI_EVENT_RIDE_RESUME_REQUESTED:
             if(ui_state_machine_dispatch(UI_RIDE_EVENT_RESUME))
-                publish_ride_event(UI_EVENT_RIDE_RESUMED, 1800);
+                publish_ride_event(UI_EVENT_RIDE_RESUMED, 1800,
+                                   event->value);
             break;
         case UI_EVENT_RIDE_FINISH_REQUESTED:
             (void)ui_state_machine_dispatch(UI_RIDE_EVENT_FINISH_REQUEST);
@@ -54,7 +58,7 @@ static void handle_event(const ui_event_t *event, void *user_data)
             break;
         case UI_EVENT_RIDE_SAVE_SUCCESS:
             if(ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_SUCCESS))
-                publish_ride_event(UI_EVENT_RIDE_SUMMARY_READY, 0);
+                publish_ride_event(UI_EVENT_RIDE_SUMMARY_READY, 0, 0);
             break;
         case UI_EVENT_RIDE_SAVE_FAILED:
             (void)ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_FAILED);

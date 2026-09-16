@@ -94,7 +94,6 @@ static void dock_action(uint32_t card_id, ui_dock_interaction_t interaction,
     }
     else if(card_id == DOCK_ID_RIDE && origin == UI_EVENT_RIDE_FINISH_REQUESTED) {
         if(interaction == UI_DOCK_INTERACTION_PRIMARY) {
-            (void)ui_dock_hide(card_id);
             publish_action(UI_EVENT_RIDE_FINISH_CONFIRMED,
                            UI_EVENT_PRIORITY_P2_RIDE_STATE, card_id, 0);
         }
@@ -219,12 +218,25 @@ static void map_event(const ui_event_t *event, void *user_data)
         case UI_EVENT_RIDE_RESUMED:
             card = base_card(event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
+            bool automatic = event->value == UI_RIDE_PAUSE_REASON_AUTO;
+            const char *default_title = "骑行已开始";
+            const char *default_message = "骑行数据正在记录";
+            if(event->type == UI_EVENT_RIDE_PAUSED) {
+                default_title = automatic ? "自动暂停" : "骑行已暂停";
+                default_message = automatic ?
+                    "检测到停止，计时与里程已暂停" :
+                    "双击返回键可恢复骑行";
+            }
+            else if(event->type == UI_EVENT_RIDE_RESUMED) {
+                default_title = automatic ? "自动恢复" : "骑行已恢复";
+                default_message = automatic ?
+                    "检测到继续移动，骑行数据恢复记录" :
+                    "骑行数据正在记录";
+            }
             copy_text(card.title, sizeof(card.title), event->title,
-                      event->type == UI_EVENT_RIDE_STARTED ? "骑行已开始" :
-                      (event->type == UI_EVENT_RIDE_PAUSED ? "骑行已暂停" : "骑行已恢复"));
+                      default_title);
             copy_text(card.message, sizeof(card.message), event->message,
-                      event->type == UI_EVENT_RIDE_PAUSED ? "计时与里程统计已暂停" :
-                      "骑行数据正在记录");
+                      default_message);
             (void)present(&card, timeout ? timeout : 1800);
             break;
         case UI_EVENT_RIDE_FINISH_REQUESTED:
@@ -342,6 +354,15 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)ui_dock_hide(DOCK_ID_GPS);
             break;
         case UI_EVENT_RIDE_FINISH_CONFIRMED:
+            card = base_card(event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
+            card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
+            copy_text(card.title, sizeof(card.title), event->title,
+                      "正在结束骑行");
+            copy_text(card.message, sizeof(card.message), event->message,
+                      "正在停止计时并准备保存");
+            card.dismissible = false;
+            (void)present(&card, 0);
+            break;
         case UI_EVENT_RIDE_FINISH_CANCELLED:
             clear_timeout(DOCK_ID_RIDE);
             (void)ui_dock_hide(DOCK_ID_RIDE);

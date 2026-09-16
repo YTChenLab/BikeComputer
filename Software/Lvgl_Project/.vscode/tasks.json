@@ -1,0 +1,55 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure LVGL (UCRT64)",
+            "type": "process",
+            "command": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/cmake.exe",
+            "args": [
+                "--preset",
+                "bike-ui-ucrt64"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build LVGL (UCRT64)",
+            "type": "process",
+            "command": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin/cmake.exe",
+            "args": [
+                "--build",
+                "--preset",
+                "bike-ui-ucrt64",
+                "--parallel"
+            ],
+            "dependsOn": "Configure LVGL (UCRT64)",
+            "dependsOrder": "sequence",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Run LVGL Simulator (UCRT64)",
+            "type": "process",
+            "command": "${workspaceFolder}/bin/main.exe",
+            "dependsOn": "Build LVGL (UCRT64)",
+            "dependsOrder": "sequence",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "D:\\Professional Software\\Anaconda\\Bike_SpeedView\\msys2-x86_64\\ucrt64\\bin;${env:PATH}"
+                }
+            },
+            "problemMatcher": []
+        }
+    ]
+}

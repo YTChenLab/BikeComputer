@@ -18,6 +18,24 @@
 #define TEST_DISPLAY_H 854
 static uint8_t s_draw_buffer[TEST_DISPLAY_W * 20 * 2];
 static ui_event_type_t s_last_event = UI_EVENT_COUNT;
+static bool s_layer_allocation_failed;
+
+static void test_flush(lv_display_t *display, const lv_area_t *area,
+                       uint8_t *pixels)
+{
+    (void)area;
+    (void)pixels;
+    lv_display_flush_ready(display);
+}
+
+static void capture_log(lv_log_level_t level, const char *message)
+{
+    (void)level;
+    if(message != NULL &&
+       (strstr(message, "No memory") != NULL ||
+        strstr(message, "Allocating layer buffer failed") != NULL))
+        s_layer_allocation_failed = true;
+}
 
 static void capture_event(const ui_event_t *event, void *user_data)
 {
@@ -46,6 +64,8 @@ static void finish_animations(void)
 {
     lv_tick_inc(300);
     lv_anim_refr_now();
+    lv_refr_now(lv_display_get_default());
+    assert(!s_layer_allocation_failed);
 }
 
 static uint32_t utf8_next(const char *text, uint32_t *index)
@@ -127,11 +147,13 @@ static void test_dock_font_coverage(void)
 int main(void)
 {
     lv_init();
+    lv_log_register_print_cb(capture_log);
     lv_display_t *display = lv_display_create(TEST_DISPLAY_W, TEST_DISPLAY_H);
     assert(display != NULL);
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
     lv_display_set_buffers(display, s_draw_buffer, NULL, sizeof(s_draw_buffer),
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_flush_cb(display, test_flush);
 
     ui_motion_init();
     ui_sound_init();

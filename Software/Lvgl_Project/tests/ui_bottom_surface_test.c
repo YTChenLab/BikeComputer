@@ -78,11 +78,17 @@ int main(void)
         100U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
         UI_BOTTOM_SURFACE_PRIORITY_P3_USER_ACTION, true));
     assert(lv_obj_get_parent(root) == slot);
-    assert(lv_obj_get_x(root) == 0 && lv_obj_get_y(root) == 0);
-    assert(!lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
-    lv_tick_inc(UI_TOKEN_MOTION_SURFACE_FADE_MS);
+    assert(lv_obj_get_style_transform_scale_x(root, 0) == 256);
+    assert(lv_obj_get_style_transform_scale_y(root, 0) == 256);
+    assert(lv_obj_get_style_opa(root, 0) == LV_OPA_COVER);
+    assert(lv_obj_get_style_opa(normal, 0) == LV_OPA_COVER);
+    assert(lv_obj_get_style_opa(interaction, 0) == LV_OPA_COVER);
+    lv_tick_inc(UI_TOKEN_MOTION_SURFACE_MS);
     lv_anim_refr_now();
+    assert(lv_obj_get_x(root) == 0 && lv_obj_get_y(root) == 0);
+    assert(lv_obj_get_width(root) == UI_BOTTOM_SURFACE_WIDTH);
     assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
     assert(ui_bottom_surface_present_interaction(

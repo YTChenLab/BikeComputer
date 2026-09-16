@@ -20,14 +20,9 @@ typedef struct
 
 static ui_dock_view_context_t s_view;
 
-static void content_opacity_animation(void *object, int32_t value)
+static void content_x_animation(void *object, int32_t value)
 {
-    lv_obj_set_style_opa((lv_obj_t *)object, (lv_opa_t)value, 0);
-}
-
-static void content_scale_animation(void *object, int32_t value)
-{
-    lv_obj_set_style_transform_scale((lv_obj_t *)object, value, 0);
+    lv_obj_set_x((lv_obj_t *)object, value);
 }
 
 static void content_y_animation(void *object, int32_t value)
@@ -38,27 +33,19 @@ static void content_y_animation(void *object, int32_t value)
 static void animate_content_settle(lv_obj_t *root, bool refresh)
 {
     if(root == NULL) return;
-    lv_anim_delete(root, content_opacity_animation);
-    lv_anim_delete(root, content_scale_animation);
+    lv_anim_delete(root, content_x_animation);
     lv_anim_delete(root, content_y_animation);
 
-    int32_t from_scale = refresh ? 251 : 246;
-    int32_t from_y = refresh ? UI_TOKEN_SPACE_4 : UI_TOKEN_SPACE_8;
-    lv_opa_t from_opa = refresh ? LV_OPA_60 : UI_TOKEN_OPA_HIDDEN;
-    lv_obj_set_style_transform_pivot_x(
-        root, UI_BOTTOM_SURFACE_WIDTH / 2, 0);
-    lv_obj_set_style_transform_pivot_y(
-        root, UI_BOTTOM_SURFACE_NORMAL_HEIGHT / 2, 0);
-    lv_obj_set_style_transform_scale(root, from_scale, 0);
-    lv_obj_set_style_opa(root, from_opa, 0);
+    int32_t from_x = refresh ? UI_TOKEN_SPACE_2 : UI_TOKEN_SPACE_4;
+    int32_t from_y = refresh ? UI_TOKEN_SPACE_2 : UI_TOKEN_SPACE_8;
+    lv_obj_set_x(root, from_x);
     lv_obj_set_y(root, from_y);
 
-    ui_motion_value(root, content_opacity_animation,
-                    from_opa, UI_TOKEN_OPA_PRIMARY,
-                    UI_TOKEN_MOTION_SURFACE_FADE_MS,
-                    lv_anim_path_ease_in_out, NULL, NULL);
-    ui_motion_value(root, content_scale_animation,
-                    from_scale, 256,
+    /* Full-card opacity/scale needs an ARGB8888 intermediate layer in LVGL.
+     * A small position settle keeps the response fluid without allocating a
+     * second 441 x 206 framebuffer. */
+    ui_motion_value(root, content_x_animation,
+                    from_x, 0,
                     UI_TOKEN_MOTION_DOCK_CONTENT_MS,
                     lv_anim_path_ease_out, NULL, NULL);
     ui_motion_value(root, content_y_animation,
@@ -97,6 +84,7 @@ static void hide_all_except(ui_dock_type_t type)
     for(uint8_t i = 0; i < UI_DOCK_TYPE_COUNT; i++) {
         if(i == type) {
             lv_obj_set_style_opa(s_view.templates[i].root, LV_OPA_COVER, 0);
+            lv_obj_set_x(s_view.templates[i].root, 0);
             lv_obj_set_y(s_view.templates[i].root, 0);
             lv_obj_clear_flag(s_view.templates[i].root, LV_OBJ_FLAG_HIDDEN);
         }

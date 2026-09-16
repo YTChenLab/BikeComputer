@@ -201,7 +201,10 @@ LV_FONT_DECLARE(ui_font_misans_ui_20);
  */
 #define UI_FONT_SURFACE_TITLE   UI_FONT_PAGE_TEXT
 #define UI_FONT_SURFACE_BODY    UI_FONT_PAGE_TEXT
-#define UI_FONT_SURFACE_BADGE   UI_FONT_STATUS
+/* Dock type badges are ASCII words (INFO/ACTION/CONFIRM/...).  The compact
+ * status font only contains digits, ':' and '%', so use a complete ASCII
+ * face here instead of relying on missing-glyph boxes. */
+#define UI_FONT_SURFACE_BADGE   (&lv_font_montserrat_14)
 #define UI_FONT_SURFACE_ACTION  UI_FONT_PAGE_TEXT
 
 

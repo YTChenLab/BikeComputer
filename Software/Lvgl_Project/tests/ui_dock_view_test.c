@@ -103,6 +103,24 @@ static void test_dock_font_coverage(void)
             }
         }
     }
+
+    static const char * const badges[] = {
+        "INFO", "ACTION", "CONFIRM", "CONTROL", "NAV", "MEDIA"
+    };
+    for(uint32_t text_index = 0;
+        text_index < sizeof(badges) / sizeof(badges[0]); text_index++) {
+        uint32_t index = 0;
+        while(badges[text_index][index] != '\0') {
+            uint32_t codepoint = utf8_next(badges[text_index], &index);
+            lv_font_glyph_dsc_t descriptor;
+            if(!lv_font_get_glyph_dsc(UI_FONT_SURFACE_BADGE, &descriptor,
+                                      codepoint, 0)) {
+                fprintf(stderr, "Missing Dock badge glyph U+%04lX in: %s\n",
+                        (unsigned long)codepoint, badges[text_index]);
+                assert(false);
+            }
+        }
+    }
 }
 
 int main(void)
@@ -231,6 +249,7 @@ int main(void)
     lv_obj_t *no_button = lv_obj_get_child(confirm_root, 6);
     lv_obj_t *yes_button = lv_obj_get_child(confirm_root, 7);
     assert(strcmp(lv_label_get_text(badge), "CONFIRM") == 0);
+    assert(lv_obj_get_style_text_font(badge, 0) == UI_FONT_SURFACE_BADGE);
     assert(lv_obj_get_x(badge) + lv_obj_get_width(badge) <
            lv_obj_get_x(close_button));
     assert(lv_text_get_width("CONFIRM", 7, UI_FONT_SURFACE_BADGE, 0) <=

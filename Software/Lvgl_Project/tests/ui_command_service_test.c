@@ -81,6 +81,12 @@ static void test_latest_value_coalescing(void)
     assert(fake.dispatched[0].value == 78);
     assert(fake.dispatched[0].timeout_ms == 400U);
 
+    uint32_t touch_lock = ui_command_service_submit(
+        UI_COMMAND_TOUCH_LOCK_SET_ENABLED, 1, 300U);
+    uint32_t touch_unlock = ui_command_service_submit(
+        UI_COMMAND_TOUCH_LOCK_SET_ENABLED, 0, 450U);
+    assert(touch_lock != 0U && touch_lock == touch_unlock);
+
     uint32_t ride = ui_command_service_submit(
         UI_COMMAND_RIDE_START, 0, 500U);
     assert(ride != 0U);

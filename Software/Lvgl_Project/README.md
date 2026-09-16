@@ -107,6 +107,7 @@ Phase 5 Interaction Dock 统一迁移见 [docs/UI_INTERACTION_DOCK_PHASE5.md](do
 Phase 5.1 原位切换修正见 [docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md](docs/UI_BOTTOM_SURFACE_IN_PLACE_FIX.md)。
 Phase 6 页面 Slot 与 Router 生命周期迁移见 [docs/UI_PAGE_MIGRATION_PHASE6.md](docs/UI_PAGE_MIGRATION_PHASE6.md)。
 Phase 6A Home / Ride Hub 实现与验收见 [docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md](docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md)。
+Phase 6B Quick Control Center 实现与验收见 [docs/PHASE_6B_CONTROL_CENTER_REPORT.md](docs/PHASE_6B_CONTROL_CENTER_REPORT.md)。
 返回键骑行控制与自动暂停规则见 [docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md](docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md)。
 
 ## 版本发布约定

@@ -287,6 +287,15 @@ void ui_app_state_set_controls(uint8_t sound_level,
     if(changed) notify(UI_APP_STATE_CHANGE_CONTROL);
 }
 
+void ui_app_state_set_touch_locked(bool locked)
+{
+    ui_concurrency_lock();
+    bool changed = s_app_state.state.touch_locked != locked;
+    s_app_state.state.touch_locked = locked;
+    ui_concurrency_unlock();
+    if(changed) notify(UI_APP_STATE_CHANGE_CONTROL);
+}
+
 void ui_app_state_set_media(bool playing, uint8_t track,
                             ui_media_mode_t mode)
 {

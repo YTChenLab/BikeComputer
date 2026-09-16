@@ -44,6 +44,7 @@ static bool coalescible(ui_command_type_t type)
            type == UI_COMMAND_BLUETOOTH_SET_ENABLED ||
            type == UI_COMMAND_GNSS_SET_ENABLED ||
            type == UI_COMMAND_POWER_SAVE_SET_ENABLED ||
+           type == UI_COMMAND_TOUCH_LOCK_SET_ENABLED ||
            type == UI_COMMAND_SOUND_SET_LEVEL ||
            type == UI_COMMAND_BRIGHTNESS_SET_LEVEL ||
            type == UI_COMMAND_MEDIA_SET_PLAYING ||

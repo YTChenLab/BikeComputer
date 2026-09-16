@@ -50,6 +50,7 @@ typedef struct
     bool bluetooth_connected;
     bool gps_enabled;
     bool power_save_enabled;
+    bool touch_locked;
     char wifi_name[UI_APP_STATE_NAME_MAX];
     char bluetooth_name[UI_APP_STATE_NAME_MAX];
 
@@ -97,6 +98,7 @@ void ui_app_state_set_connectivity(bool wifi_enabled, bool wifi_connected,
 void ui_app_state_set_controls(uint8_t sound_level,
                                uint8_t brightness_level,
                                bool power_save_enabled);
+void ui_app_state_set_touch_locked(bool locked);
 void ui_app_state_set_media(bool playing, uint8_t track,
                             ui_media_mode_t mode);
 void ui_app_state_set_navigation_active(bool active);

@@ -58,6 +58,8 @@ bool ui_state_adapter_submit(const ui_state_adapter_snapshot_t *snapshot,
         s_adapter.pending.brightness_level = snapshot->brightness_level;
         s_adapter.pending.power_save_enabled = snapshot->power_save_enabled;
     }
+    if((fields & UI_STATE_ADAPTER_TOUCH_LOCK) != 0U)
+        s_adapter.pending.touch_locked = snapshot->touch_locked;
     if((fields & UI_STATE_ADAPTER_MEDIA) != 0U) {
         s_adapter.pending.media_playing = snapshot->media_playing;
         s_adapter.pending.media_track = snapshot->media_track;
@@ -123,6 +125,8 @@ ui_state_adapter_mask_t ui_state_adapter_process(void)
                                   snapshot.brightness_level,
                                   snapshot.power_save_enabled);
     }
+    if((fields & UI_STATE_ADAPTER_TOUCH_LOCK) != 0U)
+        ui_app_state_set_touch_locked(snapshot.touch_locked);
     if((fields & UI_STATE_ADAPTER_MEDIA) != 0U) {
         ui_app_state_set_media(snapshot.media_playing, snapshot.media_track,
                                snapshot.media_mode);

@@ -158,6 +158,10 @@ static void apply_command_state(ui_pc_services_context_t *pc)
             pc->device_state.power_save_enabled = enabled;
             fields = UI_STATE_ADAPTER_CONTROL;
             break;
+        case UI_COMMAND_TOUCH_LOCK_SET_ENABLED:
+            pc->device_state.touch_locked = enabled;
+            fields = UI_STATE_ADAPTER_TOUCH_LOCK;
+            break;
         case UI_COMMAND_SOUND_SET_LEVEL:
             pc->device_state.sound_level =
                 pc->command.value < 0 ? 0U :

@@ -58,7 +58,8 @@ typedef enum { UI_ACTION_NONE, UI_ACTION_HOME, UI_ACTION_NAVIGATION, UI_ACTION_S
                UI_ACTION_PROFILE, UI_ACTION_SETTINGS, UI_ACTION_SYSTEM, UI_ACTION_QUICK,
                UI_ACTION_SAVE_RIDE, UI_ACTION_UPLOAD_RIDE, UI_ACTION_START_RIDE,
                UI_ACTION_PAUSE_RIDE, UI_ACTION_END_RIDE, UI_ACTION_WIFI, UI_ACTION_BT,
-               UI_ACTION_GPS, UI_ACTION_POWER_SAVE, UI_ACTION_BRIGHTNESS, UI_ACTION_SOUND, UI_ACTION_HISTORY,
+               UI_ACTION_GPS, UI_ACTION_POWER_SAVE, UI_ACTION_TOUCH_LOCK,
+               UI_ACTION_BRIGHTNESS, UI_ACTION_SOUND, UI_ACTION_HISTORY,
                UI_ACTION_ACHIEVEMENT, UI_ACTION_POWER_OFF, UI_ACTION_POWER_RESTART,
                UI_ACTION_POWER_CANCEL } ui_action_t;
 typedef struct {
@@ -76,6 +77,7 @@ static bool s_quick_visible, s_pointer_dragging, s_pointer_opening, s_slider_dra
 static bool s_page_swiping, s_home_swiping;
 static bool s_dynamic_card_gesture_owned;
 static bool s_navigation_map_gesture_owned;
+static bool s_touch_sequence_blocked;
 static ui_control_center_slider_t s_active_slider;
 static lv_point_t s_pointer_start;
 static int32_t s_overlay_start_y;
@@ -96,6 +98,7 @@ static void app_hide_quick_immediate(void);
 static void app_update_quick_states(void);
 static void app_update_slider_visuals(void);
 static void app_control_center_action(ui_control_center_action_t action,
+                                      int32_t value,
                                       void *user_data);
 static void app_ride_data_changed(const ui_ride_data_t *data,
                                   uint32_t version, void *user_data);
@@ -407,6 +410,7 @@ static const char *app_command_label(ui_command_type_t type)
         case UI_COMMAND_BLUETOOTH_SET_ENABLED: return "BLUETOOTH";
         case UI_COMMAND_GNSS_SET_ENABLED: return "GPS";
         case UI_COMMAND_POWER_SAVE_SET_ENABLED: return "POWER SAVE";
+        case UI_COMMAND_TOUCH_LOCK_SET_ENABLED: return "TOUCH LOCK";
         case UI_COMMAND_SOUND_SET_LEVEL: return "VOLUME";
         case UI_COMMAND_BRIGHTNESS_SET_LEVEL: return "BRIGHTNESS";
         case UI_COMMAND_RIDE_START: return "START RIDE";
@@ -429,6 +433,15 @@ static bool app_command_feedback_needed(const ui_command_result_t *result)
 {
     if(result == NULL) return false;
     switch(result->type) {
+        case UI_COMMAND_WIFI_SET_ENABLED:
+        case UI_COMMAND_BLUETOOTH_SET_ENABLED:
+        case UI_COMMAND_GNSS_SET_ENABLED:
+        case UI_COMMAND_POWER_SAVE_SET_ENABLED:
+        case UI_COMMAND_TOUCH_LOCK_SET_ENABLED:
+        case UI_COMMAND_SOUND_SET_LEVEL:
+        case UI_COMMAND_BRIGHTNESS_SET_LEVEL:
+            /* Control Center owns inline feedback for its own commands. */
+            return false;
         case UI_COMMAND_GNSS_ACQUIRE_FIX:
         case UI_COMMAND_RIDE_FINISH:
         case UI_COMMAND_RIDE_SAVE:
@@ -493,6 +506,34 @@ static void app_command_changed(const ui_command_result_t *result,
 {
     (void)user_data;
     if(result == NULL) return;
+    ui_control_center_action_t control_action =
+        UI_CONTROL_CENTER_ACTION_COUNT;
+    switch(result->type) {
+        case UI_COMMAND_WIFI_SET_ENABLED:
+            control_action = UI_CONTROL_CENTER_ACTION_WIFI; break;
+        case UI_COMMAND_BLUETOOTH_SET_ENABLED:
+            control_action = UI_CONTROL_CENTER_ACTION_BLUETOOTH; break;
+        case UI_COMMAND_SOUND_SET_LEVEL:
+            control_action = UI_CONTROL_CENTER_ACTION_SOUND; break;
+        case UI_COMMAND_BRIGHTNESS_SET_LEVEL:
+            control_action = UI_CONTROL_CENTER_ACTION_BRIGHTNESS; break;
+        case UI_COMMAND_GNSS_SET_ENABLED:
+            control_action = UI_CONTROL_CENTER_ACTION_GPS; break;
+        case UI_COMMAND_POWER_SAVE_SET_ENABLED:
+            control_action = UI_CONTROL_CENTER_ACTION_POWER_SAVE; break;
+        case UI_COMMAND_TOUCH_LOCK_SET_ENABLED:
+            control_action = UI_CONTROL_CENTER_ACTION_TOUCH_LOCK; break;
+        default: break;
+    }
+    if(control_action < UI_CONTROL_CENTER_ACTION_COUNT) {
+        ui_control_center_set_feedback(
+            control_action,
+            result->status == UI_COMMAND_STATUS_PENDING ?
+            UI_CONTROL_CENTER_FEEDBACK_PENDING :
+            (result->status == UI_COMMAND_STATUS_SUCCESS ?
+             UI_CONTROL_CENTER_FEEDBACK_IDLE :
+             UI_CONTROL_CENTER_FEEDBACK_FAILED));
+    }
     app_publish_command_feedback(result);
     if(result->status == UI_COMMAND_STATUS_PENDING) return;
 
@@ -680,6 +721,7 @@ static void app_open_quick(void) {
     lv_obj_clear_flag(s_quick_overlay, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(s_quick_overlay);
     s_quick_visible = true;
+    ui_control_center_prepare_show();
     app_update_quick_states();
     app_animate_overlay_to(0, false);
 }
@@ -699,6 +741,7 @@ static void app_hide_quick_immediate(void) {
     s_page_swiping = false;
     s_home_swiping = false;
     s_active_slider = UI_CONTROL_CENTER_SLIDER_NONE;
+    s_touch_sequence_blocked = false;
 }
 static void app_show(ui_page_t page) {
     if(page >= UI_PAGE_COUNT) return;
@@ -766,15 +809,29 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
     }
 }
 static void app_control_center_action(ui_control_center_action_t action,
+                                      int32_t value,
                                       void *user_data) {
     (void)user_data;
     ui_sound_play(UI_SFX_PRESS);
     switch(action) {
         case UI_CONTROL_CENTER_ACTION_WIFI: app_action(UI_ACTION_WIFI); break;
         case UI_CONTROL_CENTER_ACTION_BLUETOOTH: app_action(UI_ACTION_BT); break;
+        case UI_CONTROL_CENTER_ACTION_SOUND:
+            if(value >= 0)
+                (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL,
+                                         value, 1500U);
+            break;
+        case UI_CONTROL_CENTER_ACTION_BRIGHTNESS:
+            if(value >= 0)
+                (void)app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL,
+                                         value, 1500U);
+            break;
         case UI_CONTROL_CENTER_ACTION_GPS: app_action(UI_ACTION_GPS); break;
         case UI_CONTROL_CENTER_ACTION_POWER_SAVE:
             app_action(UI_ACTION_POWER_SAVE);
+            break;
+        case UI_CONTROL_CENTER_ACTION_TOUCH_LOCK:
+            app_action(UI_ACTION_TOUCH_LOCK);
             break;
         default: break;
     }
@@ -876,16 +933,26 @@ static void app_update_quick_states(void) {
     ui_app_state_t app_state;
     if(!ui_app_state_get(&app_state)) return;
     const ui_control_center_state_t center_state = {
-        .wifi = app_state.wifi_enabled && app_state.wifi_connected,
-        .bluetooth = app_state.bluetooth_enabled &&
-                     app_state.bluetooth_connected,
+        .wifi_enabled = app_state.wifi_enabled,
+        .wifi_connected = app_state.wifi_connected,
+        .bluetooth_enabled = app_state.bluetooth_enabled,
+        .bluetooth_connected = app_state.bluetooth_connected,
         .gps = app_state.gps_enabled,
         .power_save = app_state.power_save_enabled,
+        .touch_locked = app_state.touch_locked,
+        .battery_charging = app_state.battery_charging,
         .satellites = app_state.satellites,
         .sound_level = app_state.sound_level,
-        .brightness_level = app_state.brightness_level
+        .brightness_level = app_state.brightness_level,
+        .battery_percent = app_state.battery_percent
     };
-    ui_control_center_set_state(&center_state);
+    ui_control_center_state_t named_state = center_state;
+    snprintf(named_state.wifi_name, sizeof(named_state.wifi_name), "%s",
+             app_state.wifi_name);
+    snprintf(named_state.bluetooth_name,
+             sizeof(named_state.bluetooth_name), "%s",
+             app_state.bluetooth_name);
+    ui_control_center_set_state(&named_state);
 }
 static void app_update_slider_visuals(void) {
     ui_app_state_t state;
@@ -956,6 +1023,10 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_POWER_SAVE:
             (void)app_submit_command(UI_COMMAND_POWER_SAVE_SET_ENABLED,
                                      !state.power_save_enabled, 2000U);
+            break;
+        case UI_ACTION_TOUCH_LOCK:
+            (void)app_submit_command(UI_COMMAND_TOUCH_LOCK_SET_ENABLED,
+                                     !state.touch_locked, 2000U);
             break;
         case UI_ACTION_BRIGHTNESS:
         case UI_ACTION_SOUND:
@@ -1060,6 +1131,13 @@ void ui_app_handle_input(ui_input_event_t input) {
     }
     if(input == UI_INPUT_BACK) {
         ui_app_handle_back();
+        return;
+    }
+    if(s_quick_visible &&
+       (input == UI_INPUT_ENCODER_CW ||
+        input == UI_INPUT_ENCODER_CCW ||
+        input == UI_INPUT_ENCODER_PRESS)) {
+        (void)ui_control_center_handle_input(input);
         return;
     }
     if(input == UI_INPUT_PAGE_NEXT || input == UI_INPUT_PAGE_PREV) {
@@ -1167,14 +1245,19 @@ static uint8_t app_slider_level_from_y(int32_t screen_y) {
     return ui_control_center_level_from_y(screen_y);
 }
 
-static void app_update_active_slider(int32_t screen_y) {
+static uint8_t app_preview_active_slider(int32_t screen_y) {
     uint8_t value = app_slider_level_from_y(screen_y);
-    if(s_active_slider == UI_CONTROL_CENTER_SLIDER_SOUND) {
+    ui_control_center_preview_level(s_active_slider, value);
+    return value;
+}
+
+static void app_commit_active_slider(int32_t screen_y) {
+    uint8_t value = app_preview_active_slider(screen_y);
+    if(s_active_slider == UI_CONTROL_CENTER_SLIDER_SOUND)
         (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL, value, 1500U);
-    } else if(s_active_slider == UI_CONTROL_CENTER_SLIDER_BRIGHTNESS) {
+    else if(s_active_slider == UI_CONTROL_CENTER_SLIDER_BRIGHTNESS)
         (void)app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL,
                                  value, 1500U);
-    }
 }
 
 void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
@@ -1184,6 +1267,11 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
     lv_point_t point = { .x = event->x, .y = event->y };
 
     if(event->type == UI_INPUT_TOUCH_BEGIN) {
+        ui_app_state_t input_state;
+        s_touch_sequence_blocked =
+            ui_app_state_get(&input_state) && input_state.touch_locked &&
+            !s_quick_visible;
+        if(s_touch_sequence_blocked) return;
         s_pointer_start = point;
         s_overlay_start_y = s_quick_visible ? lv_obj_get_y(s_quick_overlay) : -UI_SCREEN_H;
         s_pointer_dragging = false;
@@ -1205,17 +1293,18 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
             s_active_slider = ui_control_center_slider_at(point.x, point.y);
             if(s_active_slider != UI_CONTROL_CENTER_SLIDER_NONE) {
                 s_slider_dragging = true;
-                app_update_active_slider(point.y);
+                (void)app_preview_active_slider(point.y);
             }
         }
         return;
     }
 
     if(event->type == UI_INPUT_TOUCH_MOVE) {
+        if(s_touch_sequence_blocked) return;
         if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned) return;
 
         if(s_slider_dragging) {
-            app_update_active_slider(point.y);
+            (void)app_preview_active_slider(point.y);
             return;
         }
 
@@ -1240,6 +1329,7 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
                 s_quick_visible = true;
                 s_pointer_opening = true;
                 s_pointer_dragging = true;
+                ui_control_center_prepare_show();
                 app_update_quick_states();
             } else if(s_quick_visible && delta_y < 0) {
                 ui_motion_cancel_y(s_quick_overlay);
@@ -1269,6 +1359,10 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
 
     if(event->type == UI_INPUT_TOUCH_END ||
        event->type == UI_INPUT_TOUCH_CANCEL) {
+        if(s_touch_sequence_blocked) {
+            s_touch_sequence_blocked = false;
+            return;
+        }
         if(s_dynamic_card_gesture_owned) {
             s_dynamic_card_gesture_owned = false;
             s_pointer_dragging = false;
@@ -1287,7 +1381,7 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         }
 
         if(s_slider_dragging) {
-            app_update_active_slider(point.y);
+            app_commit_active_slider(point.y);
             s_slider_dragging = false;
             s_active_slider = UI_CONTROL_CENTER_SLIDER_NONE;
             return;

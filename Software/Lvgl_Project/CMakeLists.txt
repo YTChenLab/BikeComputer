@@ -270,6 +270,26 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME ui_dock_view_test COMMAND ui_dock_view_test)
 
+    add_executable(ui_control_center_test
+        tests/ui_control_center_test.c
+        src/ui/overlays/ui_control_center.c
+        src/ui/core/ui_background.c
+        src/ui/core/ui_motion.c
+        src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_en_18.c
+    )
+    target_include_directories(ui_control_center_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_control_center_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_control_center_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_control_center_test m pthread)
+    endif()
+    add_test(NAME ui_control_center_test COMMAND ui_control_center_test)
+
     add_executable(ui_router_lifecycle_test
         tests/ui_router_lifecycle_test.c
         src/ui/core/ui_router.c

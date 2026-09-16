@@ -64,23 +64,26 @@ int main(void)
     assert(state.sound_level == 100 && state.brightness_level == 100);
     assert(state.power_save_enabled);
 
-    ui_app_state_set_media(true, 2, UI_MEDIA_MODE_SHUFFLE);
+    ui_app_state_set_touch_locked(true);
     assert(s_calls == 4);
+    assert(ui_app_state_get(&state) && state.touch_locked);
+
+    ui_app_state_set_media(true, 2, UI_MEDIA_MODE_SHUFFLE);
+    assert(s_calls == 5);
     assert(s_last_state.media_playing && s_last_state.media_track == 2);
     assert(s_last_state.media_mode == UI_MEDIA_MODE_SHUFFLE);
 
     ui_app_state_set_route(3);
     ui_app_state_set_ride_state(UI_RIDE_STATE_RIDING);
     ui_app_state_set_navigation_active(true);
-    assert(s_calls == 7);
+    assert(s_calls == 8);
     assert(s_last_state.navigation_active);
 
     assert(ui_app_state_unsubscribe(status_subscription));
     assert(ui_app_state_unsubscribe(all_subscription));
     ui_app_state_set_clock(8, 30);
-    assert(s_calls == 7);
+    assert(s_calls == 8);
 
     puts("ui_app_state_test: PASS");
     return 0;
 }
-

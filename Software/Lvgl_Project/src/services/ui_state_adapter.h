@@ -15,7 +15,8 @@ typedef enum
     UI_STATE_ADAPTER_CONTROL      = 1U << 4,
     UI_STATE_ADAPTER_MEDIA        = 1U << 5,
     UI_STATE_ADAPTER_NAVIGATION   = 1U << 6,
-    UI_STATE_ADAPTER_ALL          = 0x7FU
+    UI_STATE_ADAPTER_TOUCH_LOCK   = 1U << 7,
+    UI_STATE_ADAPTER_ALL          = 0xFFU
 } ui_state_adapter_field_t;
 
 typedef uint32_t ui_state_adapter_mask_t;
@@ -39,6 +40,7 @@ typedef struct
     uint8_t sound_level;
     uint8_t brightness_level;
     bool power_save_enabled;
+    bool touch_locked;
 
     bool media_playing;
     uint8_t media_track;

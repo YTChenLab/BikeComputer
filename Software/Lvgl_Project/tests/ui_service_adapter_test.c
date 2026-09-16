@@ -69,6 +69,7 @@ static void test_state_adapter(void)
         .sound_level = 120,
         .brightness_level = 64,
         .power_save_enabled = true,
+        .touch_locked = true,
         .media_playing = true,
         .media_track = 2,
         .media_mode = UI_MEDIA_MODE_REPEAT_ONE,
@@ -80,7 +81,8 @@ static void test_state_adapter(void)
              "Power Meter");
     ui_state_adapter_mask_t fields =
         UI_STATE_ADAPTER_GNSS | UI_STATE_ADAPTER_CONNECTIVITY |
-        UI_STATE_ADAPTER_CONTROL | UI_STATE_ADAPTER_MEDIA |
+        UI_STATE_ADAPTER_CONTROL | UI_STATE_ADAPTER_TOUCH_LOCK |
+        UI_STATE_ADAPTER_MEDIA |
         UI_STATE_ADAPTER_NAVIGATION;
     assert(ui_state_adapter_submit(&external, fields));
     assert(ui_state_adapter_process() == fields);
@@ -89,7 +91,8 @@ static void test_state_adapter(void)
     assert(state.wifi_connected && !state.bluetooth_connected);
     assert(strcmp(state.wifi_name, "Bike-Lab") == 0);
     assert(state.sound_level == 100 && state.brightness_level == 64);
-    assert(state.power_save_enabled && state.media_playing);
+    assert(state.power_save_enabled && state.touch_locked);
+    assert(state.media_playing);
     assert(state.media_track == 2);
     assert(state.media_mode == UI_MEDIA_MODE_REPEAT_ONE);
     assert(state.navigation_active);

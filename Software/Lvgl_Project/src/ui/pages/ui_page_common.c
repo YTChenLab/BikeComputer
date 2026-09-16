@@ -5,6 +5,7 @@
 #include "../core/ui_colors.h"
 #include "../core/ui_sizes.h"
 #include "../core/ui_theme.h"
+#include "../design/ui_design_tokens.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -92,6 +93,21 @@ lv_obj_t *ui_page_screen_create(void)
     ui_background_apply(screen);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     return screen;
+}
+
+lv_obj_t *ui_page_bottom_surface_slot_create(lv_obj_t *screen)
+{
+    if(screen == NULL) return NULL;
+    lv_obj_t *slot = lv_obj_create(screen);
+    lv_obj_remove_style_all(slot);
+    lv_obj_set_pos(slot, UI_BOTTOM_SURFACE_X,
+                   UI_BOTTOM_SURFACE_NORMAL_Y);
+    lv_obj_set_size(slot, UI_BOTTOM_SURFACE_WIDTH,
+                    UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
+    lv_obj_clear_flag(slot,
+                      LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(slot, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+    return slot;
 }
 
 lv_obj_t *ui_page_box(lv_obj_t *parent, int32_t x, int32_t y,

@@ -1493,15 +1493,7 @@ void ui_dashboard_create(void)
 
 
     /* 5. 首页底部真实槽位：Surface 在这里原位替换内容，不作为弹窗叠加。 */
-    s_bottom_surface_slot = lv_obj_create(s_screen);
-    lv_obj_remove_style_all(s_bottom_surface_slot);
-    lv_obj_set_pos(s_bottom_surface_slot, UI_BOTTOM_SURFACE_X,
-                   UI_BOTTOM_SURFACE_NORMAL_Y);
-    lv_obj_set_size(s_bottom_surface_slot, UI_BOTTOM_SURFACE_WIDTH,
-                    UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
-    lv_obj_clear_flag(s_bottom_surface_slot,
-                      LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(s_bottom_surface_slot, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+    s_bottom_surface_slot = ui_page_bottom_surface_slot_create(s_screen);
     if(ui_bottom_surface_create(s_bottom_surface_slot)) {
         ui_dynamic_card_manager_create(
             ui_bottom_surface_dynamic_host());
@@ -1535,6 +1527,11 @@ void ui_dashboard_create(void)
 lv_obj_t *ui_dashboard_get_screen(void)
 {
     return s_screen;
+}
+
+lv_obj_t *ui_dashboard_get_bottom_surface_slot(void)
+{
+    return s_bottom_surface_slot;
 }
 
 

@@ -26,13 +26,16 @@ Phase 4 已建立第一版设计 Token、公共 Surface 样式和唯一 `ui_bott
 ## Bottom Interaction Surface 对象树
 
 ```text
-lv_layer_top
-  └─ ui_bottom_surface.root
-       ├─ dynamic_host
-       │    └─ Dynamic Card Viewport
-       └─ interaction_host
-            └─ Phase 5 Interaction content
+Current Page Screen
+  └─ Bottom Surface Slot
+       └─ ui_bottom_surface.root
+            ├─ dynamic_host
+            │    └─ Dynamic Card Viewport
+            └─ interaction_host
+                 └─ Interaction content
 ```
+
+上图是 Phase 6 完成后的正式对象树。Phase 4 初版曾挂载到 `lv_layer_top()`，该方案已废弃，运行时代码不再包含备用 top-layer 路径。
 
 Surface 是唯一拥有以下视觉属性的对象：
 
@@ -66,8 +69,8 @@ Dynamic Card 的四张卡已经改为透明内容对象，不再分别绘制外�
 
 - Dashboard `on_enter` 显示 Normal Dynamic Card Mode。
 - Dashboard `on_leave` 隐藏 Normal 内容。
-- Interaction Mode 后续可以在任何页面显示，因此不依赖 Dashboard Screen 的生命周期。
-- Phase 4 初版 Surface 位于 top layer；该挂载方式已在 Phase 5.1 被 Dashboard 页面内固定 Slot 取代。
+- Interaction Mode 可以在具有 Bottom Surface Slot 的页面内显示，并由 Router 生命周期挂载。
+- Phase 4 初版 Surface 位于 top layer；Dashboard Slot 在 Phase 5.1 建立，其余页面 Slot 与完整 Router 生命周期在 Phase 6 完成。
 
 ## 当前迁移边界
 
@@ -78,14 +81,14 @@ Dynamic Card 的四张卡已经改为透明内容对象，不再分别绘制外�
 - Surface 尺寸、模式、优先级、抢占和恢复基础。
 - 设计 Token 与公共 Surface Style。
 
-尚未完成：
+Phase 4 结束时尚未完成、现已在 Phase 5/6 完成：
 
-- 旧 `ui_dock_view` 仍使用独立 top-layer 根对象。
-- INFO/ACTION/CONFIRM/CONTROL/NAVIGATION/MEDIA 模板尚未迁入 `interaction_host`。
-- Command Pending/Failed/Timeout 尚未映射为 Surface 内容。
-- Mini/Expanded 的最终模板排版尚未进行视觉验收。
+- 删除旧 `ui_dock_view` 独立 top-layer 根对象。
+- INFO/ACTION/CONFIRM/CONTROL/NAVIGATION/MEDIA 模板迁入 `interaction_host`。
+- Command Pending/Failed/Timeout 映射为 Surface 内容。
+- 页面级 Slot、Router 挂载/卸载和跨页状态恢复。
 
-以上内容属于 Phase 5。Phase 5 完成时必须删除旧 Interaction Dock 独立 Layer，不能保留双路径作为长期兼容方案。
+Mini/Expanded 的后续复杂模板仍需按具体业务继续做视觉验收，但不得恢复独立 Layer 或双容器路径。
 
 ## 验证结果
 

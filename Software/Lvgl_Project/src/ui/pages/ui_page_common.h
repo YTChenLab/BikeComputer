@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 lv_obj_t *ui_page_screen_create(void);
+lv_obj_t *ui_page_bottom_surface_slot_create(lv_obj_t *screen);
 lv_obj_t *ui_page_box(lv_obj_t *parent, int32_t x, int32_t y,
                       int32_t width, int32_t height,
                       lv_color_t border, uint8_t border_width);

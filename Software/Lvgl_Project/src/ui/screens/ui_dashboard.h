@@ -36,6 +36,9 @@ void ui_dashboard_create(void);
  */
 lv_obj_t *ui_dashboard_get_screen(void);
 
+/** Page-local mount point for the shared Bottom Interaction Surface. */
+lv_obj_t *ui_dashboard_get_bottom_surface_slot(void);
+
 
 /**
  * @brief 更新整个 Dashboard

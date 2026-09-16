@@ -40,7 +40,8 @@ typedef struct
     uint32_t owner_id;
     uint32_t version;
     uint8_t restore_depth;
-    bool normal_page_active;
+    bool mounted;
+    bool dynamic_content_visible;
 } ui_bottom_surface_state_t;
 
 typedef void (*ui_bottom_surface_observer_cb_t)(
@@ -55,7 +56,9 @@ lv_obj_t *ui_bottom_surface_root(void);
 lv_obj_t *ui_bottom_surface_dynamic_host(void);
 lv_obj_t *ui_bottom_surface_interaction_host(void);
 
-void ui_bottom_surface_set_normal_page_active(bool active);
+bool ui_bottom_surface_mount(lv_obj_t *slot,
+                             bool dynamic_content_visible);
+void ui_bottom_surface_unmount(void);
 void ui_bottom_surface_set_dynamic_focus(bool focused);
 bool ui_bottom_surface_present_interaction(
     uint32_t owner_id,

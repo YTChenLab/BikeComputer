@@ -5,17 +5,18 @@
 Phase 5 已将 INFO、ACTION、CONFIRM、CONTROL、NAVIGATION、MEDIA 六类 Interaction Dock 内容迁入 `ui_bottom_surface.interaction_host`。旧 `ui_dock_view` 不再创建独立 `lv_layer_top()`、全屏透明对象或第二套底部卡片外框。
 
 ```text
-lv_layer_top
-  └─ ui_bottom_surface.root
-       ├─ dynamic_host
-       │    └─ Dynamic Card Viewport
-       └─ interaction_host
-            ├─ INFO content
-            ├─ ACTION content
-            ├─ CONFIRM content
-            ├─ CONTROL content
-            ├─ NAVIGATION content
-            └─ MEDIA content
+Current Page Screen
+  └─ Bottom Surface Slot
+       └─ ui_bottom_surface.root
+            ├─ dynamic_host
+            │    └─ Dynamic Card Viewport
+            └─ interaction_host
+                 ├─ INFO content
+                 ├─ ACTION content
+                 ├─ CONFIRM content
+                 ├─ CONTROL content
+                 ├─ NAVIGATION content
+                 └─ MEDIA content
 ```
 
 任意时刻只有 `dynamic_host` 或 `interaction_host` 可见。Interaction 结束后，由同一个 Surface 恢复此前的 Dynamic Card，不再叠加 Popup。
@@ -70,14 +71,16 @@ GNSS 定位、骑行结束和数据保存继续使用已有的领域专用 Dock 
 - P0/P1/P2 优先级边框正确。
 - Pending → Success → 自动恢复。
 - Failed → CLOSE → Dynamic Card 恢复。
-- Dashboard 不活跃时，高优先级 Interaction 仍可显示；结束后 Surface 正确隐藏。
+- Dashboard 不活跃时，高优先级 Interaction 在当前页面 Slot 内显示；结束后 Surface 正确隐藏。
 - 不存在旧 Interaction Dock 独立 top-layer 根对象。
 
 Phase 5.1 进一步规定：Dashboard 激活时 Bottom Surface 必须属于页面 Slot，top layer 不得包含该根对象。
 
-## 后续边界
+## 阶段边界
 
-Phase 6 才开始逐页迁移页面到 Design Token 与统一 Router 生命周期。本阶段没有修改 P1 顶部状态栏、实时速度、黄色速度条、2×3 数据区、背景资源或 MiSans 字体文件。
+Phase 5 本身没有修改 P1 顶部状态栏、实时速度、黄色速度条、2×3 数据区、背景资源或 MiSans 字体文件。
+
+Phase 6 已完成页面 Slot 与 Router 挂载生命周期，详见 `UI_PAGE_MIGRATION_PHASE6.md`。
 
 ## 当前验证结果
 

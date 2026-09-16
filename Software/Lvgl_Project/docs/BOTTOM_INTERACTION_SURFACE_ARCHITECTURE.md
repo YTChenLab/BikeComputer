@@ -67,4 +67,6 @@ Phase 4 已创建 `ui_bottom_surface`，并将 Dynamic Card 迁入 `dynamic_host
 
 当前底部视觉层只允许存在一个 `ui_bottom_surface.root`。后续页面或功能不得重新创建独立 Popup/Dock 与其叠加。
 
-Phase 5.1 起，Dashboard 通过页面内固定 Slot 承载该根对象，Normal/Interaction 切换不得改变容器坐标和尺寸。top layer 仅作为尚未迁移页面的安全事件临时备用挂载点，不是 Dashboard 的常态视觉路径。
+Phase 5.1 起，Dashboard 通过页面内固定 Slot 承载该根对象，Normal/Interaction 切换不得改变容器坐标和尺寸。
+
+Phase 6 已将 Slot 扩展到 Navigation、Summary、Profile、Settings、System 和 Power，并由 Router `on_enter/on_leave` 统一挂载和卸载。`ui_bottom_surface` 不再包含任何 top layer 备用路径。

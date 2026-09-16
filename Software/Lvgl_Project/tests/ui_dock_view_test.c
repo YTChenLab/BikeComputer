@@ -142,7 +142,7 @@ int main(void)
                     UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
     ui_bottom_surface_init();
     assert(ui_bottom_surface_create(slot));
-    ui_bottom_surface_set_normal_page_active(true);
+    assert(ui_bottom_surface_mount(slot, true));
     ui_dock_init();
     ui_dock_view_init();
     ui_dock_controller_init();

@@ -16,8 +16,7 @@ typedef struct
 typedef struct
 {
     lv_obj_t *root;
-    lv_obj_t *normal_parent;
-    lv_obj_t *fallback_parent;
+    lv_obj_t *slot;
     lv_obj_t *dynamic_host;
     lv_obj_t *interaction_host;
     ui_bottom_surface_entry_t current;
@@ -26,7 +25,8 @@ typedef struct
     void *observer_user_data;
     uint32_t version;
     uint8_t restore_depth;
-    bool normal_page_active;
+    bool mounted;
+    bool dynamic_content_visible;
     bool dynamic_focused;
     bool created;
 } ui_bottom_surface_context_t;
@@ -44,12 +44,6 @@ static int32_t surface_height(ui_bottom_surface_size_t size)
         default:
             return UI_BOTTOM_SURFACE_NORMAL_HEIGHT;
     }
-}
-
-static int32_t surface_y(ui_bottom_surface_size_t size)
-{
-    return UI_TOKEN_SCREEN_HEIGHT - UI_BOTTOM_SURFACE_BOTTOM_MARGIN -
-           surface_height(size);
 }
 
 static void height_animation(void *object, int32_t value)
@@ -124,8 +118,9 @@ static void animate_host_opacity(lv_obj_t *host, lv_opa_t from, lv_opa_t to,
 
 static bool should_be_visible(void)
 {
-    return s_surface.current.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE ||
-           s_surface.normal_page_active;
+    return s_surface.mounted &&
+           (s_surface.current.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE ||
+            s_surface.dynamic_content_visible);
 }
 
 static void apply_hosts(bool animated)
@@ -154,15 +149,6 @@ static void apply_hosts(bool animated)
     animate_host_opacity(previous,
                          lv_obj_get_style_opa(previous, 0),
                          UI_TOKEN_OPA_HIDDEN, host_fade_out_completed);
-}
-
-static void apply_mount(void)
-{
-    if(!s_surface.created) return;
-    lv_obj_t *parent = s_surface.normal_page_active ?
-                       s_surface.normal_parent : s_surface.fallback_parent;
-    if(parent != NULL && lv_obj_get_parent(s_surface.root) != parent)
-        lv_obj_set_parent(s_surface.root, parent);
 }
 
 static void apply_dynamic_focus(void)
@@ -206,14 +192,10 @@ static void apply_geometry(bool animated)
 {
     if(!s_surface.created) return;
     ui_bottom_surface_size_t visual_size = s_surface.current.size;
-    if(s_surface.normal_page_active &&
-       visual_size == UI_BOTTOM_SURFACE_SIZE_MINI)
+    if(s_surface.mounted && visual_size == UI_BOTTOM_SURFACE_SIZE_MINI)
         visual_size = UI_BOTTOM_SURFACE_SIZE_NORMAL;
     int32_t height = surface_height(visual_size);
-    int32_t x = s_surface.normal_page_active ? 0 : UI_BOTTOM_SURFACE_X;
-    int32_t y = s_surface.normal_page_active ?
-                UI_BOTTOM_SURFACE_NORMAL_HEIGHT - height :
-                surface_y(visual_size);
+    int32_t y = UI_BOTTOM_SURFACE_NORMAL_HEIGHT - height;
     bool visible = should_be_visible();
     if(!visible) {
         lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
@@ -230,7 +212,7 @@ static void apply_geometry(bool animated)
     else {
         lv_anim_delete(s_surface.root, y_animation);
         lv_anim_delete(s_surface.root, height_animation);
-        lv_obj_set_pos(s_surface.root, x, y);
+        lv_obj_set_pos(s_surface.root, 0, y);
         lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH, height);
         lv_obj_update_layout(s_surface.root);
     }
@@ -266,13 +248,11 @@ bool ui_bottom_surface_create(lv_obj_t *parent)
     if(parent == NULL) return false;
     if(s_surface.created) return true;
 
-    s_surface.normal_parent = parent;
-    s_surface.fallback_parent = lv_layer_top();
-    s_surface.root = lv_obj_create(s_surface.fallback_parent);
+    s_surface.slot = parent;
+    s_surface.root = lv_obj_create(parent);
     lv_obj_remove_style_all(s_surface.root);
     ui_component_style_apply_bottom_surface(s_surface.root);
-    lv_obj_set_pos(s_surface.root, UI_BOTTOM_SURFACE_X,
-                   UI_BOTTOM_SURFACE_NORMAL_Y);
+    lv_obj_set_pos(s_surface.root, 0, 0);
     lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH,
                     UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
     lv_obj_clear_flag(s_surface.root,
@@ -322,12 +302,28 @@ lv_obj_t *ui_bottom_surface_interaction_host(void)
     return s_surface.interaction_host;
 }
 
-void ui_bottom_surface_set_normal_page_active(bool active)
+bool ui_bottom_surface_mount(lv_obj_t *slot,
+                             bool dynamic_content_visible)
 {
-    if(s_surface.normal_page_active == active) return;
-    s_surface.normal_page_active = active;
-    apply_mount();
-    apply_geometry(false);
+    if(!s_surface.created || slot == NULL || !lv_obj_is_valid(slot))
+        return false;
+    s_surface.slot = slot;
+    s_surface.mounted = true;
+    s_surface.dynamic_content_visible = dynamic_content_visible;
+    if(lv_obj_get_parent(s_surface.root) != slot)
+        lv_obj_set_parent(s_surface.root, slot);
+    apply_state(false);
+    return true;
+}
+
+void ui_bottom_surface_unmount(void)
+{
+    if(!s_surface.created || !s_surface.mounted) return;
+    s_surface.mounted = false;
+    s_surface.dynamic_content_visible = false;
+    lv_anim_delete(s_surface.root, y_animation);
+    lv_anim_delete(s_surface.root, height_animation);
+    lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
     emit_state();
 }
 
@@ -428,7 +424,8 @@ bool ui_bottom_surface_get_state(ui_bottom_surface_state_t *state)
         .owner_id = s_surface.current.owner_id,
         .version = s_surface.version,
         .restore_depth = s_surface.restore_depth,
-        .normal_page_active = s_surface.normal_page_active
+        .mounted = s_surface.mounted,
+        .dynamic_content_visible = s_surface.dynamic_content_visible
     };
     return true;
 }

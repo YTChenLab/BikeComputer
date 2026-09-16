@@ -30,7 +30,7 @@ Dashboard 激活期间：
 - Dynamic 与 Interaction Host 使用 120 ms 原位交叉淡入。
 - Surface 背景保持完全不透明，不会露出页面数据形成叠层。
 
-Dashboard 离开后，Surface 可以暂时挂到 top layer 备用位置，以保证其他页面尚未完成 Slot 迁移前，P0/P1 安全事件仍然可见。Phase 6 会为其余页面建立正式 Slot，随后删除该备用视觉路径。
+Phase 6 已为其余可交互页面建立正式 Slot，并删除 top layer 备用路径。Dashboard 离开后，Surface 由 Router 生命周期卸载，再挂到目标页面 Slot；Boot 和关机页面保持隐藏。
 
 ## 强制回归条件
 

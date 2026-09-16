@@ -57,7 +57,12 @@ typedef enum { UI_ACTION_NONE, UI_ACTION_HOME, UI_ACTION_NAVIGATION, UI_ACTION_S
                UI_ACTION_GPS, UI_ACTION_POWER_SAVE, UI_ACTION_BRIGHTNESS, UI_ACTION_SOUND, UI_ACTION_HISTORY,
                UI_ACTION_ACHIEVEMENT, UI_ACTION_POWER_OFF, UI_ACTION_POWER_RESTART,
                UI_ACTION_POWER_CANCEL } ui_action_t;
-typedef struct { lv_obj_t *screen; ui_status_bar_t status; } ui_page_view_t;
+typedef struct {
+    lv_obj_t *screen;
+    lv_obj_t *bottom_surface_slot;
+    ui_status_bar_t status;
+    bool show_dynamic_surface;
+} ui_page_view_t;
 
 static ui_page_view_t s_pages[UI_PAGE_COUNT];
 static lv_timer_t *s_boot_timer;
@@ -437,29 +442,33 @@ static void app_command_changed(const ui_command_result_t *result,
 static void app_dashboard_enter(ui_route_id_t route, lv_obj_t *screen,
                                 void *user_data)
 {
-    (void)route;
     (void)screen;
     (void)user_data;
-    ui_bottom_surface_set_normal_page_active(true);
+    ui_page_view_t *page = &s_pages[route];
+    if(!ui_bottom_surface_mount(page->bottom_surface_slot,
+                                page->show_dynamic_surface))
+        LV_LOG_ERROR("Dashboard Bottom Surface mount failed");
     ui_dashboard_set_active(true);
 }
 
 static void app_dashboard_leave(ui_route_id_t route, lv_obj_t *screen,
                                 void *user_data)
 {
-    (void)route;
     (void)screen;
     (void)user_data;
     ui_dashboard_set_active(false);
-    ui_bottom_surface_set_normal_page_active(false);
+    ui_bottom_surface_unmount();
 }
 
 static void app_navigation_enter(ui_route_id_t route, lv_obj_t *screen,
                                  void *user_data)
 {
-    (void)route;
     (void)screen;
     (void)user_data;
+    ui_page_view_t *page = &s_pages[route];
+    if(!ui_bottom_surface_mount(page->bottom_surface_slot,
+                                page->show_dynamic_surface))
+        LV_LOG_ERROR("Navigation Bottom Surface mount failed");
     ui_navigation_set_active(true);
     ui_app_state_set_navigation_active(true);
 }
@@ -467,11 +476,32 @@ static void app_navigation_enter(ui_route_id_t route, lv_obj_t *screen,
 static void app_navigation_leave(ui_route_id_t route, lv_obj_t *screen,
                                  void *user_data)
 {
-    (void)route;
     (void)screen;
     (void)user_data;
     ui_navigation_set_active(false);
     ui_app_state_set_navigation_active(false);
+    ui_bottom_surface_unmount();
+}
+
+static void app_surface_page_enter(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data)
+{
+    (void)screen;
+    (void)user_data;
+    if(route >= UI_PAGE_COUNT) return;
+    ui_page_view_t *page = &s_pages[route];
+    if(!ui_bottom_surface_mount(page->bottom_surface_slot,
+                                page->show_dynamic_surface))
+        LV_LOG_ERROR("Page Bottom Surface mount failed route=%d", (int)route);
+}
+
+static void app_surface_page_leave(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_bottom_surface_unmount();
 }
 static void app_quick_close_done(lv_anim_t *animation) {
     (void)animation;
@@ -538,6 +568,8 @@ static void app_create_navigation(void) {
     s_pages[UI_PAGE_NAVIGATION].screen = screen;
     app_add_status(UI_PAGE_NAVIGATION);
     ui_navigation_create(screen);
+    s_pages[UI_PAGE_NAVIGATION].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(screen);
 }
 static void app_page_action(ui_page_action_t action, void *user_data) {
     (void)user_data;
@@ -582,14 +614,27 @@ static void app_create_screens(void) {
     s_pages[UI_PAGE_BOOT].screen = ui_boot_page_create();
     ui_dashboard_create();
     s_pages[UI_PAGE_DASHBOARD].screen = ui_dashboard_get_screen();
+    s_pages[UI_PAGE_DASHBOARD].bottom_surface_slot =
+        ui_dashboard_get_bottom_surface_slot();
+    s_pages[UI_PAGE_DASHBOARD].show_dynamic_surface = true;
     app_create_navigation();
     s_pages[UI_PAGE_SUMMARY].screen = ui_summary_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_SUMMARY].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SUMMARY].screen);
     s_pages[UI_PAGE_PROFILE].screen = ui_profile_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_PROFILE].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_PROFILE].screen);
     s_pages[UI_PAGE_SETTINGS].screen = ui_settings_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_SETTINGS].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SETTINGS].screen);
     s_pages[UI_PAGE_SYSTEM].screen = ui_system_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_SYSTEM].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SYSTEM].screen);
     ui_control_center_create(app_control_center_action, NULL);
     s_quick_overlay = ui_control_center_root();
     s_pages[UI_PAGE_POWER].screen = ui_power_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_POWER].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_POWER].screen);
     s_off_screen = app_make_screen();
     lv_obj_set_style_bg_image_src(s_off_screen, NULL, 0);
     lv_obj_set_style_bg_color(s_off_screen, UI_COLOR_BG, 0);
@@ -607,13 +652,38 @@ static void app_register_routes(void) {
         .on_enter = app_navigation_enter,
         .on_leave = app_navigation_leave
     };
+    const ui_router_page_t summary = {
+        .screen = s_pages[UI_PAGE_SUMMARY].screen,
+        .on_enter = app_surface_page_enter,
+        .on_leave = app_surface_page_leave
+    };
+    const ui_router_page_t profile = {
+        .screen = s_pages[UI_PAGE_PROFILE].screen,
+        .on_enter = app_surface_page_enter,
+        .on_leave = app_surface_page_leave
+    };
+    const ui_router_page_t settings = {
+        .screen = s_pages[UI_PAGE_SETTINGS].screen,
+        .on_enter = app_surface_page_enter,
+        .on_leave = app_surface_page_leave
+    };
+    const ui_router_page_t system = {
+        .screen = s_pages[UI_PAGE_SYSTEM].screen,
+        .on_enter = app_surface_page_enter,
+        .on_leave = app_surface_page_leave
+    };
+    const ui_router_page_t power = {
+        .screen = s_pages[UI_PAGE_POWER].screen,
+        .on_enter = app_surface_page_enter,
+        .on_leave = app_surface_page_leave
+    };
     (void)ui_router_register_page(UI_ROUTE_RIDE_DASHBOARD, &dashboard);
     (void)ui_router_register_page(UI_ROUTE_NAVIGATION, &navigation);
-    (void)ui_router_register(UI_ROUTE_RIDE_SUMMARY, s_pages[UI_PAGE_SUMMARY].screen);
-    (void)ui_router_register(UI_ROUTE_PROFILE, s_pages[UI_PAGE_PROFILE].screen);
-    (void)ui_router_register(UI_ROUTE_SETTINGS, s_pages[UI_PAGE_SETTINGS].screen);
-    (void)ui_router_register(UI_ROUTE_SYSTEM, s_pages[UI_PAGE_SYSTEM].screen);
-    (void)ui_router_register(UI_ROUTE_POWER, s_pages[UI_PAGE_POWER].screen);
+    (void)ui_router_register_page(UI_ROUTE_RIDE_SUMMARY, &summary);
+    (void)ui_router_register_page(UI_ROUTE_PROFILE, &profile);
+    (void)ui_router_register_page(UI_ROUTE_SETTINGS, &settings);
+    (void)ui_router_register_page(UI_ROUTE_SYSTEM, &system);
+    (void)ui_router_register_page(UI_ROUTE_POWER, &power);
     (void)ui_router_register(UI_ROUTE_POWER_OFF, s_off_screen);
 }
 static void app_boot_timer_cb(lv_timer_t *timer) {

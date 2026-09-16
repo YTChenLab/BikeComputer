@@ -32,6 +32,13 @@ int main(void)
     lv_obj_set_pos(slot, UI_BOTTOM_SURFACE_X, UI_BOTTOM_SURFACE_NORMAL_Y);
     lv_obj_set_size(slot, UI_BOTTOM_SURFACE_WIDTH,
                     UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
+    lv_obj_t *other_screen = lv_obj_create(NULL);
+    lv_obj_t *other_slot = lv_obj_create(other_screen);
+    lv_obj_remove_style_all(other_slot);
+    lv_obj_set_pos(other_slot, UI_BOTTOM_SURFACE_X,
+                   UI_BOTTOM_SURFACE_NORMAL_Y);
+    lv_obj_set_size(other_slot, UI_BOTTOM_SURFACE_WIDTH,
+                    UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
 
     ui_bottom_surface_init();
     ui_bottom_surface_set_observer(state_changed, NULL);
@@ -45,7 +52,7 @@ int main(void)
     assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_get_child_count(root) == 2U);
 
-    ui_bottom_surface_set_normal_page_active(true);
+    assert(ui_bottom_surface_mount(slot, true));
     lv_obj_update_layout(root);
     assert(!lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_get_parent(root) == slot);
@@ -56,6 +63,9 @@ int main(void)
     assert(!lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_get_style_border_width(root, 0) == UI_TOKEN_BORDER_THIN);
+    ui_bottom_surface_state_t state;
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.mounted && state.dynamic_content_visible);
 
     ui_bottom_surface_set_dynamic_focus(true);
     assert(lv_obj_get_style_border_width(root, 0) == UI_TOKEN_BORDER_FOCUS);
@@ -64,7 +74,6 @@ int main(void)
     ui_bottom_surface_set_dynamic_focus(false);
     assert(lv_obj_get_style_border_width(root, 0) == UI_TOKEN_BORDER_THIN);
 
-    ui_bottom_surface_state_t state;
     assert(ui_bottom_surface_present_interaction(
         100U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
         UI_BOTTOM_SURFACE_PRIORITY_P3_USER_ACTION, true));
@@ -120,20 +129,46 @@ int main(void)
     assert(lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_get_y(root) == 0);
 
-    ui_bottom_surface_set_normal_page_active(false);
-    assert(lv_obj_get_parent(root) == lv_layer_top());
+    assert(ui_bottom_surface_mount(other_slot, false));
+    assert(lv_obj_get_parent(root) == other_slot);
     assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_get_state(&state));
+    assert(state.mounted && !state.dynamic_content_visible);
     assert(ui_bottom_surface_present_interaction(
         300U, UI_BOTTOM_SURFACE_SIZE_MINI,
         UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY, false));
     assert(!lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
-    assert(lv_obj_get_x(root) == UI_BOTTOM_SURFACE_X);
-    assert(lv_obj_get_y(root) == UI_TOKEN_SCREEN_HEIGHT -
-                                 UI_BOTTOM_SURFACE_BOTTOM_MARGIN -
-                                 UI_BOTTOM_SURFACE_MINI_HEIGHT);
-    assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_MINI_HEIGHT);
+    assert(lv_obj_get_x(root) == 0);
+    assert(lv_obj_get_y(root) == 0);
+    assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
     assert(ui_bottom_surface_dismiss_interaction(300U, false));
     assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+
+    ui_bottom_surface_unmount();
+    assert(ui_bottom_surface_get_state(&state));
+    assert(!state.mounted && !state.dynamic_content_visible);
+    assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_present_interaction(
+        301U, UI_BOTTOM_SURFACE_SIZE_NORMAL,
+        UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY, false));
+    assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_mount(other_slot, false));
+    assert(!lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_dismiss_interaction(301U, false));
+    assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+
+    for(uint16_t cycle = 0; cycle < 250U; cycle++) {
+        assert(ui_bottom_surface_mount(slot, true));
+        assert(lv_obj_get_parent(root) == slot);
+        assert(!lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+        ui_bottom_surface_unmount();
+        assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+        assert(ui_bottom_surface_mount(other_slot, false));
+        assert(lv_obj_get_parent(root) == other_slot);
+        assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+        ui_bottom_surface_unmount();
+    }
+    assert(lv_obj_get_child_count(lv_layer_top()) == 0U);
     assert(s_observer_calls >= 6U);
 
     lv_deinit();

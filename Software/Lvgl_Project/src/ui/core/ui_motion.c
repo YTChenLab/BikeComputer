@@ -95,6 +95,43 @@ void ui_motion_translate_fade(lv_obj_t *object,
                     lv_anim_path_ease_in_out, completed, user_data);
 }
 
+static void delayed_value(void *target, ui_motion_value_cb_t callback,
+                          int32_t from, int32_t to, uint32_t duration,
+                          uint32_t delay,
+                          lv_anim_completed_cb_t completed, void *user_data)
+{
+    if(target == NULL || callback == NULL) return;
+    lv_anim_delete(target, callback);
+    lv_anim_t animation;
+    lv_anim_init(&animation);
+    lv_anim_set_var(&animation, target);
+    lv_anim_set_values(&animation, from, to);
+    lv_anim_set_time(&animation, duration);
+    lv_anim_set_delay(&animation, delay);
+    lv_anim_set_path_cb(&animation, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&animation, callback);
+    lv_anim_set_user_data(&animation, user_data);
+    if(completed != NULL) lv_anim_set_completed_cb(&animation, completed);
+    lv_anim_start(&animation);
+}
+
+void ui_motion_translate_fade_delayed(lv_obj_t *object,
+                                      int32_t from_y, int32_t to_y,
+                                      lv_opa_t from_opa, lv_opa_t to_opa,
+                                      uint32_t duration, uint32_t delay,
+                                      lv_anim_completed_cb_t completed,
+                                      void *user_data)
+{
+    if(object == NULL) return;
+    ui_motion_cancel(object, set_y);
+    ui_motion_cancel(object, set_opacity);
+    lv_obj_set_y(object, from_y);
+    lv_obj_set_style_opa(object, from_opa, 0);
+    delayed_value(object, set_y, from_y, to_y, duration, delay, NULL, NULL);
+    delayed_value(object, set_opacity, from_opa, to_opa, duration, delay,
+                  completed, user_data);
+}
+
 void ui_motion_dock_enter(lv_obj_t *object, int32_t resting_y)
 {
     if(object == NULL) return;

@@ -394,6 +394,49 @@ if(BUILD_TESTING)
         target_link_libraries(ui_settings_list_test m pthread)
     endif()
     add_test(NAME ui_settings_list_test COMMAND ui_settings_list_test)
+
+    add_executable(ui_ride_summary_model_test
+        tests/ui_ride_summary_model_test.c
+        src/ui/models/ui_ride_summary_model.c
+    )
+    target_include_directories(ui_ride_summary_model_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    if(NOT MSVC)
+        target_link_libraries(ui_ride_summary_model_test m)
+    endif()
+    add_test(NAME ui_ride_summary_model_test
+             COMMAND ui_ride_summary_model_test)
+
+    add_executable(ui_summary_page_test
+        tests/ui_summary_page_test.c
+        src/ui/pages/ui_summary_page.c
+        src/ui/pages/ui_page_common.c
+        src/ui/components/ui_status_bar.c
+        src/ui/core/ui_app_state.c
+        src/ui/core/ui_background.c
+        src/ui/core/ui_concurrency.c
+        src/ui/core/ui_motion.c
+        src/ui/core/ui_sound.c
+        src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_en_18.c
+        src/ui/fonts/ui_font_misans_en_16.c
+        src/ui/fonts/ui_font_misans_status_20.c
+        src/ui/fonts/ui_font_misans_status_16.c
+        src/ui/fonts/ui_font_misans_metric_60.c
+        src/ui/fonts/ui_font_misans_num_48.c
+    )
+    target_include_directories(ui_summary_page_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_summary_page_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_summary_page_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_summary_page_test m pthread)
+    endif()
+    add_test(NAME ui_summary_page_test COMMAND ui_summary_page_test)
 endif()
 
 # On Windows, GUI applications do not show a console by default,

@@ -46,6 +46,12 @@ void ui_motion_translate_fade(lv_obj_t *object,
                               uint32_t duration,
                               lv_anim_completed_cb_t completed,
                               void *user_data);
+void ui_motion_translate_fade_delayed(lv_obj_t *object,
+                                      int32_t from_y, int32_t to_y,
+                                      lv_opa_t from_opa, lv_opa_t to_opa,
+                                      uint32_t duration, uint32_t delay,
+                                      lv_anim_completed_cb_t completed,
+                                      void *user_data);
 void ui_motion_dock_enter(lv_obj_t *object, int32_t resting_y);
 void ui_motion_dock_exit(lv_obj_t *object, int32_t resting_y,
                          lv_anim_completed_cb_t completed, void *user_data);

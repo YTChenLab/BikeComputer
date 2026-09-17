@@ -15,6 +15,7 @@ typedef struct
     uint32_t gnss_remaining_ms;
     uint32_t storage_remaining_ms;
     uint32_t ride_data_remaining_ms;
+    uint32_t ride_clock_remainder_ms;
     uint32_t command_remaining_ms;
     uint32_t ride_rng_state;
     ui_command_t command;
@@ -53,6 +54,8 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
 {
     ui_ride_data_t data = {0};
     (void)ui_ride_data_model_get(&data, NULL);
+    data.speed = pc->simulate_stationary ? 0.0f :
+        (float)(120U + random_value(pc, 361U)) / 10.0f;
     if(!pc->ride_data_initialized) {
         data.distance = (float)(1200U + random_value(pc, 8800U)) / 100.0f;
         data.ride_seconds = 1800U + random_value(pc, 7200U);
@@ -60,12 +63,14 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
         data.clock_minute = (uint8_t)random_value(pc, 60U);
         pc->ride_data_initialized = true;
     }
-    else if(pc->ride_recording && !pc->simulate_stationary) {
-        data.distance += (float)(1U + random_value(pc, 8U)) / 100.0f;
-        data.ride_seconds += 1U;
+    else if(pc->ride_recording) {
+        /* Keep simulator distance/time physically consistent with the
+         * 800 ms telemetry cadence so Summary averages remain meaningful. */
+        data.distance += data.speed * (0.8f / 3600.0f);
+        pc->ride_clock_remainder_ms += 800U;
+        data.ride_seconds += pc->ride_clock_remainder_ms / 1000U;
+        pc->ride_clock_remainder_ms %= 1000U;
     }
-    data.speed = pc->simulate_stationary ? 0.0f :
-        (float)(120U + random_value(pc, 361U)) / 10.0f;
     data.heart_rate = (uint16_t)(105U + random_value(pc, 76U));
     data.power = pc->simulate_stationary ? 0U :
         (uint16_t)(90U + random_value(pc, 331U));

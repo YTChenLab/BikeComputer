@@ -36,6 +36,7 @@
 #include "../pages/ui_summary_page.h"
 #include "../pages/ui_system_page.h"
 #include "../models/ui_ride_data_model.h"
+#include "../models/ui_ride_summary_model.h"
 #include "../models/ui_home_data_model.h"
 #include "../overlays/ui_control_center.h"
 
@@ -130,6 +131,7 @@ static void app_auto_pause_tick(uint32_t elapsed_ms);
 static bool app_request_pause_toggle(ui_ride_pause_reason_t reason);
 static void app_show_settings_control(app_settings_control_t control);
 static void app_show_power_confirmation(bool restart);
+static void app_commit_summary_to_home(void);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -318,6 +320,9 @@ static void app_ride_data_changed(const ui_ride_data_t *data,
     if(data == NULL) return;
     ui_auto_pause_set_speed(&s_auto_pause, data->speed);
     ui_dashboard_set_data(data);
+    if(ui_state_machine_state() == UI_RIDE_STATE_RIDING &&
+       ui_ride_summary_model_active())
+        ui_ride_summary_model_update(data);
 }
 
 static bool app_request_pause_toggle(ui_ride_pause_reason_t reason)
@@ -359,6 +364,34 @@ static void app_auto_pause_tick(uint32_t elapsed_ms)
     }
 }
 
+static void app_commit_summary_to_home(void)
+{
+    ui_ride_summary_t summary;
+    ui_home_data_t home;
+    ui_app_state_t state;
+    if(!ui_ride_summary_model_get(&summary) ||
+       !ui_home_data_model_get(&home) || !ui_app_state_get(&state)) return;
+
+    home.total_distance_km +=
+        (uint32_t)(summary.distance_km + 0.5f);
+    uint32_t total_minutes = home.total_time_hours * 60U +
+                             home.total_time_minutes +
+                             summary.duration_seconds / 60U;
+    home.total_time_hours = total_minutes / 60U;
+    home.total_time_minutes = (uint8_t)(total_minutes % 60U);
+    home.total_ascent_m += summary.ascent_m;
+    home.last_distance_tenths_km =
+        (uint32_t)(summary.distance_km * 10.0f + 0.5f);
+    home.last_duration_minutes =
+        (summary.duration_seconds + 59U) / 60U;
+    home.last_ascent_m = summary.ascent_m;
+    snprintf(home.last_ride_date, sizeof(home.last_ride_date),
+             "TODAY  %02u:%02u", state.clock_hour, state.clock_minute);
+    snprintf(home.last_ride_caption, sizeof(home.last_ride_caption),
+             "RIDE COMPLETE · SAVED");
+    (void)ui_home_data_model_update(&home);
+}
+
 static void app_state_changed(const ui_app_state_t *state,
                               ui_app_state_change_mask_t changed,
                               void *user_data)
@@ -394,10 +427,18 @@ static void app_ride_state_changed(ui_ride_state_t previous,
                                    ui_ride_state_t current,
                                    ui_ride_event_t event, void *user_data)
 {
-    (void)previous;
-    (void)event;
     (void)user_data;
     ui_app_state_set_ride_state(current);
+    if(event == UI_RIDE_EVENT_GO && current == UI_RIDE_STATE_RIDING) {
+        ui_ride_data_t data;
+        if(ui_ride_data_model_get(&data, NULL))
+            ui_ride_summary_model_begin(&data);
+    }
+    else if(current == UI_RIDE_STATE_SUMMARY &&
+            previous == UI_RIDE_STATE_FINISHING) {
+        ui_ride_summary_model_finish(true);
+        app_commit_summary_to_home();
+    }
     if(current != UI_RIDE_STATE_RIDING &&
        current != UI_RIDE_STATE_PAUSED &&
        current != UI_RIDE_STATE_FINISHING) {
@@ -711,6 +752,30 @@ static void app_dashboard_leave(ui_route_id_t route, lv_obj_t *screen,
     ui_bottom_surface_unmount();
 }
 
+static void app_summary_enter(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    (void)screen;
+    (void)user_data;
+    ui_page_view_t *page = &s_pages[route];
+    if(!ui_bottom_surface_mount(page->bottom_surface_slot, false))
+        LV_LOG_ERROR("Summary Bottom Surface mount failed");
+    ui_ride_summary_t summary;
+    if(ui_ride_summary_model_get(&summary))
+        ui_summary_page_set_data(&summary);
+    ui_summary_page_set_active(true);
+}
+
+static void app_summary_leave(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_summary_page_set_active(false);
+    ui_bottom_surface_unmount();
+}
+
 static void app_navigation_enter(ui_route_id_t route, lv_obj_t *screen,
                                  void *user_data)
 {
@@ -951,8 +1016,8 @@ static void app_register_routes(void) {
     };
     const ui_router_page_t summary = {
         .screen = s_pages[UI_PAGE_SUMMARY].screen,
-        .on_enter = app_surface_page_enter,
-        .on_leave = app_surface_page_leave
+        .on_enter = app_summary_enter,
+        .on_leave = app_summary_leave
     };
     const ui_router_page_t profile = {
         .screen = s_pages[UI_PAGE_PROFILE].screen,
@@ -1206,6 +1271,7 @@ void ui_app_init(void) {
     ui_state_machine_set_changed_callback(app_ride_state_changed, NULL);
     ui_home_data_model_init();
     ui_ride_data_model_init();
+    ui_ride_summary_model_init();
     ui_router_init(UI_ROUTE_HOME);
     ui_router_set_changed_callback(app_route_changed, NULL);
     app_create_screens();
@@ -1231,6 +1297,10 @@ void ui_app_handle_back(void) {
      * the previous Bottom Interaction Surface content. */
     if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING) {
         app_back();
+        return;
+    }
+    if(ui_state_machine_state() == UI_RIDE_STATE_SUMMARY) {
+        app_action(UI_ACTION_HOME);
         return;
     }
     if(!s_quick_visible && ui_dock_view_is_visible() &&
@@ -1329,6 +1399,9 @@ void ui_app_handle_input(ui_input_event_t input) {
     if(!s_powered_off && !s_quick_visible &&
        ui_router_current() == UI_PAGE_POWER &&
        ui_power_page_handle_input(input)) return;
+    if(!s_powered_off && !s_quick_visible &&
+       ui_router_current() == UI_PAGE_SUMMARY &&
+       ui_summary_page_handle_input(input)) return;
 
     if(input == UI_INPUT_ENCODER_CW) app_handle_key(LV_KEY_DOWN);
     else if(input == UI_INPUT_ENCODER_CCW) app_handle_key(LV_KEY_UP);

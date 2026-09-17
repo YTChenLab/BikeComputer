@@ -174,8 +174,10 @@ int main(void)
     test_dock_font_coverage();
 
     lv_obj_t *surface = ui_bottom_surface_root();
+    lv_obj_t *dynamic_host = ui_bottom_surface_dynamic_host();
     lv_obj_t *host = ui_dock_view_root();
-    assert(surface != NULL && host == ui_bottom_surface_interaction_host());
+    assert(surface != NULL && dynamic_host != NULL &&
+           host == ui_bottom_surface_interaction_host());
     assert(lv_obj_get_parent(surface) == slot);
     assert(lv_obj_get_x(surface) == 0 && lv_obj_get_y(surface) == 0);
     assert(lv_obj_has_flag(host, LV_OBJ_FLAG_HIDDEN));
@@ -359,6 +361,8 @@ int main(void)
     finish_animations();
     assert(!ui_dock_view_is_visible());
 
+    assert(ui_bottom_surface_mount(slot, false));
+    assert(lv_obj_has_flag(surface, LV_OBJ_FLAG_HIDDEN));
     ui_event_t navigation_turn = {0};
     navigation_turn.type = UI_EVENT_NAVIGATION_TURN;
     navigation_turn.priority = UI_EVENT_PRIORITY_P1_RIDING_SAFETY;
@@ -391,10 +395,19 @@ int main(void)
     assert(navigation_state.priority ==
            UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY);
     ui_dock_controller_tick(5000U);
+    assert(!lv_obj_has_flag(surface, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(dynamic_host, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(host, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(navigation_root, LV_OBJ_FLAG_HIDDEN));
     finish_animations();
     assert(!ui_dock_view_is_visible());
     assert(ui_bottom_surface_get_state(&navigation_state));
     assert(navigation_state.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE);
+    assert(lv_obj_has_flag(surface, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(dynamic_host, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(host, LV_OBJ_FLAG_HIDDEN));
+    assert(ui_bottom_surface_mount(slot, true));
+    finish_animations();
 
     ui_event_t command_pending = {0};
     command_pending.type = UI_EVENT_COMMAND_PENDING;

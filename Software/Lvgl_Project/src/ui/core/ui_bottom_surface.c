@@ -35,6 +35,20 @@ static ui_bottom_surface_context_t s_surface;
 
 static bool should_be_visible(void);
 
+static bool exits_to_empty_dynamic(void)
+{
+    return s_surface.current.mode ==
+               UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE &&
+           !s_surface.dynamic_content_visible;
+}
+
+static void hide_empty_dynamic_hosts(void)
+{
+    if(!s_surface.created || !exits_to_empty_dynamic()) return;
+    lv_obj_add_flag(s_surface.dynamic_host, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s_surface.interaction_host, LV_OBJ_FLAG_HIDDEN);
+}
+
 static int32_t surface_height(ui_bottom_surface_size_t size)
 {
     switch(size) {
@@ -125,8 +139,10 @@ static void animate_width(lv_obj_t *object, int32_t target,
 static void root_hide_completed(lv_anim_t *animation)
 {
     (void)animation;
-    if(s_surface.created && !should_be_visible())
+    if(s_surface.created && !should_be_visible()) {
         lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
+        hide_empty_dynamic_hosts();
+    }
 }
 
 static bool should_be_visible(void)
@@ -140,6 +156,16 @@ static void apply_hosts(bool animated)
 {
     (void)animated;
     if(!s_surface.created) return;
+    if(exits_to_empty_dynamic()) {
+        /* Navigation and other pages without normal Dynamic Card content
+         * must keep the outgoing Interaction host visible until the Surface
+         * exit finishes. Showing dynamic_host here causes a one-frame flash
+         * of the Dashboard card beneath the navigation event. */
+        lv_obj_add_flag(s_surface.dynamic_host, LV_OBJ_FLAG_HIDDEN);
+        if(lv_obj_has_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN))
+            lv_obj_add_flag(s_surface.interaction_host, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
     lv_obj_t *next =
         s_surface.current.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE ?
         s_surface.dynamic_host : s_surface.interaction_host;
@@ -219,6 +245,7 @@ static void apply_geometry(bool animated)
             lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_pos(s_surface.root, 0, y);
             lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH, height);
+            hide_empty_dynamic_hosts();
         }
         return;
     }

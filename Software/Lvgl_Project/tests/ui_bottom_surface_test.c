@@ -162,8 +162,15 @@ int main(void)
     assert(lv_obj_get_x(root) == 0);
     assert(lv_obj_get_y(root) == 0);
     assert(lv_obj_get_height(root) == UI_BOTTOM_SURFACE_NORMAL_HEIGHT);
-    assert(ui_bottom_surface_dismiss_interaction(300U, false));
+    assert(ui_bottom_surface_dismiss_interaction(300U, true));
+    assert(!lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
+    lv_tick_inc(UI_TOKEN_MOTION_SURFACE_MS);
+    lv_anim_refr_now();
     assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
 
     ui_bottom_surface_unmount();
     assert(ui_bottom_surface_get_state(&state));

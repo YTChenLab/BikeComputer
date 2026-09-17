@@ -160,7 +160,10 @@ static void dock_observer(ui_dock_event_t event, const ui_dock_card_t *card,
 
     ui_dock_template_t *template = &s_view.templates[card->type];
     if(event == UI_DOCK_EVENT_HIDDEN) {
-        lv_obj_add_flag(template->root, LV_OBJ_FLAG_HIDDEN);
+        /* Keep the outgoing template painted while the shared Surface exits.
+         * hide_all_except() will normalize templates on the next presentation.
+         * Hiding it here exposes either an empty frame or, on pages without
+         * Dynamic Card content, the wrong underlying host for one frame. */
         s_view.active_type = UI_DOCK_TYPE_COUNT;
         if(!ui_bottom_surface_dismiss_interaction(card->id, true)) {
             LV_LOG_WARN("Bottom Surface rejected Dock dismiss id=%lu",

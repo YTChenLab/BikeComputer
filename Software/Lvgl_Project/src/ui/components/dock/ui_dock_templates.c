@@ -181,7 +181,7 @@ static void create_navigation(ui_dock_template_t *view,
     view->primary_button = make_button(view->root, 342, 142, 98, 54,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "OPEN",
-                     &lv_font_montserrat_16);
+                     UI_FONT_SURFACE_ACTION);
 }
 
 static void create_media(ui_dock_template_t *view, lv_event_cb_t event_cb)

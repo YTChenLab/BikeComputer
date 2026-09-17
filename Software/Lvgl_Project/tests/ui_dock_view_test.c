@@ -103,7 +103,9 @@ static void test_dock_font_coverage(void)
         "音乐播放", "未提供曲目信息", "存储异常", "骑行数据保存失败",
         "参数调节", "拖动滑条进行调整", "重试", "检查", "结束",
         "取消", "打开", "模式", "稍后", "正在保存骑行数据",
-        "保存完成后自动进入骑行总结",
+        "保存完成后自动进入骑行总结", "查看", "未开启", "已开启",
+        "已关闭", "等待连接", "信号良好", "信号一般", "暂无信号",
+        "处理中", "操作失败", "充电中", "未充电",
         "PROCESSING", "DEVICE REQUEST", "DONE", "DEVICE STATE UPDATED",
         "FAILED", "DEVICE REQUEST FAILED", "TIMEOUT", "REJECTED", "CLOSE",
         "WIFI", "BLUETOOTH", "GPS", "POWER SAVE", "VOLUME", "BRIGHTNESS",
@@ -376,6 +378,13 @@ int main(void)
     assert(ui_dock_current() != NULL);
     assert(ui_dock_current()->type == UI_DOCK_TYPE_NAVIGATION);
     assert(strcmp(ui_dock_current()->message, "前方 180 m 左转") == 0);
+    lv_obj_t *navigation_root = lv_obj_get_child(
+        host, UI_DOCK_TYPE_NAVIGATION);
+    lv_obj_t *navigation_button = lv_obj_get_child(navigation_root, 6);
+    lv_obj_t *navigation_label = lv_obj_get_child(navigation_button, 0);
+    assert(strcmp(lv_label_get_text(navigation_label), "查看") == 0);
+    assert(lv_obj_get_style_text_font(navigation_label, 0) ==
+           UI_FONT_SURFACE_ACTION);
     ui_bottom_surface_state_t navigation_state;
     assert(ui_bottom_surface_get_state(&navigation_state));
     assert(navigation_state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE);

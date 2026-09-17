@@ -90,6 +90,18 @@ int main(void)
     assert(ui_control_center_selected_action() ==
            UI_CONTROL_CENTER_ACTION_WIFI);
 
+    lv_obj_t *gps = ui_control_center_control(
+        UI_CONTROL_CENTER_ACTION_GPS);
+    lv_obj_t *power_save = ui_control_center_control(
+        UI_CONTROL_CENTER_ACTION_POWER_SAVE);
+    lv_obj_t *gps_state = lv_obj_get_child(gps, 2);
+    lv_obj_t *power_save_state = lv_obj_get_child(power_save, 2);
+    assert(strcmp(lv_label_get_text(gps_state), "信号良好") == 0);
+    assert(strcmp(lv_label_get_text(power_save_state), "已关闭") == 0);
+    assert(lv_obj_get_style_text_font(gps_state, 0) == UI_FONT_PAGE_TEXT);
+    assert(lv_obj_get_style_text_font(power_save_state, 0) ==
+           UI_FONT_PAGE_TEXT);
+
     for(uint8_t action = 0; action < UI_CONTROL_CENTER_ACTION_COUNT;
         action++) {
         lv_obj_t *control = ui_control_center_control(

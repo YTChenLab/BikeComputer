@@ -174,7 +174,7 @@ static lv_obj_t *connection_card(int32_t x, const char *icon,
     label(card, 82, 16, 120, title, UI_FONT_PAGE_TEXT,
           LV_TEXT_ALIGN_LEFT);
     s_center.state_labels[action] = label(
-        card, 82, 50, 120, "", &lv_font_montserrat_14,
+        card, 82, 50, 120, "", UI_FONT_PAGE_TEXT,
         LV_TEXT_ALIGN_LEFT);
     lv_label_set_long_mode(s_center.state_labels[action], LV_LABEL_LONG_DOT);
     return card;
@@ -214,7 +214,7 @@ static lv_obj_t *detail_card(int32_t y, const char *icon,
     label(card, 82, 18, 122, title, UI_FONT_PAGE_TEXT,
           LV_TEXT_ALIGN_LEFT);
     s_center.state_labels[action] = label(
-        card, 82, 52, 122, "", &lv_font_montserrat_14,
+        card, 82, 52, 122, "", UI_FONT_PAGE_TEXT,
         LV_TEXT_ALIGN_LEFT);
     return card;
 }
@@ -233,7 +233,7 @@ static void status_cards(void)
     label(touch, 82, 14, 122, "触摸锁定", UI_FONT_PAGE_TEXT,
           LV_TEXT_ALIGN_LEFT);
     s_center.state_labels[UI_CONTROL_CENTER_ACTION_TOUCH_LOCK] = label(
-        touch, 82, 49, 122, "", &lv_font_montserrat_14,
+        touch, 82, 49, 122, "", UI_FONT_PAGE_TEXT,
         LV_TEXT_ALIGN_LEFT);
 
     lv_obj_t *battery = box(s_center.root, CC_RIGHT, CC_STATUS_TOP,
@@ -242,7 +242,7 @@ static void status_cards(void)
     label(battery, 82, 14, 122, "电池状态", UI_FONT_PAGE_TEXT,
           LV_TEXT_ALIGN_LEFT);
     s_center.battery_state = label(
-        battery, 82, 49, 122, "", &lv_font_montserrat_14,
+        battery, 82, 49, 122, "", UI_FONT_PAGE_TEXT,
         LV_TEXT_ALIGN_LEFT);
 }
 

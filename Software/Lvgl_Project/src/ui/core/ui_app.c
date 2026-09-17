@@ -171,21 +171,6 @@ static bool app_ride_domain_active(void)
            state == UI_RIDE_STATE_FINISHING;
 }
 
-static void app_show_feature_info(const char *title, const char *message)
-{
-    ui_event_t event = {0};
-    event.type = UI_EVENT_FEATURE_INFO;
-    event.priority = UI_EVENT_PRIORITY_P4_NORMAL;
-    event.dedupe_key = 0xF001U;
-    event.timeout_ms = 2200U;
-    snprintf(event.title, sizeof(event.title), "%s",
-             title != NULL ? title : "COMING SOON");
-    snprintf(event.message, sizeof(event.message), "%s",
-             message != NULL ? message : "FEATURE RESERVED");
-    (void)ui_event_bus_publish(&event);
-    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
-}
-
 static void app_event_overflow(const ui_event_t *incoming,
                                const ui_event_t *displaced,
                                ui_event_overflow_reason_t reason,
@@ -1032,12 +1017,10 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_SOUND:
             break;
         case UI_ACTION_HISTORY:
-            app_show_feature_info("RIDE HISTORY",
-                                  "PHASE 6F · HISTORY LIST RESERVED");
-            break;
         case UI_ACTION_ACHIEVEMENT:
-            app_show_feature_info("ACHIEVEMENTS",
-                                  "LIGHTWEIGHT PAGE RESERVED");
+            /* Phase 6F placeholders intentionally do not present an
+             * Interaction card. A non-functional Home entry must not
+             * replace the user's current Dynamic Card state. */
             break;
         case UI_ACTION_POWER_OFF:
             app_hide_quick_immediate();

@@ -15,6 +15,7 @@ typedef struct
     lv_obj_t *host;
     ui_dock_template_t templates[UI_DOCK_TYPE_COUNT];
     ui_dock_type_t active_type;
+    uint8_t focus_index;
     bool initialized;
 } ui_dock_view_context_t;
 
@@ -89,6 +90,62 @@ static void hide_all_except(ui_dock_type_t type)
             lv_obj_clear_flag(s_view.templates[i].root, LV_OBJ_FLAG_HIDDEN);
         }
         else lv_obj_add_flag(s_view.templates[i].root, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static uint8_t focus_count(const ui_dock_template_t *view)
+{
+    if(view == NULL) return 0U;
+    if(view->type == UI_DOCK_TYPE_CONFIRM) return 2U;
+    if(view->type == UI_DOCK_TYPE_MEDIA) return 4U;
+    if(view->type == UI_DOCK_TYPE_ACTION ||
+       view->type == UI_DOCK_TYPE_NAVIGATION) return 1U;
+    return 0U;
+}
+
+static lv_obj_t *focus_object(ui_dock_template_t *view, uint8_t index)
+{
+    if(view == NULL) return NULL;
+    if(view->type == UI_DOCK_TYPE_CONFIRM)
+        return index == 0U ? view->secondary_button : view->primary_button;
+    if(view->type == UI_DOCK_TYPE_ACTION ||
+       view->type == UI_DOCK_TYPE_NAVIGATION) return view->primary_button;
+    if(view->type == UI_DOCK_TYPE_MEDIA) {
+        if(index == 0U) return view->decrement_button;
+        if(index == 1U) return view->toggle_button;
+        if(index == 2U) return view->increment_button;
+        return view->secondary_button;
+    }
+    return NULL;
+}
+
+static ui_dock_interaction_t focus_interaction(const ui_dock_template_t *view,
+                                                uint8_t index)
+{
+    if(view->type == UI_DOCK_TYPE_CONFIRM)
+        return index == 0U ? UI_DOCK_INTERACTION_SECONDARY :
+                             UI_DOCK_INTERACTION_PRIMARY;
+    if(view->type == UI_DOCK_TYPE_MEDIA) {
+        if(index == 0U) return UI_DOCK_INTERACTION_DECREMENT;
+        if(index == 1U) return UI_DOCK_INTERACTION_TOGGLE;
+        if(index == 2U) return UI_DOCK_INTERACTION_INCREMENT;
+        return UI_DOCK_INTERACTION_SECONDARY;
+    }
+    return UI_DOCK_INTERACTION_PRIMARY;
+}
+
+static void apply_focus(ui_dock_template_t *view)
+{
+    uint8_t count = focus_count(view);
+    for(uint8_t i = 0; i < count; i++) {
+        lv_obj_t *object = focus_object(view, i);
+        if(object == NULL) continue;
+        bool focused = i == s_view.focus_index;
+        lv_obj_set_style_border_color(object,
+            focused ? UI_TOKEN_COLOR_ACCENT :
+                      UI_TOKEN_COLOR_SURFACE_BORDER, 0);
+        lv_obj_set_style_border_width(object,
+            focused ? UI_TOKEN_BORDER_FOCUS : UI_TOKEN_BORDER_THIN, 0);
     }
 }
 
@@ -182,18 +239,21 @@ static void dock_observer(ui_dock_event_t event, const ui_dock_card_t *card,
                         (unsigned long)card->id);
         }
         else {
+            apply_focus(template);
             animate_content_settle(template->root, true);
         }
         return;
     }
 
     s_view.active_type = card->type;
+    s_view.focus_index = 0U;
     hide_all_except(card->type);
     if(!present_on_surface(event, card)) {
         LV_LOG_WARN("Bottom Surface rejected Dock event=%d id=%lu",
                     (int)event, (unsigned long)card->id);
         return;
     }
+    apply_focus(template);
     animate_content_settle(template->root,
                            event == UI_DOCK_EVENT_RESTORED);
 }
@@ -242,4 +302,69 @@ bool ui_dock_view_is_visible(void)
 lv_obj_t *ui_dock_view_root(void)
 {
     return s_view.host;
+}
+
+bool ui_dock_view_handle_input(ui_input_event_t input)
+{
+    if(!ui_dock_view_is_visible()) return false;
+    const ui_dock_card_t *card = ui_dock_current();
+    if(card == NULL || card->type >= UI_DOCK_TYPE_COUNT) return false;
+    ui_dock_template_t *view = &s_view.templates[card->type];
+
+    if(input == UI_INPUT_BACK) {
+        if(!card->dismissible) return true;
+        uint32_t id = card->id;
+        (void)ui_dock_invoke(id, UI_DOCK_INTERACTION_DISMISS, card->value);
+        const ui_dock_card_t *remaining = ui_dock_current();
+        if(remaining != NULL && remaining->id == id) (void)ui_dock_hide(id);
+        return true;
+    }
+
+    if(card->type == UI_DOCK_TYPE_CONTROL) {
+        if(input == UI_INPUT_ENCODER_PRESS) {
+            if(card->dismissible) (void)ui_dock_hide(card->id);
+            return true;
+        }
+        if(input != UI_INPUT_ENCODER_CW &&
+           input != UI_INPUT_ENCODER_CCW) return false;
+        int32_t minimum = card->maximum > card->minimum ? card->minimum : 0;
+        int32_t maximum = card->maximum > card->minimum ? card->maximum : 100;
+        int32_t value = card->value +
+            (input == UI_INPUT_ENCODER_CW ? 5 : -5);
+        if(value < minimum) value = minimum;
+        if(value > maximum) value = maximum;
+        (void)ui_dock_invoke(card->id,
+                             UI_DOCK_INTERACTION_VALUE_CHANGED, value);
+        ui_sound_play(UI_SFX_FOCUS);
+        return true;
+    }
+
+    uint8_t count = focus_count(view);
+    if(count == 0U) {
+        if(input == UI_INPUT_ENCODER_PRESS && card->dismissible) {
+            (void)ui_dock_hide(card->id);
+            return true;
+        }
+        return false;
+    }
+    if(input == UI_INPUT_ENCODER_CW) {
+        if(s_view.focus_index + 1U < count) s_view.focus_index++;
+        apply_focus(view);
+        ui_sound_play(UI_SFX_FOCUS);
+        return true;
+    }
+    if(input == UI_INPUT_ENCODER_CCW) {
+        if(s_view.focus_index > 0U) s_view.focus_index--;
+        apply_focus(view);
+        ui_sound_play(UI_SFX_FOCUS);
+        return true;
+    }
+    if(input == UI_INPUT_ENCODER_PRESS) {
+        (void)ui_dock_invoke(card->id,
+                             focus_interaction(view, s_view.focus_index),
+                             card->value);
+        ui_sound_play(UI_SFX_PRESS);
+        return true;
+    }
+    return false;
 }

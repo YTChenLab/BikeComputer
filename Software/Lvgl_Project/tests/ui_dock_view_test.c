@@ -110,7 +110,11 @@ static void test_dock_font_coverage(void)
         "FAILED", "DEVICE REQUEST FAILED", "TIMEOUT", "REJECTED", "CLOSE",
         "WIFI", "BLUETOOTH", "GPS", "POWER SAVE", "VOLUME", "BRIGHTNESS",
         "START RIDE", "PAUSE RIDE", "RESUME RIDE", "UPLOAD RIDE DATA",
-        "MEDIA CONTROL"
+        "MEDIA CONTROL", "系统设置", "蓝牙", "卫星定位", "声音",
+        "亮度", "省电模式", "触摸锁定", "系统信息", "电源设置",
+        "设备型号", "LVGL 版本", "存储设备", "TARGET", "系统健康",
+        "关机", "重新启动", "关闭设备", "是否重新启动系统",
+        "是否关闭设备"
     };
     for(uint32_t text_index = 0;
         text_index < sizeof(texts) / sizeof(texts[0]); text_index++) {

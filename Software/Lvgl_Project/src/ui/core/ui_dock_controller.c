@@ -140,8 +140,21 @@ static void dock_action(uint32_t card_id, ui_dock_interaction_t interaction,
     }
     else if(card_id == DOCK_ID_CONTROL &&
             interaction == UI_DOCK_INTERACTION_VALUE_CHANGED) {
-        publish_action(UI_EVENT_CONTROL_CHANGED,
-                       UI_EVENT_PRIORITY_P3_USER_ACTION, card_id, value);
+        ui_event_t event = {0};
+        const ui_dock_card_t *current = ui_dock_current();
+        event.type = UI_EVENT_CONTROL_CHANGED;
+        event.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
+        event.source_id = card_id;
+        event.dedupe_key = card_id;
+        event.value = value;
+        if(current != NULL) {
+            event.minimum = current->minimum;
+            event.maximum = current->maximum;
+            copy_text(event.title, sizeof(event.title), current->title, NULL);
+            copy_text(event.message, sizeof(event.message),
+                      current->message, NULL);
+        }
+        (void)ui_event_bus_publish(&event);
     }
     else if(card_id == DOCK_ID_COMMAND &&
             interaction == UI_DOCK_INTERACTION_PRIMARY) {

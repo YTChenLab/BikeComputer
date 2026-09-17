@@ -374,6 +374,26 @@ if(BUILD_TESTING)
         target_link_libraries(ui_bottom_surface_test m pthread)
     endif()
     add_test(NAME ui_bottom_surface_test COMMAND ui_bottom_surface_test)
+
+    add_executable(ui_settings_list_test
+        tests/ui_settings_list_test.c
+        src/ui/components/settings/ui_settings_list.c
+        src/ui/core/ui_motion.c
+        src/ui/core/ui_sound.c
+        src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_en_18.c
+    )
+    target_include_directories(ui_settings_list_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_settings_list_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_settings_list_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_settings_list_test m pthread)
+    endif()
+    add_test(NAME ui_settings_list_test COMMAND ui_settings_list_test)
 endif()
 
 # On Windows, GUI applications do not show a console by default,

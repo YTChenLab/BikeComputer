@@ -87,6 +87,14 @@ static ui_auto_pause_t s_auto_pause;
 static ui_ride_pause_reason_t s_pending_pause_reason;
 static ui_auto_pause_action_t s_pending_auto_pause_action;
 static bool s_pause_command_pending;
+typedef enum {
+    APP_SETTINGS_CONTROL_NONE = 0,
+    APP_SETTINGS_CONTROL_SOUND,
+    APP_SETTINGS_CONTROL_BRIGHTNESS
+} app_settings_control_t;
+static app_settings_control_t s_settings_control;
+#define APP_DOCK_ID_CONTROL       0x1008U
+#define APP_DOCK_ID_POWER_CONFIRM 0x2101U
 static void app_action(ui_action_t action);
 static void app_page_action(ui_page_action_t action, void *user_data);
 static void app_show(ui_page_t page);
@@ -120,6 +128,8 @@ static bool app_ride_domain_active(void);
 static void app_show_feature_info(const char *title, const char *message);
 static void app_auto_pause_tick(uint32_t elapsed_ms);
 static bool app_request_pause_toggle(ui_ride_pause_reason_t reason);
+static void app_show_settings_control(app_settings_control_t control);
+static void app_show_power_confirmation(bool restart);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -239,6 +249,21 @@ static void app_event_received(const ui_event_t *event, void *user_data)
             }
             break;
         }
+        case UI_EVENT_CONTROL_CHANGED:
+            /* The first CONTROL_CHANGED event only presents the shared
+             * Bottom Surface. Slider changes are republished by Dock using
+             * APP_DOCK_ID_CONTROL and are the only events that reach the
+             * command backend. */
+            if(event->source_id == APP_DOCK_ID_CONTROL) {
+                if(s_settings_control == APP_SETTINGS_CONTROL_SOUND)
+                    (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL,
+                                             event->value, 1500U);
+                else if(s_settings_control ==
+                        APP_SETTINGS_CONTROL_BRIGHTNESS)
+                    (void)app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL,
+                                             event->value, 1500U);
+            }
+            break;
         case UI_EVENT_RIDE_SUMMARY_READY:
             app_hide_quick_immediate();
             app_show(UI_PAGE_SUMMARY);
@@ -351,6 +376,10 @@ static void app_state_changed(const ui_app_state_t *state,
                    UI_APP_STATE_CHANGE_RIDE)) != 0U) {
         app_update_quick_states();
     }
+    if((changed & (UI_APP_STATE_CHANGE_CONNECTIVITY |
+                   UI_APP_STATE_CHANGE_CONTROL |
+                   UI_APP_STATE_CHANGE_STATUS)) != 0U)
+        ui_settings_page_set_state(state);
 }
 
 static void app_route_changed(ui_route_id_t previous,
@@ -423,9 +452,12 @@ static bool app_command_feedback_needed(const ui_command_result_t *result)
         case UI_COMMAND_GNSS_SET_ENABLED:
         case UI_COMMAND_POWER_SAVE_SET_ENABLED:
         case UI_COMMAND_TOUCH_LOCK_SET_ENABLED:
+            /* Control Center owns inline feedback. Settings uses the same
+             * command path but receives feedback through Bottom Surface. */
+            return ui_router_current() == UI_PAGE_SETTINGS;
         case UI_COMMAND_SOUND_SET_LEVEL:
         case UI_COMMAND_BRIGHTNESS_SET_LEVEL:
-            /* Control Center owns inline feedback for its own commands. */
+            /* The CONTROL card itself remains visible while adjusting. */
             return false;
         case UI_COMMAND_GNSS_ACQUIRE_FIX:
         case UI_COMMAND_RIDE_FINISH:
@@ -448,6 +480,29 @@ static bool app_command_feedback_needed(const ui_command_result_t *result)
                    result->status != UI_COMMAND_STATUS_SUCCESS;
         default:
             return true;
+    }
+}
+
+static bool app_settings_item_for_command(ui_command_type_t type,
+                                          ui_settings_item_t *item)
+{
+    if(item == NULL) return false;
+    switch(type) {
+        case UI_COMMAND_WIFI_SET_ENABLED:
+            *item = UI_SETTINGS_ITEM_WIFI; return true;
+        case UI_COMMAND_BLUETOOTH_SET_ENABLED:
+            *item = UI_SETTINGS_ITEM_BLUETOOTH; return true;
+        case UI_COMMAND_GNSS_SET_ENABLED:
+            *item = UI_SETTINGS_ITEM_GPS; return true;
+        case UI_COMMAND_POWER_SAVE_SET_ENABLED:
+            *item = UI_SETTINGS_ITEM_POWER_SAVE; return true;
+        case UI_COMMAND_TOUCH_LOCK_SET_ENABLED:
+            *item = UI_SETTINGS_ITEM_TOUCH_LOCK; return true;
+        case UI_COMMAND_SOUND_SET_LEVEL:
+            *item = UI_SETTINGS_ITEM_SOUND; return true;
+        case UI_COMMAND_BRIGHTNESS_SET_LEVEL:
+            *item = UI_SETTINGS_ITEM_BRIGHTNESS; return true;
+        default: return false;
     }
 }
 
@@ -491,6 +546,15 @@ static void app_command_changed(const ui_command_result_t *result,
 {
     (void)user_data;
     if(result == NULL) return;
+    ui_settings_item_t settings_item;
+    if(app_settings_item_for_command(result->type, &settings_item)) {
+        ui_settings_feedback_t feedback = UI_SETTINGS_FEEDBACK_IDLE;
+        if(result->status == UI_COMMAND_STATUS_PENDING)
+            feedback = UI_SETTINGS_FEEDBACK_PENDING;
+        else if(result->status != UI_COMMAND_STATUS_SUCCESS)
+            feedback = UI_SETTINGS_FEEDBACK_FAILED;
+        ui_settings_page_set_feedback(settings_item, feedback);
+    }
     ui_control_center_action_t control_action =
         UI_CONTROL_CENTER_ACTION_COUNT;
     switch(result->type) {
@@ -787,8 +851,22 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
         case UI_PAGE_ACTION_ACHIEVEMENT: app_action(UI_ACTION_ACHIEVEMENT); break;
         case UI_PAGE_ACTION_SETTINGS: app_action(UI_ACTION_SETTINGS); break;
         case UI_PAGE_ACTION_SYSTEM: app_action(UI_ACTION_SYSTEM); break;
-        case UI_PAGE_ACTION_POWER_OFF: app_action(UI_ACTION_POWER_OFF); break;
-        case UI_PAGE_ACTION_POWER_RESTART: app_action(UI_ACTION_POWER_RESTART); break;
+        case UI_PAGE_ACTION_POWER_MENU: app_show(UI_PAGE_POWER); break;
+        case UI_PAGE_ACTION_WIFI_TOGGLE: app_action(UI_ACTION_WIFI); break;
+        case UI_PAGE_ACTION_BLUETOOTH_TOGGLE: app_action(UI_ACTION_BT); break;
+        case UI_PAGE_ACTION_GPS_TOGGLE: app_action(UI_ACTION_GPS); break;
+        case UI_PAGE_ACTION_POWER_SAVE_TOGGLE:
+            app_action(UI_ACTION_POWER_SAVE); break;
+        case UI_PAGE_ACTION_TOUCH_LOCK_TOGGLE:
+            app_action(UI_ACTION_TOUCH_LOCK); break;
+        case UI_PAGE_ACTION_SOUND_CONTROL:
+            app_show_settings_control(APP_SETTINGS_CONTROL_SOUND); break;
+        case UI_PAGE_ACTION_BRIGHTNESS_CONTROL:
+            app_show_settings_control(APP_SETTINGS_CONTROL_BRIGHTNESS); break;
+        case UI_PAGE_ACTION_POWER_OFF:
+            app_show_power_confirmation(false); break;
+        case UI_PAGE_ACTION_POWER_RESTART:
+            app_show_power_confirmation(true); break;
         case UI_PAGE_ACTION_POWER_CANCEL: app_action(UI_ACTION_POWER_CANCEL); break;
         default: break;
     }
@@ -947,6 +1025,67 @@ static void app_update_slider_visuals(void) {
         (lv_opa_t)(70 + (185 * state.brightness_level / 100)));
     app_update_quick_states();
 }
+
+static void app_show_settings_control(app_settings_control_t control)
+{
+    ui_app_state_t state;
+    if(control == APP_SETTINGS_CONTROL_NONE || !ui_app_state_get(&state))
+        return;
+    s_settings_control = control;
+    ui_event_t event = {0};
+    event.type = UI_EVENT_CONTROL_CHANGED;
+    event.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
+    event.source_id = control == APP_SETTINGS_CONTROL_SOUND ?
+                      0x5301U : 0x5302U;
+    event.dedupe_key = APP_DOCK_ID_CONTROL;
+    event.minimum = 0;
+    event.maximum = 100;
+    event.value = control == APP_SETTINGS_CONTROL_SOUND ?
+                  state.sound_level : state.brightness_level;
+    event.timeout_ms = 0U;
+    snprintf(event.title, sizeof(event.title), "%s",
+             control == APP_SETTINGS_CONTROL_SOUND ? "声音" : "亮度");
+    snprintf(event.message, sizeof(event.message), "%s",
+             "拖动滑条或旋转编码器进行调节");
+    (void)ui_event_bus_publish(&event);
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+}
+
+static void app_power_confirm_action(uint32_t card_id,
+                                     ui_dock_interaction_t interaction,
+                                     int32_t value, void *context)
+{
+    (void)value;
+    bool restart = (bool)(uintptr_t)context;
+    if(interaction == UI_DOCK_INTERACTION_PRIMARY) {
+        (void)ui_dock_hide(card_id);
+        app_action(restart ? UI_ACTION_POWER_RESTART : UI_ACTION_POWER_OFF);
+    }
+    else if(interaction == UI_DOCK_INTERACTION_SECONDARY ||
+            interaction == UI_DOCK_INTERACTION_DISMISS) {
+        (void)ui_dock_hide(card_id);
+    }
+}
+
+static void app_show_power_confirmation(bool restart)
+{
+    ui_dock_card_t card = {0};
+    card.id = APP_DOCK_ID_POWER_CONFIRM;
+    card.type = UI_DOCK_TYPE_CONFIRM;
+    card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+    card.dismissible = true;
+    snprintf(card.title, sizeof(card.title), "%s",
+             restart ? "重新启动" : "关闭设备");
+    snprintf(card.message, sizeof(card.message), "%s",
+             restart ? "是否重新启动系统" : "是否关闭设备");
+    snprintf(card.primary_action, sizeof(card.primary_action), "YES");
+    snprintf(card.secondary_action, sizeof(card.secondary_action), "NO");
+    card.action_cb = app_power_confirm_action;
+    card.context = (void *)(uintptr_t)restart;
+    if(ui_dock_is_visible()) (void)ui_dock_replace(&card);
+    else (void)ui_dock_show(&card);
+}
+
 static void app_action(ui_action_t action) {
     ui_app_state_t state;
     if(!ui_app_state_get(&state)) return;
@@ -1094,6 +1233,11 @@ void ui_app_handle_back(void) {
         app_back();
         return;
     }
+    if(!s_quick_visible && ui_dock_view_is_visible() &&
+       ui_dock_view_handle_input(UI_INPUT_BACK)) {
+        s_settings_control = APP_SETTINGS_CONTROL_NONE;
+        return;
+    }
     if(!s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_back()) return;
     app_back();
@@ -1121,6 +1265,15 @@ void ui_app_handle_input(ui_input_event_t input) {
         input == UI_INPUT_ENCODER_CCW ||
         input == UI_INPUT_ENCODER_PRESS)) {
         (void)ui_control_center_handle_input(input);
+        return;
+    }
+    if(!s_quick_visible && ui_dock_view_is_visible() &&
+       (input == UI_INPUT_ENCODER_CW ||
+        input == UI_INPUT_ENCODER_CCW ||
+        input == UI_INPUT_ENCODER_PRESS) &&
+       ui_dock_view_handle_input(input)) {
+        if(input == UI_INPUT_ENCODER_PRESS)
+            s_settings_control = APP_SETTINGS_CONTROL_NONE;
         return;
     }
     if(input == UI_INPUT_PAGE_NEXT || input == UI_INPUT_PAGE_PREV) {
@@ -1167,6 +1320,15 @@ void ui_app_handle_input(ui_input_event_t input) {
        ui_home_page_handle_input(input)) return;
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_NAVIGATION &&
        ui_navigation_handle_input(input)) return;
+    if(!s_powered_off && !s_quick_visible &&
+       ui_router_current() == UI_PAGE_SETTINGS &&
+       ui_settings_page_handle_input(input)) return;
+    if(!s_powered_off && !s_quick_visible &&
+       ui_router_current() == UI_PAGE_SYSTEM &&
+       ui_system_page_handle_input(input)) return;
+    if(!s_powered_off && !s_quick_visible &&
+       ui_router_current() == UI_PAGE_POWER &&
+       ui_power_page_handle_input(input)) return;
 
     if(input == UI_INPUT_ENCODER_CW) app_handle_key(LV_KEY_DOWN);
     else if(input == UI_INPUT_ENCODER_CCW) app_handle_key(LV_KEY_UP);
@@ -1196,7 +1358,7 @@ static void app_handle_key(uint32_t key) {
     if(key == 'm' || key == 'M') { if(s_quick_visible) app_close_quick(); else app_open_quick(); return; }
     if(key == '[') { app_show(UI_PAGE_HOME); return; }
     if(key == ']') { app_show(UI_PAGE_SETTINGS); return; }
-    if(key == LV_KEY_ESC || key == 8) { app_back(); return; }
+    if(key == LV_KEY_ESC || key == 8) { ui_app_handle_back(); return; }
     if(s_quick_visible) return;
     if(ui_router_current() == UI_PAGE_NAVIGATION) {
         if(key == LV_KEY_UP) { ui_navigation_handle_input(UI_INPUT_ENCODER_CCW); return; }

@@ -13,6 +13,10 @@
 
 #define SUMMARY_METRIC_COUNT 8U
 #define SUMMARY_REVEAL_COUNT 10U
+#define SUMMARY_HERO_Y 158
+#define SUMMARY_METRIC_START_Y 312
+#define SUMMARY_METRIC_ROW_STEP 80
+#define SUMMARY_COMPLETE_Y 712
 
 typedef struct
 {
@@ -102,7 +106,7 @@ lv_obj_t *ui_summary_page_create(ui_page_action_cb_t callback,
           UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_RIGHT);
     ui_page_line(screen, 20, 145, 440, 1, UI_TOKEN_COLOR_SURFACE_BORDER);
 
-    s_hero = ui_page_card(screen, 16, 158, 448, 142);
+    s_hero = ui_page_card(screen, 16, SUMMARY_HERO_Y, 448, 142);
     lv_obj_set_style_border_color(s_hero, UI_COLOR_YELLOW, 0);
     label(s_hero, 18, 14, 220, "TOTAL DISTANCE", &lv_font_montserrat_16,
           UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
@@ -124,7 +128,8 @@ lv_obj_t *ui_summary_page_create(ui_page_action_cb_t callback,
     };
     for(uint8_t index = 0; index < SUMMARY_METRIC_COUNT; index++) {
         int32_t x = 16 + (index % 2U) * 226;
-        int32_t y = 312 + (index / 2U) * 80;
+        int32_t y = SUMMARY_METRIC_START_Y +
+                    (int32_t)(index / 2U) * SUMMARY_METRIC_ROW_STEP;
         make_metric(screen, index, x, y, titles[index], units[index]);
     }
 
@@ -139,7 +144,7 @@ lv_obj_t *ui_summary_page_create(ui_page_action_cb_t callback,
     lv_obj_set_width(s_metrics[7].value, 188);
     lv_obj_set_style_text_color(s_metrics[7].value, UI_COLOR_YELLOW, 0);
 
-    s_complete_button = ui_page_box(screen, 16, 712, 448, 72,
+    s_complete_button = ui_page_box(screen, 16, SUMMARY_COMPLETE_Y, 448, 72,
                                     UI_COLOR_YELLOW, 2);
     lv_obj_set_style_bg_color(s_complete_button, UI_COLOR_YELLOW, 0);
     lv_obj_set_style_bg_opa(s_complete_button, LV_OPA_COVER, 0);
@@ -157,8 +162,19 @@ lv_obj_t *ui_summary_page_create(ui_page_action_cb_t callback,
     for(uint8_t index = 0; index < SUMMARY_METRIC_COUNT; index++)
         s_reveal[index + 1U] = s_metrics[index].root;
     s_reveal[9] = s_complete_button;
-    for(uint8_t index = 0; index < SUMMARY_REVEAL_COUNT; index++)
-        s_reveal_y[index] = lv_obj_get_y(s_reveal[index]);
+
+    /* The page has not completed its first LVGL layout pass here. Reading
+     * object coordinates with lv_obj_get_y() can therefore return 0 and the
+     * reveal animation would permanently stack every card at the top. Keep
+     * animation destinations tied to the same deterministic page geometry
+     * used when the objects are created. */
+    s_reveal_y[0] = SUMMARY_HERO_Y;
+    for(uint8_t index = 0; index < SUMMARY_METRIC_COUNT; index++) {
+        s_reveal_y[index + 1U] = SUMMARY_METRIC_START_Y +
+                                 (int32_t)(index / 2U) *
+                                 SUMMARY_METRIC_ROW_STEP;
+    }
+    s_reveal_y[9] = SUMMARY_COMPLETE_Y;
 
     ui_summary_page_set_data(&s_data);
     return screen;

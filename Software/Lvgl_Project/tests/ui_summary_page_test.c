@@ -51,6 +51,21 @@ static void assert_tree_inside(lv_obj_t *object)
         assert_tree_inside(lv_obj_get_child(object, index));
 }
 
+static uint32_t count_top_level_geometry(lv_obj_t *screen, int32_t y,
+                                         int32_t width, int32_t height)
+{
+    uint32_t matches = 0U;
+    uint32_t count = lv_obj_get_child_count(screen);
+    for(uint32_t index = 0; index < count; index++) {
+        lv_obj_t *child = lv_obj_get_child(screen, index);
+        if(lv_obj_get_y(child) == y &&
+           lv_obj_get_width(child) == width &&
+           lv_obj_get_height(child) == height)
+            matches++;
+    }
+    return matches;
+}
+
 int main(void)
 {
     lv_init();
@@ -90,6 +105,12 @@ int main(void)
     lv_refr_now(display);
     assert(!s_memory_failed);
     assert_tree_inside(screen);
+    assert(count_top_level_geometry(screen, 158, 448, 142) == 1U);
+    assert(count_top_level_geometry(screen, 312, 216, 74) == 2U);
+    assert(count_top_level_geometry(screen, 392, 216, 74) == 2U);
+    assert(count_top_level_geometry(screen, 472, 216, 74) == 2U);
+    assert(count_top_level_geometry(screen, 552, 216, 74) == 2U);
+    assert(count_top_level_geometry(screen, 712, 448, 72) == 1U);
     assert(ui_summary_page_handle_input(UI_INPUT_ENCODER_PRESS));
     assert(s_action == UI_PAGE_ACTION_HOME);
 

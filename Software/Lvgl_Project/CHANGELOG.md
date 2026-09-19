@@ -2,6 +2,33 @@
 
 本项目遵循语义化版本编号，Git 标签格式为 `vMAJOR.MINOR.PATCH`。
 
+## 未发布（目标 v1.1.2）
+
+- 新增固定四项快捷控制条 V1：WiFi、蓝牙、声音、亮度，使用真实 LVGL 对象和单一 Focus Capsule。
+- 新增 `CLOSED → QUICK_BAR → FULL_CONTROL_CENTER` 系统控制帘状态机；Touch 下拉/上滑和 PC `M` 键统一使用同一状态来源。
+- 快捷控制条支持整项 Touch、Encoder 循环 Focus、Press 执行，以及 WiFi/蓝牙 Pending、Failed 和权威 App State 状态显示。
+- 声音与亮度从快捷控制条进入共享 Bottom Interaction Surface CONTROL，避免在顶部建立第二套数值调节逻辑。
+- 增加 Bottom Surface Gesture Ownership，底部 CONTROL 拖动期间不会被第二次下拉手势抢占。
+- 增加胶囊 Focus、按压和 Surface 切换 Motion Token；动画仅作用于局部小对象。
+- 新增系统控制帘与快捷控制条自动化测试，当前测试总数提升为 22 项。
+- 将 UI V5 作为 v1.1.2 后续开发交接文档纳入工程；V5 是文档修订号，不替代软件版本号。
+- 新增系统控制任务反馈所有权模型：系统控制帘打开时由顶部原位反馈，关闭时将仍 Pending 的任务下沉到唯一 Bottom Interaction Surface。
+- 重新打开快捷控制条时会回收底部 Pending 命令反馈，禁止同一任务同时出现在顶部和底部。
+- P0 Critical 与 P1 Riding Safety 事件会先退出 Bottom CONTROL、自动收起系统控制帘，再由 Bottom Surface 抢占；P0/P1 活跃期间禁止重新打开控制帘。
+- 下沉任务完成后，Success/Failed/Timeout/Rejected 只更新当前 owner；底部 owner 时顶部状态强制回到 Idle，避免重新打开后出现重复失败反馈。
+- 电源关闭、重启和 PC 电源切换会同步清空反馈 ownership，防止重新开机后恢复过期命令状态。
+- 新增顶部/底部 handoff、P1 抢占和 restore-stack 清理测试，当前测试总数提升为 23 项。
+- 完整控制中心改为 462 px 紧凑面板，下半主页面保持可见，同时使用透明全屏输入层阻止点击穿透。
+- 声音和亮度改为 4 px 横向 Track、12 px Thumb 和百分比读数；Touch 直接拖动，Encoder Press 进入共享 Bottom CONTROL 精调。
+- 新增 Focus Capsule 拉伸吸附、Toggle 回弹、Pending 单次 Pulse、横条 Fill/Thumb 推进和统一 Control Expand Token；所有动画只作用于局部对象或位置属性。
+- Home 隐藏尚未实现的 Achievements 入口；Legacy Profile 明确标记为 `LEGACY / DEPRECATED` 并移除无功能成就按钮。
+- 数值命令失败时在原 Bottom CONTROL 中恢复 App State 权威值并显示失败信息，不创建第二张失败卡。
+- 新增 250 次局部动画与控制中心状态压力循环，检查对象数不增长、动画归零和无大图层内存错误；自动化测试总数提升为 24 项。
+- 将系统控制中心收敛为单一 `ui_control_center` Surface：`CLOSED → COMPACT → EXPANDED`，删除产品代码中的旧 Quick Bar/Full Overlay 语义。
+- Compact 与 Expanded 共用同一组 LVGL 对象，通过 Panel 高度 Morph 切换；Expanded 上滑直接关闭，声音/亮度在控制中心 Inline Adjust，不再呼出 Bottom CONTROL。
+- 修复 Pointer MOVE 期间重复重启滑条动画造成的抽搐；拖动时仅更新几何，状态变更时才启动数值动画。
+- 增加 Compact/Morph/Expanded 对象稳定性、焦点和 50 次形态往返测试；当前 CTest 为 23 项全部通过。
+
 ## v1.1.1 - 2026-09-19
 
 - 修复 History 空状态和声音/亮度交互坞新增文案的 MiSans 缺字方框，并重新生成完整运行时 UI 字体子集。

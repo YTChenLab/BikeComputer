@@ -7,6 +7,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define UI_CONTROL_CENTER_PANEL_HEIGHT 462
+#define UI_CONTROL_CENTER_COMPACT_HEIGHT 154
+
+typedef enum
+{
+    UI_CONTROL_CENTER_MODE_COMPACT = 0,
+    UI_CONTROL_CENTER_MODE_EXPANDED
+} ui_control_center_mode_t;
+
 typedef enum
 {
     UI_CONTROL_CENTER_ACTION_WIFI = 0,
@@ -57,6 +66,14 @@ typedef void (*ui_control_center_action_cb_t)(
 void ui_control_center_create(ui_control_center_action_cb_t callback,
                               void *user_data);
 lv_obj_t *ui_control_center_root(void);
+lv_obj_t *ui_control_center_panel(void);
+lv_obj_t *ui_control_center_focus_capsule(void);
+void ui_control_center_set_mode(ui_control_center_mode_t mode);
+ui_control_center_mode_t ui_control_center_mode(void);
+void ui_control_center_set_panel_height(int32_t height);
+int32_t ui_control_center_panel_height(void);
+void ui_control_center_focus_action(ui_control_center_action_t action);
+bool ui_control_center_exit_adjustment(bool commit);
 lv_obj_t *ui_control_center_control(ui_control_center_action_t action);
 void ui_control_center_set_state(const ui_control_center_state_t *state);
 void ui_control_center_set_feedback(ui_control_center_action_t action,
@@ -69,6 +86,6 @@ ui_control_center_action_t ui_control_center_selected_action(void);
 bool ui_control_center_is_adjusting(void);
 ui_control_center_slider_t ui_control_center_slider_at(int32_t screen_x,
                                                        int32_t screen_y);
-uint8_t ui_control_center_level_from_y(int32_t screen_y);
+uint8_t ui_control_center_level_from_x(int32_t screen_x);
 
 #endif /* UI_CONTROL_CENTER_H */

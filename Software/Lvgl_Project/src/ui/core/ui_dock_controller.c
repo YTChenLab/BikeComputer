@@ -478,3 +478,9 @@ uint32_t ui_dock_controller_mapping_failures(void)
 {
     return s_controller.mapping_failures;
 }
+
+bool ui_dock_controller_hide_command_feedback(void)
+{
+    clear_timeout(DOCK_ID_COMMAND);
+    return ui_dock_hide(DOCK_ID_COMMAND);
+}

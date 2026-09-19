@@ -36,6 +36,12 @@ void ui_motion_cancel(void *target, ui_motion_value_cb_t callback);
 
 void ui_motion_button_press(lv_obj_t *button);
 void ui_motion_button_release(lv_obj_t *button);
+void ui_motion_focus_capsule(lv_obj_t *capsule, int32_t target_x,
+                             int32_t resting_width);
+void ui_motion_toggle_press(lv_obj_t *object);
+void ui_motion_toggle_release(lv_obj_t *object);
+void ui_motion_pulse(lv_obj_t *object, int32_t active_scale,
+                     uint32_t duration);
 void ui_motion_move_y(lv_obj_t *object, int32_t target_y, uint32_t duration,
                       lv_anim_path_cb_t path,
                       lv_anim_completed_cb_t completed, void *user_data);

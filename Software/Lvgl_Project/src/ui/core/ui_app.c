@@ -5,6 +5,7 @@
 #include "ui_auto_pause.h"
 #include "ui_background.h"
 #include "ui_bottom_surface.h"
+#include "ui_control_feedback_ownership.h"
 #include "ui_dock.h"
 #include "ui_dock_controller.h"
 #include "ui_event_bridge.h"
@@ -16,6 +17,7 @@
 #include "ui_sizes.h"
 #include "ui_sound.h"
 #include "ui_state_machine.h"
+#include "ui_system_control_shade.h"
 #include "ui_theme.h"
 #include "../../services/ui_command_service.h"
 #include "../../services/ui_system_services.h"
@@ -25,6 +27,7 @@
 #include "../components/ui_status_bar.h"
 #include "../components/ui_dynamic_card_manager.h"
 #include "../components/dock/ui_dock_view.h"
+#include "../design/ui_design_tokens.h"
 #include "../screens/ui_dashboard.h"
 #include "../pages/navigation/ui_navigation.h"
 #include "../pages/ui_boot_page.h"
@@ -79,16 +82,33 @@ static ui_page_view_t s_pages[UI_PAGE_COUNT];
 static lv_timer_t *s_boot_timer;
 static lv_timer_t *s_event_timer;
 static bool s_powered_off;
-static bool s_quick_visible, s_pointer_dragging, s_pointer_opening, s_slider_dragging;
+static bool s_pointer_dragging, s_slider_dragging, s_slider_candidate;
 static bool s_page_swiping, s_home_swiping;
 static bool s_dynamic_card_gesture_owned;
 static bool s_navigation_map_gesture_owned;
+static bool s_bottom_surface_gesture_owned;
 static bool s_touch_sequence_blocked;
 static ui_control_center_slider_t s_active_slider;
 static lv_point_t s_pointer_start;
 static int32_t s_overlay_start_y;
+static int32_t s_panel_start_height;
+static uint32_t s_pointer_start_tick;
 static lv_obj_t *s_off_screen;
-static lv_obj_t *s_quick_overlay;
+static lv_obj_t *s_control_surface;
+typedef enum {
+    APP_SHADE_DRAG_NONE = 0,
+    APP_SHADE_DRAG_OPEN_COMPACT,
+    APP_SHADE_DRAG_CLOSE_COMPACT,
+    APP_SHADE_DRAG_EXPAND,
+    APP_SHADE_DRAG_CLOSE_EXPANDED
+} app_shade_drag_t;
+static app_shade_drag_t s_shade_drag;
+typedef enum {
+    APP_CONTROL_SURFACE_IDLE = 0,
+    APP_CONTROL_SURFACE_DRAGGING,
+    APP_CONTROL_SURFACE_SETTLING
+} app_control_surface_interaction_t;
+static app_control_surface_interaction_t s_control_interaction;
 static ui_auto_pause_t s_auto_pause;
 static ui_ride_pause_reason_t s_pending_pause_reason;
 static ui_auto_pause_action_t s_pending_auto_pause_action;
@@ -108,7 +128,9 @@ static void app_show_slide(ui_page_t page, bool move_left);
 static void app_back(void);
 static void app_close_quick(void);
 static void app_open_quick(void);
+static void app_expand_full_control(void);
 static void app_hide_quick_immediate(void);
+static bool app_control_shade_visible(void);
 static void app_update_quick_states(void);
 static void app_update_slider_visuals(void);
 static void app_control_center_action(ui_control_center_action_t action,
@@ -135,9 +157,13 @@ static void app_show_feature_info(const char *title, const char *message);
 static void app_auto_pause_tick(uint32_t elapsed_ms);
 static bool app_request_pause_toggle(ui_ride_pause_reason_t reason);
 static void app_show_settings_control(app_settings_control_t control);
+static void app_refresh_settings_control(bool failed);
 static void app_show_power_confirmation(bool restart);
 static void app_refresh_history_models(void);
 static bool app_prepare_ride_save(void);
+static void app_dismiss_settings_control(void);
+static void app_handoff_control_feedback_to_bottom(void);
+static void app_reclaim_control_feedback_to_top(void);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -203,6 +229,11 @@ static void app_event_overflow(const ui_event_t *incoming,
 static void app_event_received(const ui_event_t *event, void *user_data)
 {
     (void)user_data;
+    if(event->priority <= UI_EVENT_PRIORITY_P1_RIDING_SAFETY &&
+       app_control_shade_visible()) {
+        app_dismiss_settings_control();
+        app_hide_quick_immediate();
+    }
     switch(event->type) {
         case UI_EVENT_GPS_SEARCHING:
             if(!app_submit_command(UI_COMMAND_GNSS_ACQUIRE_FIX, 0, 3000U))
@@ -263,13 +294,16 @@ static void app_event_received(const ui_event_t *event, void *user_data)
              * APP_DOCK_ID_CONTROL and are the only events that reach the
              * command backend. */
             if(event->source_id == APP_DOCK_ID_CONTROL) {
+                bool submitted = true;
                 if(s_settings_control == APP_SETTINGS_CONTROL_SOUND)
-                    (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL,
-                                             event->value, 1500U);
+                    submitted = app_submit_command(
+                        UI_COMMAND_SOUND_SET_LEVEL, event->value, 1500U);
                 else if(s_settings_control ==
                         APP_SETTINGS_CONTROL_BRIGHTNESS)
-                    (void)app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL,
-                                             event->value, 1500U);
+                    submitted = app_submit_command(
+                        UI_COMMAND_BRIGHTNESS_SET_LEVEL,
+                        event->value, 1500U);
+                if(!submitted) app_refresh_settings_control(true);
             }
             break;
         case UI_EVENT_RIDE_SUMMARY_READY:
@@ -307,7 +341,11 @@ static void app_event_timer_cb(lv_timer_t *timer)
     ui_dock_controller_tick(20);
 }
 
-#define QUICK_DRAG_THRESHOLD   8
+#define QUICK_DRAG_THRESHOLD          5
+#define CONTROL_OPEN_DISTANCE        24
+#define CONTROL_EXPAND_DISTANCE      36
+#define CONTROL_CLOSE_DISTANCE       48
+#define CONTROL_FAST_VELOCITY       400
 
 static lv_obj_t *app_make_screen(void) {
     lv_obj_t *screen = lv_obj_create(NULL);
@@ -449,6 +487,8 @@ static void app_state_changed(const ui_app_state_t *state,
         ui_sound_set_volume(state->sound_level);
         ui_background_set_opacity(
             (lv_opa_t)(70 + (185 * state->brightness_level / 100)));
+        if(s_settings_control != APP_SETTINGS_CONTROL_NONE)
+            app_refresh_settings_control(false);
     }
     if((changed & (UI_APP_STATE_CHANGE_STATUS |
                    UI_APP_STATE_CHANGE_CONNECTIVITY |
@@ -594,7 +634,7 @@ static bool app_settings_item_for_command(ui_command_type_t type,
 
 static void app_publish_command_feedback(const ui_command_result_t *result)
 {
-    if(!app_command_feedback_needed(result)) return;
+    if(result == NULL) return;
     ui_event_t event = {0};
     event.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
     event.source_id = result->id;
@@ -660,16 +700,59 @@ static void app_command_changed(const ui_command_result_t *result,
             control_action = UI_CONTROL_CENTER_ACTION_TOUCH_LOCK; break;
         default: break;
     }
+    bool numeric_control_owner =
+        (result->type == UI_COMMAND_SOUND_SET_LEVEL &&
+         s_settings_control == APP_SETTINGS_CONTROL_SOUND) ||
+        (result->type == UI_COMMAND_BRIGHTNESS_SET_LEVEL &&
+         s_settings_control == APP_SETTINGS_CONTROL_BRIGHTNESS);
+    bool managed_feedback =
+        ui_control_feedback_ownership_manages(result->type);
+    ui_control_feedback_owner_t owner = UI_CONTROL_FEEDBACK_OWNER_NONE;
+    if(managed_feedback) {
+        if(result->status == UI_COMMAND_STATUS_PENDING) {
+            owner = ui_control_feedback_ownership_begin(
+                result, !numeric_control_owner &&
+                        app_control_shade_visible());
+        }
+        else {
+            owner = ui_control_feedback_ownership_owner_for(result);
+            if(owner == UI_CONTROL_FEEDBACK_OWNER_NONE) {
+                owner = app_control_shade_visible() ?
+                        UI_CONTROL_FEEDBACK_OWNER_TOP :
+                        UI_CONTROL_FEEDBACK_OWNER_BOTTOM;
+            }
+        }
+    }
     if(control_action < UI_CONTROL_CENTER_ACTION_COUNT) {
-        ui_control_center_set_feedback(
-            control_action,
+        ui_control_center_feedback_t feedback =
             result->status == UI_COMMAND_STATUS_PENDING ?
             UI_CONTROL_CENTER_FEEDBACK_PENDING :
             (result->status == UI_COMMAND_STATUS_SUCCESS ?
              UI_CONTROL_CENTER_FEEDBACK_IDLE :
-             UI_CONTROL_CENTER_FEEDBACK_FAILED));
+             UI_CONTROL_CENTER_FEEDBACK_FAILED);
+        if(managed_feedback && owner != UI_CONTROL_FEEDBACK_OWNER_TOP)
+            feedback = UI_CONTROL_CENTER_FEEDBACK_IDLE;
+        if(numeric_control_owner)
+            feedback = UI_CONTROL_CENTER_FEEDBACK_IDLE;
+        ui_control_center_set_feedback(control_action, feedback);
     }
-    app_publish_command_feedback(result);
+    if(managed_feedback) {
+        if(owner == UI_CONTROL_FEEDBACK_OWNER_BOTTOM &&
+           !numeric_control_owner)
+            app_publish_command_feedback(result);
+        if(result->status != UI_COMMAND_STATUS_PENDING)
+            ui_control_feedback_ownership_complete(result);
+    }
+    else if(app_command_feedback_needed(result)) {
+        app_publish_command_feedback(result);
+    }
+    if(result->status != UI_COMMAND_STATUS_PENDING &&
+       result->status != UI_COMMAND_STATUS_SUCCESS &&
+       ((result->type == UI_COMMAND_SOUND_SET_LEVEL &&
+         s_settings_control == APP_SETTINGS_CONTROL_SOUND) ||
+        (result->type == UI_COMMAND_BRIGHTNESS_SET_LEVEL &&
+         s_settings_control == APP_SETTINGS_CONTROL_BRIGHTNESS)))
+        app_refresh_settings_control(true);
     if(result->status == UI_COMMAND_STATUS_PENDING) return;
 
     if(result->type == UI_COMMAND_RIDE_PAUSE ||
@@ -889,38 +972,219 @@ static void app_surface_page_leave(ui_route_id_t route, lv_obj_t *screen,
     (void)user_data;
     ui_bottom_surface_unmount();
 }
-static void app_quick_close_done(lv_anim_t *animation) {
+static bool app_control_shade_visible(void)
+{
+    return ui_system_control_shade_state() !=
+           UI_SYSTEM_CONTROL_SHADE_CLOSED;
+}
+
+static bool app_point_inside(lv_obj_t *object, int32_t x, int32_t y)
+{
+    if(object == NULL || lv_obj_has_flag(object, LV_OBJ_FLAG_HIDDEN))
+        return false;
+    lv_area_t area;
+    lv_obj_get_coords(object, &area);
+    return x >= area.x1 && x <= area.x2 && y >= area.y1 && y <= area.y2;
+}
+
+static bool app_safety_interaction_active(void)
+{
+    ui_bottom_surface_state_t state;
+    return ui_bottom_surface_get_state(&state) &&
+           state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE &&
+           state.priority <= UI_BOTTOM_SURFACE_PRIORITY_P1_RIDING_SAFETY;
+}
+
+static void app_dismiss_settings_control(void)
+{
+    if(s_settings_control == APP_SETTINGS_CONTROL_NONE) return;
+    if(ui_dock_view_is_visible())
+        (void)ui_dock_view_handle_input(UI_INPUT_BACK);
+    ui_control_feedback_state_t feedback;
+    if(ui_control_feedback_ownership_get(&feedback) &&
+       feedback.owner == UI_CONTROL_FEEDBACK_OWNER_BOTTOM &&
+       (feedback.command_type == UI_COMMAND_SOUND_SET_LEVEL ||
+        feedback.command_type == UI_COMMAND_BRIGHTNESS_SET_LEVEL)) {
+        const ui_command_result_t pending = {
+            .id = feedback.command_id,
+            .type = feedback.command_type,
+            .status = UI_COMMAND_STATUS_PENDING,
+            .error_code = 0
+        };
+        app_publish_command_feedback(&pending);
+    }
+    s_settings_control = APP_SETTINGS_CONTROL_NONE;
+}
+
+static ui_control_center_action_t app_control_action_for_command(
+    ui_command_type_t type)
+{
+    switch(type) {
+        case UI_COMMAND_WIFI_SET_ENABLED:
+            return UI_CONTROL_CENTER_ACTION_WIFI;
+        case UI_COMMAND_BLUETOOTH_SET_ENABLED:
+            return UI_CONTROL_CENTER_ACTION_BLUETOOTH;
+        case UI_COMMAND_GNSS_SET_ENABLED:
+            return UI_CONTROL_CENTER_ACTION_GPS;
+        case UI_COMMAND_POWER_SAVE_SET_ENABLED:
+            return UI_CONTROL_CENTER_ACTION_POWER_SAVE;
+        case UI_COMMAND_TOUCH_LOCK_SET_ENABLED:
+            return UI_CONTROL_CENTER_ACTION_TOUCH_LOCK;
+        case UI_COMMAND_SOUND_SET_LEVEL:
+            return UI_CONTROL_CENTER_ACTION_SOUND;
+        case UI_COMMAND_BRIGHTNESS_SET_LEVEL:
+            return UI_CONTROL_CENTER_ACTION_BRIGHTNESS;
+        default:
+            return UI_CONTROL_CENTER_ACTION_COUNT;
+    }
+}
+
+static void app_set_top_control_feedback(ui_command_type_t type,
+                                         ui_control_center_feedback_t feedback)
+{
+    ui_control_center_action_t action =
+        app_control_action_for_command(type);
+    if(action >= UI_CONTROL_CENTER_ACTION_COUNT) return;
+    ui_control_center_set_feedback(action, feedback);
+}
+
+static void app_handoff_control_feedback_to_bottom(void)
+{
+    ui_control_feedback_state_t state;
+    if(!ui_control_feedback_ownership_handoff_to_bottom(&state)) return;
+    app_set_top_control_feedback(state.command_type,
+                                 UI_CONTROL_CENTER_FEEDBACK_IDLE);
+    const ui_command_result_t pending = {
+        .id = state.command_id,
+        .type = state.command_type,
+        .status = UI_COMMAND_STATUS_PENDING,
+        .error_code = 0
+    };
+    app_publish_command_feedback(&pending);
+}
+
+static void app_reclaim_control_feedback_to_top(void)
+{
+    ui_control_feedback_state_t state;
+    if(!ui_control_feedback_ownership_reclaim_to_top(&state)) return;
+    app_set_top_control_feedback(state.command_type,
+                                 UI_CONTROL_CENTER_FEEDBACK_PENDING);
+    (void)ui_dock_controller_hide_command_feedback();
+}
+
+static void app_set_panel_height(void *target, int32_t value)
+{
+    (void)target;
+    ui_control_center_set_panel_height(value);
+}
+
+static void app_control_settle_done(lv_anim_t *animation)
+{
     (void)animation;
-    s_quick_visible = false;
-    if(s_quick_overlay) lv_obj_add_flag(s_quick_overlay, LV_OBJ_FLAG_HIDDEN);
+    s_control_interaction = APP_CONTROL_SURFACE_IDLE;
 }
-static void app_animate_overlay_to(int32_t target_y, bool hide_when_done) {
-    if(s_quick_overlay == NULL) return;
-    ui_motion_move_y(s_quick_overlay, target_y, UI_MOTION_DURATION_DOCK,
-                     target_y == 0 ? lv_anim_path_ease_out : lv_anim_path_ease_in,
-                     hide_when_done ? app_quick_close_done : NULL, NULL);
+
+static void app_control_compact_done(lv_anim_t *animation)
+{
+    (void)animation;
+    ui_control_center_set_mode(UI_CONTROL_CENTER_MODE_COMPACT);
+    s_control_interaction = APP_CONTROL_SURFACE_IDLE;
 }
+
+static void app_control_expanded_done(lv_anim_t *animation)
+{
+    (void)animation;
+    ui_control_center_set_mode(UI_CONTROL_CENTER_MODE_EXPANDED);
+    s_control_interaction = APP_CONTROL_SURFACE_IDLE;
+}
+
+static void app_control_close_done(lv_anim_t *animation)
+{
+    (void)animation;
+    if(s_control_surface != NULL)
+        lv_obj_add_flag(s_control_surface, LV_OBJ_FLAG_HIDDEN);
+    ui_control_center_set_mode(UI_CONTROL_CENTER_MODE_COMPACT);
+    s_control_interaction = APP_CONTROL_SURFACE_IDLE;
+}
+
+static void app_animate_panel_height(int32_t target)
+{
+    if(s_control_surface == NULL) return;
+    ui_motion_value(s_control_surface, app_set_panel_height,
+                    ui_control_center_panel_height(), target,
+                    UI_TOKEN_MOTION_CONTROL_EXPAND_MS,
+                    lv_anim_path_ease_out,
+                    target == UI_CONTROL_CENTER_PANEL_HEIGHT ?
+                    app_control_expanded_done : app_control_compact_done,
+                    NULL);
+}
+
 static void app_open_quick(void) {
-    if(s_quick_overlay == NULL || s_powered_off) return;
-    lv_obj_clear_flag(s_quick_overlay, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(s_quick_overlay);
-    s_quick_visible = true;
+    if(s_control_surface == NULL || s_powered_off ||
+       app_safety_interaction_active() ||
+       ui_system_control_shade_state() != UI_SYSTEM_CONTROL_SHADE_CLOSED)
+        return;
+    (void)ui_system_control_shade_open_compact();
+    app_reclaim_control_feedback_to_top();
+    ui_motion_cancel_y(s_control_surface);
+    ui_motion_cancel(s_control_surface, app_set_panel_height);
+    ui_control_center_set_mode(UI_CONTROL_CENTER_MODE_COMPACT);
+    lv_obj_set_y(s_control_surface, -UI_CONTROL_CENTER_COMPACT_HEIGHT);
+    lv_obj_clear_flag(s_control_surface, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(s_control_surface);
     ui_control_center_prepare_show();
     app_update_quick_states();
-    app_animate_overlay_to(0, false);
+    s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+    ui_motion_move_y(s_control_surface, 0, UI_MOTION_DURATION_DOCK,
+                     lv_anim_path_ease_out, app_control_settle_done, NULL);
 }
+
+static void app_expand_full_control(void) {
+    if(s_control_surface == NULL || s_powered_off ||
+       ui_system_control_shade_state() !=
+            UI_SYSTEM_CONTROL_SHADE_COMPACT) return;
+    if(!ui_system_control_shade_expand()) return;
+    app_reclaim_control_feedback_to_top();
+    ui_motion_cancel_y(s_control_surface);
+    lv_obj_set_y(s_control_surface, 0);
+    app_update_quick_states();
+    s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+    app_animate_panel_height(UI_CONTROL_CENTER_PANEL_HEIGHT);
+}
+
 static void app_close_quick(void) {
-    if(!s_quick_visible || s_quick_overlay == NULL) return;
-    app_animate_overlay_to(-UI_SCREEN_H, true);
+    ui_system_control_shade_state_t state =
+        ui_system_control_shade_state();
+    if(state == UI_SYSTEM_CONTROL_SHADE_CLOSED) return;
+    if(ui_control_center_exit_adjustment(true)) return;
+    app_handoff_control_feedback_to_bottom();
+    (void)ui_system_control_shade_close();
+    ui_motion_cancel_y(s_control_surface);
+    ui_motion_cancel(s_control_surface, app_set_panel_height);
+    s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+    ui_motion_value(s_control_surface, app_set_panel_height,
+                    ui_control_center_panel_height(),
+                    UI_CONTROL_CENTER_COMPACT_HEIGHT,
+                    UI_TOKEN_MOTION_CONTROL_EXPAND_MS,
+                    lv_anim_path_ease_in, NULL, NULL);
+    ui_motion_move_y(s_control_surface, -UI_CONTROL_CENTER_COMPACT_HEIGHT,
+                     UI_TOKEN_MOTION_CONTROL_EXPAND_MS,
+                     lv_anim_path_ease_in, app_control_close_done, NULL);
 }
+
 static void app_hide_quick_immediate(void) {
-    if(s_quick_overlay == NULL) return;
-    ui_motion_cancel_y(s_quick_overlay);
-    lv_obj_set_y(s_quick_overlay, -UI_SCREEN_H);
-    lv_obj_add_flag(s_quick_overlay, LV_OBJ_FLAG_HIDDEN);
-    s_quick_visible = false;
+    if(s_control_surface == NULL) return;
+    app_handoff_control_feedback_to_bottom();
+    ui_motion_cancel_y(s_control_surface);
+    ui_motion_cancel(s_control_surface, app_set_panel_height);
+    lv_obj_set_y(s_control_surface, -UI_CONTROL_CENTER_COMPACT_HEIGHT);
+    ui_control_center_set_mode(UI_CONTROL_CENTER_MODE_COMPACT);
+    lv_obj_add_flag(s_control_surface, LV_OBJ_FLAG_HIDDEN);
+    (void)ui_system_control_shade_close();
     s_pointer_dragging = false;
-    s_pointer_opening = false;
+    s_shade_drag = APP_SHADE_DRAG_NONE;
+    s_control_interaction = APP_CONTROL_SURFACE_IDLE;
+    s_bottom_surface_gesture_owned = false;
     s_slider_dragging = false;
     s_page_swiping = false;
     s_home_swiping = false;
@@ -944,7 +1208,7 @@ static void app_back(void) {
         (void)ui_router_replace(UI_PAGE_HOME, UI_MOTION_PAGE_NONE);
         return;
     }
-    if(s_quick_visible) {
+    if(app_control_shade_visible()) {
         app_close_quick();
         return;
     }
@@ -1015,14 +1279,34 @@ static void app_control_center_action(ui_control_center_action_t action,
         case UI_CONTROL_CENTER_ACTION_WIFI: app_action(UI_ACTION_WIFI); break;
         case UI_CONTROL_CENTER_ACTION_BLUETOOTH: app_action(UI_ACTION_BT); break;
         case UI_CONTROL_CENTER_ACTION_SOUND:
-            if(value >= 0)
-                (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL,
-                                         value, 1500U);
+            if(value >= 0) {
+                if(!app_submit_command(UI_COMMAND_SOUND_SET_LEVEL,
+                                       value, 1500U)) {
+                    app_update_slider_visuals();
+                    ui_control_center_set_feedback(
+                        action, UI_CONTROL_CENTER_FEEDBACK_FAILED);
+                }
+            }
+            else {
+                app_expand_full_control();
+                ui_control_center_focus_action(
+                    UI_CONTROL_CENTER_ACTION_SOUND);
+            }
             break;
         case UI_CONTROL_CENTER_ACTION_BRIGHTNESS:
-            if(value >= 0)
-                (void)app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL,
-                                         value, 1500U);
+            if(value >= 0) {
+                if(!app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL,
+                                       value, 1500U)) {
+                    app_update_slider_visuals();
+                    ui_control_center_set_feedback(
+                        action, UI_CONTROL_CENTER_FEEDBACK_FAILED);
+                }
+            }
+            else {
+                app_expand_full_control();
+                ui_control_center_focus_action(
+                    UI_CONTROL_CENTER_ACTION_BRIGHTNESS);
+            }
             break;
         case UI_CONTROL_CENTER_ACTION_GPS: app_action(UI_ACTION_GPS); break;
         case UI_CONTROL_CENTER_ACTION_POWER_SAVE:
@@ -1061,7 +1345,7 @@ static void app_create_screens(void) {
     s_pages[UI_PAGE_SYSTEM].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SYSTEM].screen);
     ui_control_center_create(app_control_center_action, NULL);
-    s_quick_overlay = ui_control_center_root();
+    s_control_surface = ui_control_center_root();
     s_pages[UI_PAGE_POWER].screen = ui_power_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_POWER].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_POWER].screen);
@@ -1136,7 +1420,7 @@ static void app_boot_timer_cb(lv_timer_t *timer) {
     lv_timer_delete(timer);
 }
 static void app_update_quick_states(void) {
-    if(!s_quick_overlay) return;
+    if(s_control_surface == NULL) return;
     ui_app_state_t app_state;
     if(!ui_app_state_get(&app_state)) return;
     const ui_control_center_state_t center_state = {
@@ -1191,6 +1475,31 @@ static void app_show_settings_control(app_settings_control_t control)
              control == APP_SETTINGS_CONTROL_SOUND ? "声音" : "亮度");
     snprintf(event.message, sizeof(event.message), "%s",
              "拖动滑条或旋转编码器进行调节");
+    (void)ui_event_bus_publish(&event);
+    (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
+}
+
+static void app_refresh_settings_control(bool failed)
+{
+    ui_app_state_t state;
+    if(s_settings_control == APP_SETTINGS_CONTROL_NONE ||
+       !ui_app_state_get(&state)) return;
+    ui_event_t event = {0};
+    event.type = UI_EVENT_CONTROL_CHANGED;
+    event.priority = UI_EVENT_PRIORITY_P3_USER_ACTION;
+    event.source_id = s_settings_control == APP_SETTINGS_CONTROL_SOUND ?
+                      0x5311U : 0x5312U;
+    event.dedupe_key = APP_DOCK_ID_CONTROL;
+    event.minimum = 0;
+    event.maximum = 100;
+    event.value = s_settings_control == APP_SETTINGS_CONTROL_SOUND ?
+                  state.sound_level : state.brightness_level;
+    snprintf(event.title, sizeof(event.title), "%s",
+             s_settings_control == APP_SETTINGS_CONTROL_SOUND ?
+             "声音" : "亮度");
+    snprintf(event.message, sizeof(event.message), "%s",
+             failed ? "设置失败，已恢复" :
+                      "拖动滑条或旋转编码器进行调节");
     (void)ui_event_bus_publish(&event);
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
 }
@@ -1282,24 +1591,41 @@ static void app_action(ui_action_t action) {
             }
             break;
         case UI_ACTION_WIFI:
-            (void)app_submit_command(UI_COMMAND_WIFI_SET_ENABLED,
-                                     !state.wifi_enabled, 2000U);
+            if(!app_submit_command(UI_COMMAND_WIFI_SET_ENABLED,
+                                   !state.wifi_enabled, 2000U)) {
+                ui_control_center_set_feedback(
+                    UI_CONTROL_CENTER_ACTION_WIFI,
+                    UI_CONTROL_CENTER_FEEDBACK_FAILED);
+            }
             break;
         case UI_ACTION_BT:
-            (void)app_submit_command(UI_COMMAND_BLUETOOTH_SET_ENABLED,
-                                     !state.bluetooth_enabled, 2000U);
+            if(!app_submit_command(UI_COMMAND_BLUETOOTH_SET_ENABLED,
+                                   !state.bluetooth_enabled, 2000U)) {
+                ui_control_center_set_feedback(
+                    UI_CONTROL_CENTER_ACTION_BLUETOOTH,
+                    UI_CONTROL_CENTER_FEEDBACK_FAILED);
+            }
             break;
         case UI_ACTION_GPS:
-            (void)app_submit_command(UI_COMMAND_GNSS_SET_ENABLED,
-                                     !state.gps_enabled, 2000U);
+            if(!app_submit_command(UI_COMMAND_GNSS_SET_ENABLED,
+                                   !state.gps_enabled, 2000U))
+                ui_control_center_set_feedback(
+                    UI_CONTROL_CENTER_ACTION_GPS,
+                    UI_CONTROL_CENTER_FEEDBACK_FAILED);
             break;
         case UI_ACTION_POWER_SAVE:
-            (void)app_submit_command(UI_COMMAND_POWER_SAVE_SET_ENABLED,
-                                     !state.power_save_enabled, 2000U);
+            if(!app_submit_command(UI_COMMAND_POWER_SAVE_SET_ENABLED,
+                                   !state.power_save_enabled, 2000U))
+                ui_control_center_set_feedback(
+                    UI_CONTROL_CENTER_ACTION_POWER_SAVE,
+                    UI_CONTROL_CENTER_FEEDBACK_FAILED);
             break;
         case UI_ACTION_TOUCH_LOCK:
-            (void)app_submit_command(UI_COMMAND_TOUCH_LOCK_SET_ENABLED,
-                                     !state.touch_locked, 2000U);
+            if(!app_submit_command(UI_COMMAND_TOUCH_LOCK_SET_ENABLED,
+                                   !state.touch_locked, 2000U))
+                ui_control_center_set_feedback(
+                    UI_CONTROL_CENTER_ACTION_TOUCH_LOCK,
+                    UI_CONTROL_CENTER_FEEDBACK_FAILED);
             break;
         case UI_ACTION_BRIGHTNESS:
         case UI_ACTION_SOUND:
@@ -1313,6 +1639,7 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_POWER_OFF:
             app_hide_quick_immediate();
             ui_dock_clear();
+            ui_control_feedback_ownership_init();
             ui_event_bus_clear();
             s_powered_off = true;
             (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RESET);
@@ -1321,6 +1648,7 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_POWER_RESTART:
             app_hide_quick_immediate();
             ui_dock_clear();
+            ui_control_feedback_ownership_init();
             ui_event_bus_clear();
             ui_router_clear_history();
             (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RESET);
@@ -1338,6 +1666,8 @@ static void app_action(ui_action_t action) {
 void ui_app_init(void) {
     ui_motion_init();
     ui_sound_init();
+    ui_system_control_shade_init();
+    ui_control_feedback_ownership_init();
     ui_bottom_surface_init();
     ui_app_state_init();
     ui_state_adapter_init();
@@ -1369,9 +1699,10 @@ void ui_app_init(void) {
     app_register_routes();
     ui_dock_view_init();
     ui_event_bus_set_overflow_callback(app_event_overflow, NULL);
+    (void)ui_event_bus_subscribe(UI_EVENT_MASK_ALL,
+                                 app_event_received, NULL);
     ui_dock_controller_init();
     ui_ride_controller_init();
-    (void)ui_event_bus_subscribe(UI_EVENT_MASK_ALL, app_event_received, NULL);
     (void)ui_command_service_subscribe(app_command_changed, NULL);
     (void)ui_app_state_subscribe(UI_APP_STATE_CHANGE_ALL,
                                  app_state_changed, NULL);
@@ -1394,12 +1725,23 @@ void ui_app_handle_back(void) {
         app_action(UI_ACTION_HOME);
         return;
     }
-    if(!s_quick_visible && ui_dock_view_is_visible() &&
-       ui_dock_view_handle_input(UI_INPUT_BACK)) {
-        s_settings_control = APP_SETTINGS_CONTROL_NONE;
+    if(app_control_shade_visible() &&
+       s_settings_control != APP_SETTINGS_CONTROL_NONE &&
+       ui_dock_view_is_visible()) {
+        app_dismiss_settings_control();
         return;
     }
-    if(!s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
+    if(!app_control_shade_visible() && ui_dock_view_is_visible() &&
+       s_settings_control != APP_SETTINGS_CONTROL_NONE) {
+        app_dismiss_settings_control();
+        return;
+    }
+    if(!app_control_shade_visible() && ui_dock_view_is_visible() &&
+       ui_dock_view_handle_input(UI_INPUT_BACK)) {
+        return;
+    }
+    if(!app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_back()) return;
     app_back();
 }
@@ -1421,24 +1763,26 @@ void ui_app_handle_input(ui_input_event_t input) {
         ui_app_handle_back();
         return;
     }
-    if(s_quick_visible &&
+    if(app_control_shade_visible() &&
        (input == UI_INPUT_ENCODER_CW ||
         input == UI_INPUT_ENCODER_CCW ||
         input == UI_INPUT_ENCODER_PRESS)) {
         (void)ui_control_center_handle_input(input);
         return;
     }
-    if(!s_quick_visible && ui_dock_view_is_visible() &&
+    if(!app_control_shade_visible() && ui_dock_view_is_visible() &&
        (input == UI_INPUT_ENCODER_CW ||
         input == UI_INPUT_ENCODER_CCW ||
-        input == UI_INPUT_ENCODER_PRESS) &&
-       ui_dock_view_handle_input(input)) {
-        if(input == UI_INPUT_ENCODER_PRESS)
-            s_settings_control = APP_SETTINGS_CONTROL_NONE;
+        input == UI_INPUT_ENCODER_PRESS)) {
+        if(input == UI_INPUT_ENCODER_PRESS &&
+           s_settings_control != APP_SETTINGS_CONTROL_NONE)
+            app_dismiss_settings_control();
+        else
+            (void)ui_dock_view_handle_input(input);
         return;
     }
     if(input == UI_INPUT_PAGE_NEXT || input == UI_INPUT_PAGE_PREV) {
-        if(s_powered_off || s_quick_visible) return;
+        if(s_powered_off || app_control_shade_visible()) return;
         bool next = input == UI_INPUT_PAGE_NEXT;
         ui_route_id_t route = ui_router_current();
         if(app_ride_domain_active()) {
@@ -1476,30 +1820,33 @@ void ui_app_handle_input(ui_input_event_t input) {
         return;
     }
     if(input == UI_INPUT_NAV_DEMO_NEXT) {
-        if(!s_powered_off && !s_quick_visible &&
+        if(!s_powered_off && !app_control_shade_visible() &&
            ui_router_current() == UI_PAGE_NAVIGATION)
             ui_navigation_demo_next_state();
         return;
     }
-    if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
+    if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_handle_input(input)) return;
-    if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_HOME &&
+    if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_HOME &&
        ui_home_page_handle_input(input)) return;
-    if(!s_powered_off && !s_quick_visible &&
+    if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_HISTORY &&
        ui_history_page_handle_input(input)) return;
-    if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_NAVIGATION &&
+    if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_NAVIGATION &&
        ui_navigation_handle_input(input)) return;
-    if(!s_powered_off && !s_quick_visible &&
+    if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_SETTINGS &&
        ui_settings_page_handle_input(input)) return;
-    if(!s_powered_off && !s_quick_visible &&
+    if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_SYSTEM &&
        ui_system_page_handle_input(input)) return;
-    if(!s_powered_off && !s_quick_visible &&
+    if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_POWER &&
        ui_power_page_handle_input(input)) return;
-    if(!s_powered_off && !s_quick_visible &&
+    if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_SUMMARY &&
        ui_summary_page_handle_input(input)) return;
 
@@ -1521,6 +1868,7 @@ static void app_handle_key(uint32_t key) {
     if(key == 'p' || key == 'P') {
         app_hide_quick_immediate();
         ui_dock_clear();
+        ui_control_feedback_ownership_init();
         ui_event_bus_clear();
         s_powered_off = true;
         (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RESET);
@@ -1528,11 +1876,19 @@ static void app_handle_key(uint32_t key) {
         return;
     }
     if(key == 'o' || key == 'O') { app_show(UI_PAGE_POWER); return; }
-    if(key == 'm' || key == 'M') { if(s_quick_visible) app_close_quick(); else app_open_quick(); return; }
+    if(key == 'm' || key == 'M') {
+        ui_system_control_shade_state_t shade =
+            ui_system_control_shade_state();
+        if(shade == UI_SYSTEM_CONTROL_SHADE_CLOSED) app_open_quick();
+        else if(shade == UI_SYSTEM_CONTROL_SHADE_COMPACT)
+            app_expand_full_control();
+        else app_hide_quick_immediate();
+        return;
+    }
     if(key == '[') { app_show(UI_PAGE_HOME); return; }
     if(key == ']') { app_show(UI_PAGE_SETTINGS); return; }
     if(key == LV_KEY_ESC || key == 8) { ui_app_handle_back(); return; }
-    if(s_quick_visible) return;
+    if(app_control_shade_visible()) return;
     if(ui_router_current() == UI_PAGE_NAVIGATION) {
         if(key == LV_KEY_UP) { ui_navigation_handle_input(UI_INPUT_ENCODER_CCW); return; }
         if(key == LV_KEY_DOWN) { ui_navigation_handle_input(UI_INPUT_ENCODER_CW); return; }
@@ -1559,18 +1915,18 @@ static void app_handle_key(uint32_t key) {
     else if(key == LV_KEY_ENTER) app_open_quick();
 }
 
-static uint8_t app_slider_level_from_y(int32_t screen_y) {
-    return ui_control_center_level_from_y(screen_y);
+static uint8_t app_slider_level_from_x(int32_t screen_x) {
+    return ui_control_center_level_from_x(screen_x);
 }
 
-static uint8_t app_preview_active_slider(int32_t screen_y) {
-    uint8_t value = app_slider_level_from_y(screen_y);
+static uint8_t app_preview_active_slider(int32_t screen_x) {
+    uint8_t value = app_slider_level_from_x(screen_x);
     ui_control_center_preview_level(s_active_slider, value);
     return value;
 }
 
-static void app_commit_active_slider(int32_t screen_y) {
-    uint8_t value = app_preview_active_slider(screen_y);
+static void app_commit_active_slider(int32_t screen_x) {
+    uint8_t value = app_preview_active_slider(screen_x);
     if(s_active_slider == UI_CONTROL_CENTER_SLIDER_SOUND)
         (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL, value, 1500U);
     else if(s_active_slider == UI_CONTROL_CENTER_SLIDER_BRIGHTNESS)
@@ -1580,59 +1936,89 @@ static void app_commit_active_slider(int32_t screen_y) {
 
 void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
     if(event == NULL) return;
-    if(s_quick_overlay == NULL || s_powered_off) return;
+    if(s_control_surface == NULL || s_powered_off) return;
 
     lv_point_t point = { .x = event->x, .y = event->y };
 
     if(event->type == UI_INPUT_TOUCH_BEGIN) {
+        ui_system_control_shade_state_t shade =
+            ui_system_control_shade_state();
         ui_app_state_t input_state;
         s_touch_sequence_blocked =
             ui_app_state_get(&input_state) && input_state.touch_locked &&
-            !s_quick_visible;
+            shade == UI_SYSTEM_CONTROL_SHADE_CLOSED;
         if(s_touch_sequence_blocked) return;
+        ui_motion_cancel_y(s_control_surface);
+        ui_motion_cancel(s_control_surface, app_set_panel_height);
+        s_control_interaction = APP_CONTROL_SURFACE_IDLE;
         s_pointer_start = point;
-        s_overlay_start_y = s_quick_visible ? lv_obj_get_y(s_quick_overlay) : -UI_SCREEN_H;
+        s_pointer_start_tick = lv_tick_get();
+        s_overlay_start_y = lv_obj_get_y(s_control_surface);
+        s_panel_start_height = ui_control_center_panel_height();
         s_pointer_dragging = false;
-        s_pointer_opening = false;
+        s_shade_drag = APP_SHADE_DRAG_NONE;
         s_slider_dragging = false;
+        s_slider_candidate = false;
         s_page_swiping = false;
         s_home_swiping = false;
         s_active_slider = UI_CONTROL_CENTER_SLIDER_NONE;
         s_dynamic_card_gesture_owned =
-            !s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
+            shade == UI_SYSTEM_CONTROL_SHADE_CLOSED &&
+            ui_router_current() == UI_PAGE_DASHBOARD &&
             ui_dynamic_card_manager_contains_point(point.x, point.y);
         s_navigation_map_gesture_owned =
-            !s_quick_visible && ui_router_current() == UI_PAGE_NAVIGATION &&
+            shade == UI_SYSTEM_CONTROL_SHADE_CLOSED &&
+            ui_router_current() == UI_PAGE_NAVIGATION &&
             ui_navigation_contains_point(point.x, point.y);
+        s_bottom_surface_gesture_owned =
+            app_control_shade_visible() && ui_dock_view_is_visible() &&
+            app_point_inside(ui_bottom_surface_root(), point.x, point.y);
 
-        if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned) return;
+        if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned ||
+           s_bottom_surface_gesture_owned) return;
 
-        if(s_quick_visible && s_overlay_start_y == 0) {
+        if(shade == UI_SYSTEM_CONTROL_SHADE_EXPANDED &&
+           lv_obj_get_y(s_control_surface) == 0) {
             s_active_slider = ui_control_center_slider_at(point.x, point.y);
-            if(s_active_slider != UI_CONTROL_CENTER_SLIDER_NONE) {
-                s_slider_dragging = true;
-                (void)app_preview_active_slider(point.y);
-            }
+            s_slider_candidate =
+                s_active_slider != UI_CONTROL_CENTER_SLIDER_NONE;
         }
         return;
     }
 
     if(event->type == UI_INPUT_TOUCH_MOVE) {
         if(s_touch_sequence_blocked) return;
-        if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned) return;
-
-        if(s_slider_dragging) {
-            (void)app_preview_active_slider(point.y);
-            return;
-        }
+        if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned ||
+           s_bottom_surface_gesture_owned) return;
 
         int32_t delta_x = point.x - s_pointer_start.x;
         int32_t delta_y = point.y - s_pointer_start.y;
         int32_t abs_x = delta_x < 0 ? -delta_x : delta_x;
         int32_t abs_y = delta_y < 0 ? -delta_y : delta_y;
 
+        if(s_slider_candidate && !s_slider_dragging &&
+           !s_pointer_dragging) {
+            if(abs_x <= QUICK_DRAG_THRESHOLD &&
+               abs_y <= QUICK_DRAG_THRESHOLD) return;
+            if(abs_x > abs_y) {
+                s_slider_dragging = true;
+                s_slider_candidate = false;
+            }
+            else {
+                s_slider_candidate = false;
+            }
+        }
+
+        if(s_slider_dragging) {
+            (void)app_preview_active_slider(point.x);
+            return;
+        }
+
         if(!s_pointer_dragging && !s_page_swiping && !s_home_swiping) {
-            if(abs_x > QUICK_DRAG_THRESHOLD && abs_x > abs_y && !s_quick_visible &&
+            ui_system_control_shade_state_t shade =
+                ui_system_control_shade_state();
+            if(abs_x > QUICK_DRAG_THRESHOLD && abs_x > abs_y &&
+               shade == UI_SYSTEM_CONTROL_SHADE_CLOSED &&
                (ui_router_current() == UI_PAGE_HOME ||
                 ui_router_current() == UI_PAGE_DASHBOARD ||
                 ui_router_current() == UI_PAGE_NAVIGATION)) {
@@ -1640,38 +2026,70 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
                 return;
             }
             if(abs_y <= QUICK_DRAG_THRESHOLD || abs_y <= abs_x) return;
-            if(!s_quick_visible && delta_y > 0) {
-                ui_motion_cancel_y(s_quick_overlay);
-                lv_obj_clear_flag(s_quick_overlay, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_move_foreground(s_quick_overlay);
-                s_quick_visible = true;
-                s_pointer_opening = true;
+            if(shade == UI_SYSTEM_CONTROL_SHADE_CLOSED && delta_y > 0) {
+                if(app_safety_interaction_active()) return;
+                (void)ui_system_control_shade_open_compact();
+                app_reclaim_control_feedback_to_top();
+                s_shade_drag = APP_SHADE_DRAG_OPEN_COMPACT;
+                s_overlay_start_y = -UI_CONTROL_CENTER_COMPACT_HEIGHT;
+                ui_control_center_set_mode(UI_CONTROL_CENTER_MODE_COMPACT);
+                lv_obj_clear_flag(s_control_surface, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(s_control_surface);
+                lv_obj_set_y(s_control_surface, s_overlay_start_y);
                 s_pointer_dragging = true;
+                s_control_interaction = APP_CONTROL_SURFACE_DRAGGING;
                 ui_control_center_prepare_show();
                 app_update_quick_states();
-            } else if(s_quick_visible && delta_y < 0) {
-                ui_motion_cancel_y(s_quick_overlay);
-                s_pointer_opening = false;
+            }
+            else if(shade == UI_SYSTEM_CONTROL_SHADE_COMPACT &&
+                    delta_y > 0) {
+                (void)ui_system_control_shade_expand();
+                app_reclaim_control_feedback_to_top();
+                s_shade_drag = APP_SHADE_DRAG_EXPAND;
+                s_panel_start_height = ui_control_center_panel_height();
                 s_pointer_dragging = true;
-            } else if(!s_quick_visible && delta_y < 0) {
+                s_control_interaction = APP_CONTROL_SURFACE_DRAGGING;
+            }
+            else if(shade == UI_SYSTEM_CONTROL_SHADE_COMPACT &&
+                    delta_y < 0) {
+                s_shade_drag = APP_SHADE_DRAG_CLOSE_COMPACT;
+                s_overlay_start_y = lv_obj_get_y(s_control_surface);
+                s_pointer_dragging = true;
+                s_control_interaction = APP_CONTROL_SURFACE_DRAGGING;
+            }
+            else if(shade == UI_SYSTEM_CONTROL_SHADE_EXPANDED &&
+                    delta_y < 0) {
+                (void)ui_control_center_exit_adjustment(true);
+                s_shade_drag = APP_SHADE_DRAG_CLOSE_EXPANDED;
+                s_panel_start_height = ui_control_center_panel_height();
+                s_pointer_dragging = true;
+                s_control_interaction = APP_CONTROL_SURFACE_DRAGGING;
+            }
+            else if(shade == UI_SYSTEM_CONTROL_SHADE_CLOSED && delta_y < 0) {
                 s_home_swiping = true;
                 return;
-            } else {
+            }
+            else {
                 return;
             }
         }
 
         if(s_page_swiping || s_home_swiping) return;
 
-        int32_t target_y;
-        if(s_pointer_opening) {
-            target_y = -UI_SCREEN_H + delta_y;
-        } else {
-            target_y = s_overlay_start_y + delta_y;
+        if(s_shade_drag == APP_SHADE_DRAG_OPEN_COMPACT ||
+           s_shade_drag == APP_SHADE_DRAG_CLOSE_COMPACT) {
+            int32_t target_y = LV_CLAMP(
+                -UI_CONTROL_CENTER_COMPACT_HEIGHT,
+                s_overlay_start_y + delta_y, 0);
+            lv_obj_set_y(s_control_surface, target_y);
         }
-        if(target_y < -UI_SCREEN_H) target_y = -UI_SCREEN_H;
-        if(target_y > 0) target_y = 0;
-        lv_obj_set_y(s_quick_overlay, target_y);
+        else if(s_shade_drag == APP_SHADE_DRAG_EXPAND ||
+                s_shade_drag == APP_SHADE_DRAG_CLOSE_EXPANDED) {
+            ui_control_center_set_panel_height(
+                LV_CLAMP(UI_CONTROL_CENTER_COMPACT_HEIGHT,
+                         s_panel_start_height + delta_y,
+                         UI_CONTROL_CENTER_PANEL_HEIGHT));
+        }
         return;
     }
 
@@ -1684,7 +2102,6 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         if(s_dynamic_card_gesture_owned) {
             s_dynamic_card_gesture_owned = false;
             s_pointer_dragging = false;
-            s_pointer_opening = false;
             s_page_swiping = false;
             s_home_swiping = false;
             return;
@@ -1692,15 +2109,22 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         if(s_navigation_map_gesture_owned) {
             s_navigation_map_gesture_owned = false;
             s_pointer_dragging = false;
-            s_pointer_opening = false;
+            s_page_swiping = false;
+            s_home_swiping = false;
+            return;
+        }
+        if(s_bottom_surface_gesture_owned) {
+            s_bottom_surface_gesture_owned = false;
+            s_pointer_dragging = false;
             s_page_swiping = false;
             s_home_swiping = false;
             return;
         }
 
-        if(s_slider_dragging) {
-            app_commit_active_slider(point.y);
+        if(s_slider_dragging || s_slider_candidate) {
+            app_commit_active_slider(point.x);
             s_slider_dragging = false;
+            s_slider_candidate = false;
             s_active_slider = UI_CONTROL_CENTER_SLIDER_NONE;
             return;
         }
@@ -1722,17 +2146,67 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         }
 
         if(s_pointer_dragging) {
-            if(s_pointer_opening) {
-                if(delta_y >= 72) app_animate_overlay_to(0, false);
-                else app_animate_overlay_to(-UI_SCREEN_H, true);
-            } else {
-                if(delta_y <= -72 || lv_obj_get_y(s_quick_overlay) <= -UI_SCREEN_H / 4) app_close_quick();
-                else app_animate_overlay_to(0, false);
+            uint32_t elapsed = lv_tick_elaps(s_pointer_start_tick);
+            if(elapsed == 0U) elapsed = 1U;
+            int32_t velocity = delta_y * 1000 / (int32_t)elapsed;
+            switch(s_shade_drag) {
+                case APP_SHADE_DRAG_OPEN_COMPACT:
+                    if(delta_y >= CONTROL_OPEN_DISTANCE ||
+                       velocity >= CONTROL_FAST_VELOCITY) {
+                        s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+                        ui_motion_move_y(
+                            s_control_surface, 0, UI_MOTION_DURATION_DOCK,
+                            lv_anim_path_ease_out,
+                            app_control_settle_done, NULL);
+                    }
+                    else {
+                        app_handoff_control_feedback_to_bottom();
+                        app_close_quick();
+                    }
+                    break;
+                case APP_SHADE_DRAG_CLOSE_COMPACT:
+                    if(delta_y <= -CONTROL_CLOSE_DISTANCE ||
+                       velocity <= -CONTROL_FAST_VELOCITY)
+                        app_close_quick();
+                    else {
+                        s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+                        ui_motion_move_y(
+                            s_control_surface, 0, UI_MOTION_DURATION_DOCK,
+                            lv_anim_path_ease_out,
+                            app_control_settle_done, NULL);
+                    }
+                    break;
+                case APP_SHADE_DRAG_EXPAND:
+                    if(delta_y >= CONTROL_EXPAND_DISTANCE ||
+                       velocity >= CONTROL_FAST_VELOCITY) {
+                        s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+                        app_animate_panel_height(
+                            UI_CONTROL_CENTER_PANEL_HEIGHT);
+                    }
+                    else {
+                        (void)ui_system_control_shade_set_compact();
+                        s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+                        app_animate_panel_height(
+                            UI_CONTROL_CENTER_COMPACT_HEIGHT);
+                    }
+                    break;
+                case APP_SHADE_DRAG_CLOSE_EXPANDED:
+                    if(delta_y <= -CONTROL_CLOSE_DISTANCE ||
+                       velocity <= -CONTROL_FAST_VELOCITY)
+                        app_close_quick();
+                    else {
+                        s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
+                        app_animate_panel_height(
+                            UI_CONTROL_CENTER_PANEL_HEIGHT);
+                    }
+                    break;
+                default:
+                    break;
             }
         }
 
         s_pointer_dragging = false;
-        s_pointer_opening = false;
+        s_shade_drag = APP_SHADE_DRAG_NONE;
         s_page_swiping = false;
         s_home_swiping = false;
     }

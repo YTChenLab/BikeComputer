@@ -367,6 +367,46 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME ui_control_center_test COMMAND ui_control_center_test)
 
+    add_executable(ui_system_control_shade_test
+        tests/ui_system_control_shade_test.c
+        src/ui/core/ui_system_control_shade.c
+    )
+    target_include_directories(ui_system_control_shade_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    add_test(NAME ui_system_control_shade_test
+             COMMAND ui_system_control_shade_test)
+
+    add_executable(ui_control_feedback_handoff_test
+        tests/ui_control_feedback_handoff_test.c
+        src/ui/core/ui_control_feedback_ownership.c
+        src/ui/core/ui_dock.c
+        src/ui/core/ui_dock_controller.c
+        src/ui/core/ui_event_bus.c
+    )
+    target_include_directories(ui_control_feedback_handoff_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    add_test(NAME ui_control_feedback_handoff_test
+             COMMAND ui_control_feedback_handoff_test)
+
+    add_executable(ui_capsule_motion_logic_test
+        tests/ui_capsule_motion_logic_test.c
+        src/ui/core/ui_motion.c
+    )
+    target_include_directories(ui_capsule_motion_logic_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_capsule_motion_logic_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_capsule_motion_logic_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_capsule_motion_logic_test m pthread)
+    endif()
+    add_test(NAME ui_capsule_motion_logic_test
+             COMMAND ui_capsule_motion_logic_test)
+
     add_executable(ui_navigation_test
         tests/ui_navigation_test.c
         src/ui/pages/navigation/ui_navigation.c

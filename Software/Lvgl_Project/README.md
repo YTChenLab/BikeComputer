@@ -83,6 +83,11 @@ $env:PATH = "D:\Professional Software\Anaconda\Bike_SpeedView\msys2-x86_64\ucrt6
 - 鼠标右键 / `Esc` / `Backspace` 长按约 1.2 s：骑行中打开“结束骑行”确认
 - 鼠标滚轮 / 方向键：模拟 Encoder 旋转
 - `Enter`：模拟 Encoder 按下
+- 页面顶部第一次下滑：打开统一 System Control Surface 的 `COMPACT` 状态；继续下滑：同一 Surface Morph 到 `EXPANDED`
+- `COMPACT` 上滑关闭；`EXPANDED` 上滑直接关闭，不返回 Compact
+- 控制中心内滚轮/方向键：循环选择当前状态可用控件；`Enter` 执行
+- `EXPANDED` 中声音或亮度直接 Inline Adjust；滚轮/方向键以 5% 步进调节，`Enter` 或返回键提交并保持控制中心，不呼出 Bottom CONTROL
+- `M`：按“关闭 → Compact → Expanded → 关闭”循环切换，便于 PC 调试
 - `S`：PC 调试专用，切换“移动/停止”；停止 3 s 后自动暂停，恢复移动 1 s 后自动恢复
 
 具体手势所有权和页面行为以 `src/hal/hal.c` 与 `src/ui/` 当前实现为准。
@@ -112,6 +117,12 @@ Phase 6C Navigation 视觉与交互统一见 [docs/PHASE_6C_NAVIGATION_REPORT.md
 Phase 6D Settings / System / Power 实现见 [docs/PHASE_6D_SETTINGS_SYSTEM_POWER_REPORT.md](docs/PHASE_6D_SETTINGS_SYSTEM_POWER_REPORT.md)。
 Phase 6E Ride Summary 实现见 [docs/PHASE_6E_RIDE_SUMMARY_REPORT.md](docs/PHASE_6E_RIDE_SUMMARY_REPORT.md)。
 Phase 6F 骑行历史与 PC 持久化见 [docs/PHASE_6F_HISTORY_AND_STORAGE_REPORT.md](docs/PHASE_6F_HISTORY_AND_STORAGE_REPORT.md)。
+Phase 7B 快捷控制条 V1 实现见 [docs/PHASE_7B_QUICK_CONTROL_BAR_REPORT.md](docs/PHASE_7B_QUICK_CONTROL_BAR_REPORT.md)。
+Phase 7C 顶部/底部反馈联动见 [docs/PHASE_7C_CONTROL_FEEDBACK_HANDOFF_REPORT.md](docs/PHASE_7C_CONTROL_FEEDBACK_HANDOFF_REPORT.md)。
+Phase 7D/7E 控制中心精简与胶囊动效见 [docs/PHASE_7D_7E_CONTROL_CENTER_MOTION_REPORT.md](docs/PHASE_7D_7E_CONTROL_CENTER_MOTION_REPORT.md)。
+Phase 7G 统一 System Control Surface、三态 Morph 和 Inline Adjust 见 [docs/PHASE_7G_UNIFIED_CONTROL_SURFACE_REPORT.md](docs/PHASE_7G_UNIFIED_CONTROL_SURFACE_REPORT.md)。
+Phase 7 最终化状态与 RC 剩余条件见 [docs/PHASE_7_UI_V1.1.2_FINALIZATION_REPORT.md](docs/PHASE_7_UI_V1.1.2_FINALIZATION_REPORT.md)。
+当前 v1.1.2 RC 验收证据、阻断项与后续路线见 [docs/V1.1.2_RC_AUDIT_AND_NEXT_STEPS.md](docs/V1.1.2_RC_AUDIT_AND_NEXT_STEPS.md)。
 返回键骑行控制与自动暂停规则见 [docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md](docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md)。
 
 ## 版本发布约定

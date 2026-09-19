@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define HOME_ACTION_COUNT 6
+#define HOME_ACTION_COUNT 5
 
 typedef struct
 {
@@ -404,11 +404,8 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
     create_menu_row(s_home.screen, 604, LV_SYMBOL_LIST,
                     "历史记录", "RIDE HISTORY", 3,
                     UI_PAGE_ACTION_HISTORY);
-    create_menu_row(s_home.screen, 670, LV_SYMBOL_OK,
-                    "我的成就", "MY ACHIEVEMENTS", 4,
-                    UI_PAGE_ACTION_ACHIEVEMENT);
-    create_menu_row(s_home.screen, 736, LV_SYMBOL_SETTINGS,
-                    "系统设置", "SYSTEM SETTINGS", 5,
+    create_menu_row(s_home.screen, 670, LV_SYMBOL_SETTINGS,
+                    "系统设置", "SYSTEM SETTINGS", 4,
                     UI_PAGE_ACTION_SETTINGS);
 
     ui_home_data_t data;

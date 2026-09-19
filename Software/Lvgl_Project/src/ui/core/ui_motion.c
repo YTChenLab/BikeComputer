@@ -1,5 +1,7 @@
 #include "ui_motion.h"
 
+#include "../design/ui_design_tokens.h"
+
 static void set_scale(void *target, int32_t value)
 {
     lv_obj_set_style_transform_scale((lv_obj_t *)target, value, 0);
@@ -8,6 +10,16 @@ static void set_scale(void *target, int32_t value)
 static void set_y(void *target, int32_t value)
 {
     lv_obj_set_y((lv_obj_t *)target, value);
+}
+
+static void set_x(void *target, int32_t value)
+{
+    lv_obj_set_x((lv_obj_t *)target, value);
+}
+
+static void set_width(void *target, int32_t value)
+{
+    lv_obj_set_width((lv_obj_t *)target, value);
 }
 
 static void set_opacity(void *target, int32_t value)
@@ -61,6 +73,64 @@ void ui_motion_button_release(lv_obj_t *button)
                     lv_obj_get_style_transform_scale_x(button, 0),
                     UI_MOTION_PRESS_SCALE_NORMAL, UI_MOTION_DURATION_PRESS,
                     lv_anim_path_ease_out, NULL, NULL);
+}
+
+void ui_motion_focus_capsule(lv_obj_t *capsule, int32_t target_x,
+                             int32_t resting_width)
+{
+    if(capsule == NULL) return;
+    ui_motion_value(capsule, set_x, lv_obj_get_x(capsule), target_x,
+                    UI_TOKEN_MOTION_CAPSULE_FOCUS_MS,
+                    lv_anim_path_ease_out, NULL, NULL);
+    lv_anim_delete(capsule, set_width);
+    lv_obj_set_width(capsule, resting_width);
+    lv_anim_t stretch;
+    lv_anim_init(&stretch);
+    lv_anim_set_var(&stretch, capsule);
+    lv_anim_set_exec_cb(&stretch, set_width);
+    lv_anim_set_values(&stretch, resting_width, resting_width + 10);
+    lv_anim_set_time(&stretch, UI_TOKEN_MOTION_CAPSULE_FOCUS_MS / 2U);
+    lv_anim_set_playback_time(&stretch,
+                              UI_TOKEN_MOTION_CAPSULE_FOCUS_MS / 2U);
+    lv_anim_set_path_cb(&stretch, lv_anim_path_ease_in_out);
+    lv_anim_start(&stretch);
+}
+
+void ui_motion_toggle_press(lv_obj_t *object)
+{
+    if(object == NULL) return;
+    ui_motion_value(object, set_scale,
+                    lv_obj_get_style_transform_scale_x(object, 0), 246,
+                    UI_TOKEN_MOTION_CAPSULE_PRESS_MS / 2U,
+                    lv_anim_path_ease_out, NULL, NULL);
+}
+
+void ui_motion_toggle_release(lv_obj_t *object)
+{
+    if(object == NULL) return;
+    ui_motion_value(object, set_scale,
+                    lv_obj_get_style_transform_scale_x(object, 0),
+                    UI_MOTION_PRESS_SCALE_NORMAL,
+                    UI_TOKEN_MOTION_CAPSULE_PRESS_MS / 2U,
+                    lv_anim_path_ease_out, NULL, NULL);
+}
+
+void ui_motion_pulse(lv_obj_t *object, int32_t active_scale,
+                     uint32_t duration)
+{
+    if(object == NULL || duration == 0U) return;
+    lv_anim_delete(object, set_scale);
+    lv_obj_set_style_transform_scale(object,
+                                     UI_MOTION_PRESS_SCALE_NORMAL, 0);
+    lv_anim_t pulse;
+    lv_anim_init(&pulse);
+    lv_anim_set_var(&pulse, object);
+    lv_anim_set_exec_cb(&pulse, set_scale);
+    lv_anim_set_values(&pulse, UI_MOTION_PRESS_SCALE_NORMAL, active_scale);
+    lv_anim_set_time(&pulse, duration / 2U);
+    lv_anim_set_playback_time(&pulse, duration / 2U);
+    lv_anim_set_path_cb(&pulse, lv_anim_path_ease_in_out);
+    lv_anim_start(&pulse);
 }
 
 void ui_motion_move_y(lv_obj_t *object, int32_t target_y, uint32_t duration,

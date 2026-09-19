@@ -24,7 +24,7 @@ lv_obj_t *ui_profile_page_create(ui_page_action_cb_t callback,
     s_user_data = user_data;
     lv_obj_t *screen = ui_page_screen_create();
     ui_page_status_create(&s_status, screen);
-    ui_page_title(screen, "个人主页", "PROFILE");
+    ui_page_title(screen, "个人主页（遗留）", "LEGACY PROFILE · DEPRECATED");
 
     lv_obj_t *identity = ui_page_card(screen, 20, 164, 440, 120);
     lv_obj_t *avatar = ui_page_box(identity, 18, 22, 76, 76,
@@ -68,11 +68,9 @@ lv_obj_t *ui_profile_page_create(ui_page_action_cb_t callback,
     lv_obj_add_event_cb(history, action_event, LV_EVENT_CLICKED,
                         (void *)(uintptr_t)UI_PAGE_ACTION_HISTORY);
 
-    ui_page_label(screen, 24, 577, 432, "成就", UI_FONT_PAGE_TEXT,
+    ui_page_label(screen, 24, 577, 432, "遗留页面", UI_FONT_PAGE_TEXT,
                   LV_TEXT_ALIGN_LEFT);
-    ui_page_button(screen, 20, 608, 440, 58, "首次百公里挑战  ·  已解锁",
-                   action_event, (void *)(uintptr_t)UI_PAGE_ACTION_ACHIEVEMENT);
-    ui_page_button(screen, 20, 684, 440, 58, "设置", action_event,
+    ui_page_button(screen, 20, 608, 440, 58, "设置", action_event,
                    (void *)(uintptr_t)UI_PAGE_ACTION_SETTINGS);
     return screen;
 }

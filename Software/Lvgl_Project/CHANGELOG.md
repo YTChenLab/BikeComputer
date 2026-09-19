@@ -2,7 +2,7 @@
 
 本项目遵循语义化版本编号，Git 标签格式为 `vMAJOR.MINOR.PATCH`。
 
-## 未发布（目标 v1.1.2）
+## v1.1.2 - 2026-09-19
 
 - 新增固定四项快捷控制条 V1：WiFi、蓝牙、声音、亮度，使用真实 LVGL 对象和单一 Focus Capsule。
 - 新增 `CLOSED → QUICK_BAR → FULL_CONTROL_CENTER` 系统控制帘状态机；Touch 下拉/上滑和 PC `M` 键统一使用同一状态来源。

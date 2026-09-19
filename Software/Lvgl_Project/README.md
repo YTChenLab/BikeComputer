@@ -4,7 +4,7 @@ BikeComputer 公路车码表的 LVGL UI 工程和 Windows PC Simulator。
 
 ## 版本信息
 
-- BikeComputer UI 工程版本：`v1.1.1`
+- BikeComputer UI 工程版本：`v1.1.2`
 - LVGL 源码版本：`9.3.0-dev`
 - 目标分辨率：`480 × 854`
 - 色彩格式：RGB565

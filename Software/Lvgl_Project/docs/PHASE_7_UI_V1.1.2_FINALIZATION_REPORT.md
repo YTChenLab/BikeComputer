@@ -7,13 +7,13 @@
 ## 当前结论
 
 ```text
-开发状态：Phase 7B～7F 代码完成
-候选状态：RC Pending
-当前 VERSION：1.1.1
-当前开发分支：feature/ui-v1.1.2-finalization
+开发状态：Phase 7B～7G 完成
+发布状态：项目负责人验收并授权 v1.1.2
+当前 VERSION：1.1.2
+发布来源分支：feature/ui-v1.1.2-finalization
 ```
 
-本报告不把当前状态标记为 `v1.1.2 RC` 或 Final。原因是 V5 规定的可见 Simulator 完整人工流程、异常注入交互和 30～60 分钟墙钟压力尚未完成。自动化通过不能替代这些验收。
+项目负责人已确认当前 Simulator UI 效果并授权发布。可见自动化工具、异常注入完整流程和 30～60 分钟墙钟压力仍缺少记录，因此它们作为发布后补充验收与 STM32 移植前风险项保留；自动化通过不被表述为这些项目已经执行。
 
 ## Phase 7B：快捷控制条 V1
 
@@ -152,7 +152,7 @@ ui_summary_page_test
 - MiSans 比例；
 - Dynamic Card Geometry。
 
-## RC 前剩余验收
+## 发布后补充验收
 
 必须由可见 Simulator 完成：
 
@@ -171,12 +171,4 @@ ui_summary_page_test
 
 ## 版本管理
 
-在上述 RC 条件完成前：
-
-- 不更新 `VERSION`；
-- 不把系统页面版本改为 `v1.1.2`；
-- 不创建 `v1.1.2` Git tag；
-- 不合并为 Final；
-- 不开始 STM32 Driver 或真实地图。
-
-验收通过后再同步 `VERSION`、README、CHANGELOG，形成发布提交并创建 `v1.1.2` tag。
+`VERSION`、README、CHANGELOG 与系统信息页已同步为 `v1.1.2`。发布提交创建后使用同名带注释 Git tag。开始 STM32 页面级联调前应补齐上述长时性能与异常流程记录；真实地图仍需等待显示、TF/FatFs 和 GNSS 链路稳定。

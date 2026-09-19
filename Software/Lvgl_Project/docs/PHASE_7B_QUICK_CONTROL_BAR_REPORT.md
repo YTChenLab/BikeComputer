@@ -4,7 +4,7 @@
 
 ## 阶段定位
 
-本阶段从正式冻结的 Git tag `v1.1.1` 建立 `feature/ui-v1.1.2-finalization` 分支，按 `UI_V5_交接文档.md` 进入 v1.1.2 UI Finalization 开发。V5 是交接文档修订号，当前软件版本元数据仍保持 `1.1.1`；只有完整 RC 验收通过后才升级到 `1.1.2`。
+本阶段从正式冻结的 Git tag `v1.1.1` 建立 `feature/ui-v1.1.2-finalization` 分支，按 `UI_V5_交接文档.md` 进入 v1.1.2 UI Finalization 开发。V5 是交接文档修订号；本段记录的是开发阶段背景，最终发布元数据已升级为 `1.1.2`。
 
 Dashboard 已冻结的状态栏、实时速度、黄色速度条、2×3 数据区、背景、MiSans 比例和 Dynamic Card Geometry 均未重构。
 

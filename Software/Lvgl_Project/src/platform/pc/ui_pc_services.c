@@ -1,10 +1,12 @@
 #include "ui_pc_services.h"
+#include "ui_pc_ride_history_storage.h"
 
 #include "services/ui_command_service.h"
 #include "services/ui_system_services.h"
 #include "services/ui_state_adapter.h"
 #include "ui/core/ui_event_bridge.h"
 #include "ui/models/ui_ride_data_model.h"
+#include "services/ui_ride_history_repository.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -32,6 +34,7 @@ typedef struct
 } ui_pc_services_context_t;
 
 static ui_pc_services_context_t s_pc;
+static ui_pc_ride_history_storage_context_t s_history_storage;
 
 static void publish(ui_event_type_t type, ui_event_priority_t priority,
                     uint32_t dedupe_key)
@@ -250,6 +253,10 @@ static void command_tick(uint32_t elapsed_ms, void *context)
     else if(pc->command.type == UI_COMMAND_RIDE_SAVE) {
         success = pc->next_storage_success;
         pc->next_storage_success = true;
+        if(success) {
+            success = ui_ride_history_repository_commit_pending() ==
+                      UI_RIDE_HISTORY_OK;
+        }
     }
     else {
         pc->next_command_success = true;
@@ -334,6 +341,12 @@ void ui_pc_services_register(void)
     snprintf(s_pc.device_state.bluetooth_name,
              sizeof(s_pc.device_state.bluetooth_name), "%s",
              "Riding Sensors");
+    if(ui_pc_ride_history_storage_init(&s_history_storage,
+                                       "runtime/ride_history.dat")) {
+        ui_ride_history_storage_t history_backend =
+            ui_pc_ride_history_storage_backend(&s_history_storage);
+        (void)ui_ride_history_repository_register_storage(&history_backend);
+    }
     const ui_system_services_backend_t backend = {
         .request_gnss_fix = request_gnss_fix,
         .save_ride = save_ride,

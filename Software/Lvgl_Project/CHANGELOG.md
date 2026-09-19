@@ -2,8 +2,11 @@
 
 本项目遵循语义化版本编号，Git 标签格式为 `vMAJOR.MINOR.PATCH`。
 
-## 未发布（目标 v1.1.0）
+## v1.1.1 - 2026-09-19
 
+- 修复 History 空状态和声音/亮度交互坞新增文案的 MiSans 缺字方框，并重新生成完整运行时 UI 字体子集。
+- 将 MiSans UI 子集生成接入 CMake 源码依赖；新增中文文案后会自动重新生成字体及字符清单，不再依赖手工补字。
+- 新增全运行时字符覆盖测试，并将 History 空状态与 Interaction Dock 正文改为可换行固定高度布局，避免长中文被单行裁切。
 - 新增 `ui_app_state`，统一管理页面路由、骑行状态、状态栏、连接、控制中心、媒体与导航状态。
 - 为 `ui_router` 增加页面创建、进入、离开和销毁生命周期，并暂停隐藏页面的刷新定时器。
 - 建立全局状态栏绑定注册表，消除各页面各自保存时间、电量和连接状态的问题。
@@ -58,8 +61,15 @@
 - 转向内容更新移除整块透明度动画，改为低内存纵向位移动画；新增导航布局、缩放、Focus、转向事件和 Surface 恢复回归测试。
 - 修复 Quick Control Center 状态副文本误用 ASCII-only Montserrat 字体导致中文显示为方框的问题，并补充中文状态字形测试。
 - 修复 Navigation Interaction 将中文“查看”写入 Montserrat 按钮字体导致方框的问题，导航操作按钮统一使用 MiSans Surface Action 字体。
-- Home 的 History/Achievement 未开发入口不再发布占位 `FEATURE_INFO`，避免无实际页面时抢占并残留 Bottom Interaction Surface。
+- Home 的 Achievement 未开发入口不再发布占位 `FEATURE_INFO`，避免无实际页面时抢占并残留 Bottom Interaction Surface；History 已在 Phase 6F 接入真实页面。
 - 修复 Navigation 等无 Dynamic Card 页面在 Interaction 退出时先切回 Dynamic Host、造成底层卡片闪现的问题；退出动画保持当前 Interaction 内容，完成后原子隐藏全部 Surface Host。
+- Phase 6F 新增骑行历史模型与 Repository，统一管理最近 100 条骑行记录、ID 去重、容量淘汰、保存失败重试和总里程/时间/爬升聚合。
+- PC 骑行记录改为真实文件持久化：显式 little-endian 编码、格式版本、CRC32、临时文件提交、备份替换与启动恢复，默认保存到 `runtime/ride_history.dat`。
+- 结束骑行保存改为事务式流程：文件提交成功后才更新内存记录、Home 累计数据和 Summary `SAVED` 状态；失败时保留 pending 供重试，不提前污染统计。
+- 新增 History 页面，提供总骑行次数、累计距离、累计时间、空状态和最近 50 条可滚动记录，并支持 Touch 与 Encoder 焦点浏览。
+- Home 的历史入口已接入 `UI_ROUTE_HISTORY`，虚构累计骑行数据改为启动时从 Repository 聚合；保存成功和重新进入 Home 时同步刷新。
+- STM32 服务层新增历史存储后端注册接口，为后续 FatFs/littlefs 适配保留平台边界；本阶段未宣称 TF 卡真机验证完成。
+- 新增历史模型、Repository、PC 文件后端和 History 页面自动化测试，覆盖 100 条淘汰、幂等提交、失败重试、重启加载、格式版本、CRC 损坏、截断、备份恢复和 LVGL 内存回归。
 
 ## v1.0.0 - 2026-09-15
 

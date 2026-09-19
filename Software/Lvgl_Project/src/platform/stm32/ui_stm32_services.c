@@ -6,6 +6,7 @@
 #include "ui/core/ui_event_bridge.h"
 #include "ui/core/ui_input_queue.h"
 #include "services/ui_navigation_service.h"
+#include "services/ui_ride_history_repository.h"
 #include "services/ui_state_adapter.h"
 
 static ui_stm32_service_port_t s_port;
@@ -66,6 +67,12 @@ bool ui_stm32_services_register(const ui_stm32_service_port_t *port)
     };
     (void)ui_command_service_register_backend(&command_backend);
     return true;
+}
+
+bool ui_stm32_services_register_history_storage(
+    const ui_ride_history_storage_t *storage)
+{
+    return ui_ride_history_repository_register_storage(storage);
 }
 
 bool ui_stm32_services_publish_event(const ui_event_t *event)

@@ -106,7 +106,7 @@ data:   fps_avg=59, fps_min=58, cpu_avg=1%, cpu_max=3%
 ## 7. 已知边界
 
 - 头像、累计数据卡山景和最近骑行路线是 LVGL 本地 Mock 图形，不是最终品牌资源或真实轨迹。
-- History 页面将在后续阶段实现；当前入口通过统一 Bottom Surface 给出占位信息。
+- Phase 6A 当时 History 尚未实现；该入口现已在 Phase 6F 接入真实历史页面与 PC 持久化，详见 `PHASE_6F_HISTORY_AND_STORAGE_REPORT.md`。
 - Achievement 当前仅保留入口和占位反馈。
 - 原 Profile 页面为兼容旧路由暂时保留，但已退出非骑行态主导航链。
 - Home 数据尚未接入 TF 卡持久化、用户账号或 STM32 骑行记录服务。
@@ -117,4 +117,4 @@ data:   fps_avg=59, fps_min=58, cpu_avg=1%, cpu_max=3%
 2. Phase 6C：完善 Navigation 与真实离线地图数据接口，不在 UI 层直接解析完整地图数据库。
 3. Phase 6D：实现 Settings 子页面与持久化设置模型。
 4. Phase 6E：实现 Ride Summary 与骑行记录落盘闭环。
-5. Phase 6F：实现 History 列表、详情和 Home 最近骑行数据联动。
+5. Phase 6F：History 列表、PC 持久化和 Home 最近骑行数据联动已完成；单次骑行详情页顺延至 Phase 7A。

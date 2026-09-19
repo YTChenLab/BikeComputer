@@ -31,18 +31,11 @@ void ui_home_data_model_init(void)
               "Alex Chen");
     copy_text(s_home_data.tagline, sizeof(s_home_data.tagline),
               "Good Roads, Better Days.");
-    s_home_data.total_distance_km = 2864U;
-    s_home_data.total_time_hours = 124U;
-    s_home_data.total_time_minutes = 36U;
-    s_home_data.total_ascent_m = 28417U;
     copy_text(s_home_data.last_ride_date,
-              sizeof(s_home_data.last_ride_date), "2026.09.16  08:17");
-    s_home_data.last_distance_tenths_km = 867U;
-    s_home_data.last_duration_minutes = 201U;
-    s_home_data.last_ascent_m = 1268U;
+              sizeof(s_home_data.last_ride_date), "NO RIDES YET");
     copy_text(s_home_data.last_ride_caption,
               sizeof(s_home_data.last_ride_caption),
-              "山间向阳 · 风景正好");
+              "START YOUR FIRST RIDE");
     s_home_data.version = 1U;
 }
 

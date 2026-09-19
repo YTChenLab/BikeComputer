@@ -189,6 +189,32 @@ int main(void)
     assert(lv_obj_has_flag(host, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_get_child_count(surface) == 2U);
     assert(lv_obj_get_child_count(host) == UI_DOCK_TYPE_COUNT);
+    lv_obj_update_layout(surface);
+
+    for(uint8_t type = 0; type < UI_DOCK_TYPE_COUNT; type++) {
+        lv_obj_t *card_root = lv_obj_get_child(host, type);
+        /* Common template order: accent, icon background, title, message. */
+        lv_obj_t *icon_background = lv_obj_get_child(card_root, 1);
+        lv_obj_t *icon = lv_obj_get_child(icon_background, 0);
+        lv_obj_t *title = lv_obj_get_child(card_root, 2);
+        lv_obj_t *message = lv_obj_get_child(card_root, 3);
+        assert(icon_background != NULL && icon != NULL && title != NULL &&
+               message != NULL);
+        assert(lv_obj_get_style_text_font(title, 0) == UI_FONT_SURFACE_TITLE);
+        assert(lv_obj_get_style_text_align(title, 0) == LV_TEXT_ALIGN_CENTER);
+        assert(lv_obj_get_style_text_align(message, 0) ==
+               LV_TEXT_ALIGN_CENTER);
+        assert(lv_label_get_long_mode(message) == LV_LABEL_LONG_WRAP);
+        assert(lv_obj_get_height(message) >= 56);
+        if(type != UI_DOCK_TYPE_NAVIGATION) {
+            assert(lv_obj_get_x(icon_background) == 18);
+            assert(lv_obj_get_y(icon_background) == 78);
+            assert(lv_obj_get_width(icon_background) == 64);
+            assert(lv_obj_get_height(icon_background) == 64);
+            assert(lv_obj_get_style_text_font(icon, 0) ==
+                   &lv_font_montserrat_32);
+        }
+    }
 
     for(uint8_t type = 0; type < UI_DOCK_TYPE_COUNT; type++) {
         ui_dock_card_t card = make_card((ui_dock_type_t)type);
@@ -375,6 +401,7 @@ int main(void)
     navigation_turn.source_id = 0x4E415600UL;
     navigation_turn.dedupe_key = navigation_turn.source_id;
     navigation_turn.timeout_ms = 5000U;
+    navigation_turn.value = UI_NAVIGATION_TURN_LEFT;
     snprintf(navigation_turn.title, sizeof(navigation_turn.title),
              "前方转向");
     snprintf(navigation_turn.message, sizeof(navigation_turn.message),
@@ -390,11 +417,48 @@ int main(void)
     assert(strcmp(ui_dock_current()->message, "前方 180 m 左转") == 0);
     lv_obj_t *navigation_root = lv_obj_get_child(
         host, UI_DOCK_TYPE_NAVIGATION);
+    lv_obj_t *navigation_icon_bg = lv_obj_get_child(navigation_root, 1);
+    lv_obj_t *navigation_icon = lv_obj_get_child(navigation_icon_bg, 0);
+    lv_obj_t *navigation_message = lv_obj_get_child(navigation_root, 3);
     lv_obj_t *navigation_button = lv_obj_get_child(navigation_root, 6);
     lv_obj_t *navigation_label = lv_obj_get_child(navigation_button, 0);
     assert(strcmp(lv_label_get_text(navigation_label), "查看") == 0);
+    assert(strcmp(lv_label_get_text(navigation_icon), LV_SYMBOL_LEFT) == 0);
+    assert(lv_obj_get_style_text_font(navigation_icon, 0) ==
+           &lv_font_montserrat_48);
+    assert(lv_color_eq(lv_obj_get_style_text_color(navigation_icon, 0),
+                       UI_TOKEN_COLOR_ACCENT));
+    assert(lv_obj_get_style_text_font(navigation_message, 0) ==
+           UI_FONT_SURFACE_EMPHASIS);
+    assert(lv_obj_get_style_text_align(navigation_message, 0) ==
+           LV_TEXT_ALIGN_CENTER);
     assert(lv_obj_get_style_text_font(navigation_label, 0) ==
            UI_FONT_SURFACE_ACTION);
+    assert(lv_obj_get_x(navigation_icon_bg) +
+           lv_obj_get_width(navigation_icon_bg) <=
+           lv_obj_get_x(navigation_message));
+    assert(lv_obj_get_x(navigation_message) +
+           lv_obj_get_width(navigation_message) <=
+           lv_obj_get_x(navigation_button));
+
+    static const struct {
+        ui_navigation_turn_t direction;
+        const char *symbol;
+    } direction_cases[] = {
+        {UI_NAVIGATION_TURN_STRAIGHT, LV_SYMBOL_UP},
+        {UI_NAVIGATION_TURN_LEFT, LV_SYMBOL_LEFT},
+        {UI_NAVIGATION_TURN_RIGHT, LV_SYMBOL_RIGHT},
+        {UI_NAVIGATION_TURN_U_TURN, LV_SYMBOL_REFRESH}
+    };
+    for(uint8_t index = 0U;
+        index < sizeof(direction_cases) / sizeof(direction_cases[0]);
+        index++) {
+        navigation_turn.value = direction_cases[index].direction;
+        assert(ui_event_bus_publish(&navigation_turn));
+        assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
+        assert(strcmp(lv_label_get_text(navigation_icon),
+                      direction_cases[index].symbol) == 0);
+    }
     ui_bottom_surface_state_t navigation_state;
     assert(ui_bottom_surface_get_state(&navigation_state));
     assert(navigation_state.mode == UI_BOTTOM_SURFACE_INTERACTION_MODE);

@@ -48,7 +48,7 @@ int main(void)
     assert(ui_settings_list_add(&list, 11U, UI_SETTINGS_ROW_SLIDER,
                                 "声音", "VOLUME", "50%"));
     assert(ui_settings_list_add(&list, 12U, UI_SETTINGS_ROW_INFO,
-                                "版本", "VERSION", "v1.0.0"));
+                                "版本", "VERSION", "v1.1.1"));
     assert(list.row_count == 3U && list.selection == 0U);
     assert(ui_settings_list_set_toggle(&list, 10U, true));
     assert(list.rows[0].enabled);

@@ -1,6 +1,7 @@
 #include "ui_dock_templates.h"
 
 #include "../../core/ui_colors.h"
+#include "../../core/ui_event.h"
 #include "../../core/ui_theme.h"
 #include "../../design/ui_design_tokens.h"
 
@@ -87,8 +88,8 @@ static void create_common(ui_dock_template_t *view, lv_obj_t *parent,
 
     view->icon_bg = lv_obj_create(view->root);
     lv_obj_remove_style_all(view->icon_bg);
-    lv_obj_set_pos(view->icon_bg, 16, 45);
-    lv_obj_set_size(view->icon_bg, 46, 46);
+    lv_obj_set_pos(view->icon_bg, 18, 78);
+    lv_obj_set_size(view->icon_bg, 64, 64);
     lv_obj_set_style_bg_color(view->icon_bg, UI_TOKEN_COLOR_CANVAS, 0);
     lv_obj_set_style_bg_opa(view->icon_bg, UI_TOKEN_OPA_PRIMARY, 0);
     lv_obj_set_style_border_color(view->icon_bg, UI_TOKEN_COLOR_ACCENT, 0);
@@ -96,12 +97,15 @@ static void create_common(ui_dock_template_t *view, lv_obj_t *parent,
     lv_obj_set_style_radius(view->icon_bg, LV_RADIUS_CIRCLE, 0);
     lv_obj_clear_flag(view->icon_bg, LV_OBJ_FLAG_SCROLLABLE);
 
-    view->icon = make_label(view->icon_bg, 0, 11, 46, LV_SYMBOL_OK,
-                            LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
-    view->title = make_label(view->root, 76, 16, 230, "",
-                             UI_FONT_SURFACE_TITLE, LV_TEXT_ALIGN_LEFT);
-    view->message = make_label(view->root, 76, 52, 350, "",
-                               UI_FONT_SURFACE_BODY, LV_TEXT_ALIGN_LEFT);
+    view->icon = make_label(view->icon_bg, 0, 0, 64, LV_SYMBOL_OK,
+                            &lv_font_montserrat_32, LV_TEXT_ALIGN_CENTER);
+    lv_obj_center(view->icon);
+    view->title = make_label(view->root, 98, 16, 208, "",
+                             UI_FONT_SURFACE_TITLE, LV_TEXT_ALIGN_CENTER);
+    view->message = make_label(view->root, 98, 61, 318, "",
+                               UI_FONT_SURFACE_BODY, LV_TEXT_ALIGN_CENTER);
+    lv_label_set_long_mode(view->message, LV_LABEL_LONG_WRAP);
+    lv_obj_set_height(view->message, 68);
     /* Reserve an explicit gap before the close button; CONFIRM is the widest. */
     view->badge = make_label(view->root, 316, 18, 98, "INFO",
                              UI_FONT_SURFACE_BADGE, LV_TEXT_ALIGN_RIGHT);
@@ -120,14 +124,15 @@ static void create_common(ui_dock_template_t *view, lv_obj_t *parent,
 
 static void create_info(ui_dock_template_t *view)
 {
-    lv_obj_set_pos(view->message, 76, 61);
-    lv_obj_set_width(view->message, 338);
+    lv_obj_set_pos(view->message, 98, 76);
+    lv_obj_set_width(view->message, 318);
+    lv_obj_set_height(view->message, 64);
 }
 
 static void create_action(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
-    lv_obj_set_width(view->message, 226);
-    view->primary_button = make_button(view->root, 312, 74, 122, 54,
+    lv_obj_set_width(view->message, 204);
+    view->primary_button = make_button(view->root, 326, 78, 108, 56,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "OK",
                      UI_FONT_PAGE_TEXT);
@@ -136,7 +141,7 @@ static void create_action(ui_dock_template_t *view, lv_event_cb_t event_cb)
 static void create_confirm(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
     lv_obj_set_height(view->accent, 184);
-    lv_obj_set_width(view->message, 344);
+    lv_obj_set_width(view->message, 330);
     view->secondary_button = make_button(view->root, 204, 158, 112, 48,
                                          UI_DOCK_INTERACTION_SECONDARY,
                                          event_cb);
@@ -146,18 +151,19 @@ static void create_confirm(ui_dock_template_t *view, lv_event_cb_t event_cb)
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "YES",
                      UI_FONT_PAGE_TEXT);
-    lv_obj_set_pos(view->message, 76, 66);
+    lv_obj_set_pos(view->message, 98, 66);
 }
 
 static void create_control(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
     lv_obj_set_height(view->accent, 184);
-    lv_obj_set_width(view->message, 245);
-    view->value_label = make_label(view->root, 346, 72, 80, "0%",
+    lv_obj_set_width(view->message, 232);
+    lv_obj_set_height(view->message, 68);
+    view->value_label = make_label(view->root, 346, 76, 80, "0%",
                                    UI_FONT_SURFACE_BODY, LV_TEXT_ALIGN_RIGHT);
     view->slider = lv_slider_create(view->root);
-    lv_obj_set_pos(view->slider, 76, 158);
-    lv_obj_set_size(view->slider, 350, 14);
+    lv_obj_set_pos(view->slider, 98, 158);
+    lv_obj_set_size(view->slider, 328, 14);
     lv_obj_set_style_bg_color(view->slider, UI_COLOR_DECORATION, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(view->slider, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(view->slider, UI_COLOR_YELLOW, LV_PART_INDICATOR);
@@ -172,13 +178,21 @@ static void create_navigation(ui_dock_template_t *view,
                               lv_event_cb_t event_cb)
 {
     lv_obj_set_height(view->accent, 184);
-    lv_obj_set_pos(view->icon_bg, 18, 82);
-    lv_obj_set_size(view->icon_bg, 58, 58);
-    lv_obj_set_pos(view->icon, 0, 16);
-    lv_obj_set_width(view->icon, 58);
-    lv_obj_set_pos(view->message, 92, 82);
-    lv_obj_set_width(view->message, 236);
-    view->primary_button = make_button(view->root, 342, 142, 98, 54,
+    lv_obj_set_pos(view->icon_bg, 16, 67);
+    lv_obj_set_size(view->icon_bg, 84, 98);
+    lv_obj_set_style_bg_opa(view->icon_bg, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(view->icon_bg, 0, 0);
+    lv_obj_set_style_radius(view->icon_bg, 0, 0);
+    lv_obj_set_width(view->icon, 84);
+    lv_obj_set_style_text_font(view->icon, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(view->icon, UI_TOKEN_COLOR_ACCENT, 0);
+    lv_obj_center(view->icon);
+    lv_obj_set_pos(view->message, 106, 78);
+    lv_obj_set_width(view->message, 226);
+    lv_obj_set_height(view->message, 72);
+    lv_obj_set_style_text_font(view->message, UI_FONT_SURFACE_EMPHASIS, 0);
+    lv_obj_set_style_text_align(view->message, LV_TEXT_ALIGN_CENTER, 0);
+    view->primary_button = make_button(view->root, 344, 139, 96, 58,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "OPEN",
                      UI_FONT_SURFACE_ACTION);
@@ -248,7 +262,16 @@ void ui_dock_template_update(ui_dock_template_t *view,
     lv_color_t accent = priority_color(card->priority);
     lv_obj_set_style_bg_color(view->accent, accent, 0);
     lv_obj_set_style_border_color(view->icon_bg, accent, 0);
-    lv_label_set_text(view->icon, icons[card->type]);
+    lv_obj_set_style_text_color(view->icon, accent, 0);
+    if(card->type == UI_DOCK_TYPE_NAVIGATION) {
+        const char *arrow = LV_SYMBOL_UP;
+        if(card->value == UI_NAVIGATION_TURN_LEFT) arrow = LV_SYMBOL_LEFT;
+        else if(card->value == UI_NAVIGATION_TURN_RIGHT) arrow = LV_SYMBOL_RIGHT;
+        else if(card->value == UI_NAVIGATION_TURN_U_TURN) arrow = LV_SYMBOL_REFRESH;
+        lv_label_set_text(view->icon, arrow);
+        lv_obj_set_style_text_color(view->icon, UI_TOKEN_COLOR_ACCENT, 0);
+    }
+    else lv_label_set_text(view->icon, icons[card->type]);
     lv_label_set_text(view->title, card->title);
     lv_label_set_text(view->message, card->message);
     lv_label_set_text(view->badge, badges[card->type]);

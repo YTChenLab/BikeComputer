@@ -94,6 +94,50 @@ file(
     CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/src/ui/*.c"
 )
+# This generated source may not exist during the first configure of a clean
+# checkout. Keep it out of the glob and add it explicitly below.
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_ui_24\\.c$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_metric_40\\.c$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_action_32\\.c$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_unit_16\\.c$")
+# Navigation V2 replaces the legacy 2 x 2 card implementation. Keep the old
+# source in history for reference, but do not compile dead UI into the target.
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_nav_card\\.c$")
+
+file(
+    GLOB_RECURSE
+    UI_RUNTIME_TEXT_SOURCES
+    CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/src/ui/*.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/*.h"
+)
+list(FILTER UI_RUNTIME_TEXT_SOURCES EXCLUDE REGEX "/src/ui/fonts/")
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(UI_FONT_GENERATED_FILES
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_20.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_24.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_metric_60.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_num_68.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_metric_40.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_action_32.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_unit_16.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_runtime_codepoints.h"
+)
+add_custom_command(
+    OUTPUT ${UI_FONT_GENERATED_FILES}
+    COMMAND ${Python3_EXECUTABLE}
+            "${PROJECT_SOURCE_DIR}/tools/generate_ui_font.py"
+    DEPENDS
+        "${PROJECT_SOURCE_DIR}/tools/generate_ui_font.py"
+        "${PROJECT_SOURCE_DIR}/assets/fonts_src/MiSans-Semibold.ttf"
+        "${PROJECT_SOURCE_DIR}/assets/fonts_src/MiSans-Heavy.ttf"
+        ${UI_RUNTIME_TEXT_SOURCES}
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    COMMENT "Regenerating MiSans runtime UI subset"
+    VERBATIM
+)
+add_custom_target(ui_font_generate DEPENDS ${UI_FONT_GENERATED_FILES})
 
 file(
     GLOB_RECURSE
@@ -107,6 +151,10 @@ list(
     APPEND
     MAIN_SOURCES
     ${UI_SOURCES}
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_24.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_metric_40.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_action_32.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_unit_16.c"
     ${SERVICE_SOURCES}
 )
 set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES})
@@ -181,6 +229,7 @@ if(LVGL_PRO_PROJECT_DIR)
 endif()
 
 add_executable(main ${MAIN_SOURCES})
+add_dependencies(main ui_font_generate)
 target_include_directories(
     main
     PRIVATE
@@ -190,6 +239,29 @@ target_compile_definitions(main PRIVATE LV_CONF_INCLUDE_SIMPLE)
 target_link_libraries(main ${MAIN_LIBS})
 
 if(BUILD_TESTING)
+    add_executable(ui_font_coverage_test
+        tests/ui_font_coverage_test.c
+        src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_ui_24.c
+        src/ui/fonts/ui_font_misans_nav_metric_40.c
+        src/ui/fonts/ui_font_misans_nav_action_32.c
+        src/ui/fonts/ui_font_misans_nav_unit_16.c
+        src/ui/fonts/ui_font_misans_en_16.c
+        src/ui/fonts/ui_font_misans_en_18.c
+    )
+    add_dependencies(ui_font_coverage_test ui_font_generate)
+    target_include_directories(ui_font_coverage_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_font_coverage_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_font_coverage_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_font_coverage_test m pthread)
+    endif()
+    add_test(NAME ui_font_coverage_test COMMAND ui_font_coverage_test)
+
     add_executable(ui_app_state_test
         tests/ui_app_state_test.c
         src/ui/core/ui_app_state.c
@@ -237,8 +309,12 @@ if(BUILD_TESTING)
         src/services/ui_command_service.c
         src/services/ui_state_adapter.c
         src/services/ui_navigation_service.c
+        src/services/ui_ride_history_repository.c
         src/platform/pc/ui_pc_services.c
+        src/platform/pc/ui_pc_ride_history_storage.c
         src/ui/models/ui_ride_data_model.c
+        src/ui/models/ui_ride_history_model.c
+        src/ui/models/ui_ride_summary_model.c
         src/platform/stm32/ui_stm32_services.c
     )
     target_include_directories(ui_core_logic_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
@@ -256,6 +332,7 @@ if(BUILD_TESTING)
         src/ui/core/ui_sound.c
         src/ui/design/ui_component_style.c
         src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_ui_24.c
         src/ui/fonts/ui_font_misans_en_18.c
         src/ui/fonts/ui_font_misans_status_16.c
     )
@@ -294,8 +371,9 @@ if(BUILD_TESTING)
         tests/ui_navigation_test.c
         src/ui/pages/navigation/ui_navigation.c
         src/ui/components/navigation/ui_nav_animation.c
-        src/ui/components/navigation/ui_nav_card.c
+        src/ui/components/navigation/ui_nav_command_dock.c
         src/ui/components/navigation/ui_nav_control.c
+        src/ui/components/navigation/ui_nav_data_strip.c
         src/ui/components/navigation/ui_nav_geometry.c
         src/ui/components/navigation/ui_nav_map.c
         src/ui/core/ui_concurrency.c
@@ -303,6 +381,10 @@ if(BUILD_TESTING)
         src/ui/core/ui_motion.c
         src/services/ui_navigation_service.c
         src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_ui_24.c
+        src/ui/fonts/ui_font_misans_nav_metric_40.c
+        src/ui/fonts/ui_font_misans_nav_action_32.c
+        src/ui/fonts/ui_font_misans_nav_unit_16.c
         src/ui/fonts/ui_font_misans_en_18.c
         src/ui/fonts/ui_font_misans_metric_60.c
         src/ui/fonts/ui_font_misans_num_48.c
@@ -407,6 +489,77 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME ui_ride_summary_model_test
              COMMAND ui_ride_summary_model_test)
+
+    add_executable(ui_ride_history_model_test
+        tests/ui_ride_history_model_test.c
+        src/ui/models/ui_ride_history_model.c
+    )
+    target_include_directories(ui_ride_history_model_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    if(NOT MSVC)
+        target_link_libraries(ui_ride_history_model_test m)
+    endif()
+    add_test(NAME ui_ride_history_model_test
+             COMMAND ui_ride_history_model_test)
+
+    add_executable(ui_ride_history_repository_test
+        tests/ui_ride_history_repository_test.c
+        src/services/ui_ride_history_repository.c
+        src/ui/models/ui_ride_history_model.c
+    )
+    target_include_directories(ui_ride_history_repository_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    if(NOT MSVC)
+        target_link_libraries(ui_ride_history_repository_test m)
+    endif()
+    add_test(NAME ui_ride_history_repository_test
+             COMMAND ui_ride_history_repository_test)
+
+    add_executable(ui_pc_ride_history_storage_test
+        tests/ui_pc_ride_history_storage_test.c
+        src/platform/pc/ui_pc_ride_history_storage.c
+        src/services/ui_ride_history_repository.c
+        src/ui/models/ui_ride_history_model.c
+    )
+    target_include_directories(ui_pc_ride_history_storage_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    if(NOT MSVC)
+        target_link_libraries(ui_pc_ride_history_storage_test m)
+    endif()
+    add_test(NAME ui_pc_ride_history_storage_test
+             COMMAND ui_pc_ride_history_storage_test)
+
+    add_executable(ui_history_page_test
+        tests/ui_history_page_test.c
+        src/ui/pages/ui_history_page.c
+        src/ui/pages/ui_page_common.c
+        src/ui/components/ui_status_bar.c
+        src/ui/core/ui_app_state.c
+        src/ui/core/ui_background.c
+        src/ui/core/ui_concurrency.c
+        src/ui/core/ui_motion.c
+        src/ui/core/ui_sound.c
+        src/ui/models/ui_ride_history_model.c
+        src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_en_18.c
+        src/ui/fonts/ui_font_misans_status_20.c
+        src/ui/fonts/ui_font_misans_status_16.c
+        src/ui/fonts/ui_font_misans_num_48.c
+    )
+    target_include_directories(ui_history_page_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_history_page_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_history_page_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_history_page_test m pthread)
+    endif()
+    add_test(NAME ui_history_page_test COMMAND ui_history_page_test)
 
     add_executable(ui_summary_page_test
         tests/ui_summary_page_test.c

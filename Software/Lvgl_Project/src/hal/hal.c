@@ -32,6 +32,7 @@ static int SDLCALL simulator_event_watch(void *userdata, SDL_Event *event)
     else if(key == SDLK_p) post_input(UI_INPUT_POWER_TOGGLE);
     else if(key == SDLK_LEFTBRACKET) post_input(UI_INPUT_OPEN_PROFILE);
     else if(key == SDLK_RIGHTBRACKET) post_input(UI_INPUT_OPEN_SETTINGS);
+    else if(key == SDLK_n) post_input(UI_INPUT_NAV_DEMO_NEXT);
     else if(key == SDLK_s) (void)ui_pc_services_toggle_stationary();
   }
   return 1;

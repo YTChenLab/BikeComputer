@@ -21,6 +21,7 @@
 #include "../../services/ui_system_services.h"
 #include "../../services/ui_state_adapter.h"
 #include "../../services/ui_navigation_service.h"
+#include "../../services/ui_ride_history_repository.h"
 #include "../components/ui_status_bar.h"
 #include "../components/ui_dynamic_card_manager.h"
 #include "../components/dock/ui_dock_view.h"
@@ -28,6 +29,7 @@
 #include "../pages/navigation/ui_navigation.h"
 #include "../pages/ui_boot_page.h"
 #include "../pages/ui_home_page.h"
+#include "../pages/ui_history_page.h"
 #include "../pages/ui_page_action.h"
 #include "../pages/ui_page_common.h"
 #include "../pages/ui_power_page.h"
@@ -38,11 +40,13 @@
 #include "../models/ui_ride_data_model.h"
 #include "../models/ui_ride_summary_model.h"
 #include "../models/ui_home_data_model.h"
+#include "../models/ui_ride_history_model.h"
 #include "../overlays/ui_control_center.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 typedef ui_route_id_t ui_page_t;
 #define UI_PAGE_BOOT        UI_ROUTE_BOOT
@@ -50,6 +54,7 @@ typedef ui_route_id_t ui_page_t;
 #define UI_PAGE_DASHBOARD   UI_ROUTE_RIDE_DASHBOARD
 #define UI_PAGE_NAVIGATION  UI_ROUTE_NAVIGATION
 #define UI_PAGE_SUMMARY     UI_ROUTE_RIDE_SUMMARY
+#define UI_PAGE_HISTORY     UI_ROUTE_HISTORY
 #define UI_PAGE_PROFILE     UI_ROUTE_PROFILE
 #define UI_PAGE_SETTINGS    UI_ROUTE_SETTINGS
 #define UI_PAGE_SYSTEM      UI_ROUTE_SYSTEM
@@ -131,7 +136,8 @@ static void app_auto_pause_tick(uint32_t elapsed_ms);
 static bool app_request_pause_toggle(ui_ride_pause_reason_t reason);
 static void app_show_settings_control(app_settings_control_t control);
 static void app_show_power_confirmation(bool restart);
-static void app_commit_summary_to_home(void);
+static void app_refresh_history_models(void);
+static bool app_prepare_ride_save(void);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -364,32 +370,73 @@ static void app_auto_pause_tick(uint32_t elapsed_ms)
     }
 }
 
-static void app_commit_summary_to_home(void)
+static void app_format_history_date(int64_t timestamp,
+                                    char *text, size_t capacity)
 {
-    ui_ride_summary_t summary;
-    ui_home_data_t home;
-    ui_app_state_t state;
-    if(!ui_ride_summary_model_get(&summary) ||
-       !ui_home_data_model_get(&home) || !ui_app_state_get(&state)) return;
+    time_t value = (time_t)timestamp;
+    struct tm local_time;
+#if defined(_WIN32)
+    if(localtime_s(&local_time, &value) != 0) {
+#else
+    if(localtime_r(&value, &local_time) == NULL) {
+#endif
+        snprintf(text, capacity, "DATE UNAVAILABLE");
+        return;
+    }
+    snprintf(text, capacity, "%04d.%02d.%02d  %02d:%02d",
+             local_time.tm_year + 1900, local_time.tm_mon + 1,
+             local_time.tm_mday, local_time.tm_hour, local_time.tm_min);
+}
 
-    home.total_distance_km +=
-        (uint32_t)(summary.distance_km + 0.5f);
-    uint32_t total_minutes = home.total_time_hours * 60U +
-                             home.total_time_minutes +
-                             summary.duration_seconds / 60U;
-    home.total_time_hours = total_minutes / 60U;
+static void app_refresh_history_models(void)
+{
+    ui_home_data_t home;
+    if(!ui_home_data_model_get(&home)) return;
+    ui_ride_history_totals_t totals;
+    ui_ride_history_model_totals(&totals);
+    home.total_distance_km =
+        (uint32_t)(totals.total_distance_km + 0.5);
+    uint64_t total_minutes = totals.total_duration_seconds / 60U;
+    home.total_time_hours = (uint32_t)(total_minutes / 60U);
     home.total_time_minutes = (uint8_t)(total_minutes % 60U);
-    home.total_ascent_m += summary.ascent_m;
-    home.last_distance_tenths_km =
-        (uint32_t)(summary.distance_km * 10.0f + 0.5f);
-    home.last_duration_minutes =
-        (summary.duration_seconds + 59U) / 60U;
-    home.last_ascent_m = summary.ascent_m;
-    snprintf(home.last_ride_date, sizeof(home.last_ride_date),
-             "TODAY  %02u:%02u", state.clock_hour, state.clock_minute);
-    snprintf(home.last_ride_caption, sizeof(home.last_ride_caption),
-             "RIDE COMPLETE · SAVED");
+    home.total_ascent_m = totals.total_ascent_m > UINT32_MAX ? UINT32_MAX :
+                          (uint32_t)totals.total_ascent_m;
+
+    ui_ride_record_t latest;
+    if(ui_ride_history_model_get_newest(0U, &latest)) {
+        app_format_history_date(latest.finished_at_utc,
+                                home.last_ride_date,
+                                sizeof(home.last_ride_date));
+        home.last_distance_tenths_km =
+            (uint32_t)(latest.distance_km * 10.0f + 0.5f);
+        home.last_duration_minutes =
+            (latest.duration_seconds + 59U) / 60U;
+        home.last_ascent_m = latest.ascent_m;
+        snprintf(home.last_ride_caption, sizeof(home.last_ride_caption),
+                 "RIDE COMPLETE · SAVED");
+    }
+    else {
+        snprintf(home.last_ride_date, sizeof(home.last_ride_date),
+                 "NO RIDES YET");
+        home.last_distance_tenths_km = 0U;
+        home.last_duration_minutes = 0U;
+        home.last_ascent_m = 0U;
+        snprintf(home.last_ride_caption, sizeof(home.last_ride_caption),
+                 "START YOUR FIRST RIDE");
+    }
     (void)ui_home_data_model_update(&home);
+    ui_history_page_refresh();
+}
+
+static bool app_prepare_ride_save(void)
+{
+    if(ui_ride_history_repository_has_pending()) return true;
+    ui_ride_summary_t summary;
+    if(!ui_ride_summary_model_get(&summary)) return false;
+    ui_ride_summary_model_finish(false);
+    if(!ui_ride_summary_model_get(&summary)) return false;
+    return ui_ride_history_repository_prepare(&summary) ==
+           UI_RIDE_HISTORY_OK;
 }
 
 static void app_state_changed(const ui_app_state_t *state,
@@ -435,10 +482,8 @@ static void app_ride_state_changed(ui_ride_state_t previous,
             ui_ride_summary_model_begin(&data);
     }
     else if(current == UI_RIDE_STATE_SUMMARY &&
-            previous == UI_RIDE_STATE_FINISHING) {
+            previous == UI_RIDE_STATE_FINISHING)
         ui_ride_summary_model_finish(true);
-        app_commit_summary_to_home();
-    }
     if(current != UI_RIDE_STATE_RIDING &&
        current != UI_RIDE_STATE_PAUSED &&
        current != UI_RIDE_STATE_FINISHING) {
@@ -667,11 +712,14 @@ static void app_command_changed(const ui_command_result_t *result,
             case UI_COMMAND_RIDE_FINISH:
                 (void)app_publish_event(UI_EVENT_RIDE_SAVE_STARTED,
                                         UI_EVENT_PRIORITY_P2_RIDE_STATE);
-                if(!app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U))
+                if(!app_prepare_ride_save() ||
+                   !app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U))
                     (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
                                             UI_EVENT_PRIORITY_P0_CRITICAL);
                 break;
             case UI_COMMAND_RIDE_SAVE:
+                ui_ride_summary_model_finish(true);
+                app_refresh_history_models();
                 if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING) {
                     (void)app_publish_event(UI_EVENT_RIDE_SAVE_SUCCESS,
                                             UI_EVENT_PRIORITY_P2_RIDE_STATE);
@@ -718,6 +766,7 @@ static void app_home_enter(ui_route_id_t route, lv_obj_t *screen,
     ui_page_view_t *page = &s_pages[route];
     if(!ui_bottom_surface_mount(page->bottom_surface_slot, false))
         LV_LOG_ERROR("Home Bottom Surface mount failed");
+    app_refresh_history_models();
     ui_home_page_set_active(true);
 }
 
@@ -773,6 +822,27 @@ static void app_summary_leave(ui_route_id_t route, lv_obj_t *screen,
     (void)screen;
     (void)user_data;
     ui_summary_page_set_active(false);
+    ui_bottom_surface_unmount();
+}
+
+static void app_history_enter(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    (void)screen;
+    (void)user_data;
+    ui_page_view_t *page = &s_pages[route];
+    if(!ui_bottom_surface_mount(page->bottom_surface_slot, false))
+        LV_LOG_ERROR("History Bottom Surface mount failed");
+    ui_history_page_set_active(true);
+}
+
+static void app_history_leave(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_history_page_set_active(false);
     ui_bottom_surface_unmount();
 }
 
@@ -978,6 +1048,9 @@ static void app_create_screens(void) {
     s_pages[UI_PAGE_SUMMARY].screen = ui_summary_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_SUMMARY].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SUMMARY].screen);
+    s_pages[UI_PAGE_HISTORY].screen = ui_history_page_create();
+    s_pages[UI_PAGE_HISTORY].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_HISTORY].screen);
     s_pages[UI_PAGE_PROFILE].screen = ui_profile_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_PROFILE].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_PROFILE].screen);
@@ -1019,6 +1092,11 @@ static void app_register_routes(void) {
         .on_enter = app_summary_enter,
         .on_leave = app_summary_leave
     };
+    const ui_router_page_t history = {
+        .screen = s_pages[UI_PAGE_HISTORY].screen,
+        .on_enter = app_history_enter,
+        .on_leave = app_history_leave
+    };
     const ui_router_page_t profile = {
         .screen = s_pages[UI_PAGE_PROFILE].screen,
         .on_enter = app_surface_page_enter,
@@ -1043,6 +1121,7 @@ static void app_register_routes(void) {
     (void)ui_router_register_page(UI_ROUTE_RIDE_DASHBOARD, &dashboard);
     (void)ui_router_register_page(UI_ROUTE_NAVIGATION, &navigation);
     (void)ui_router_register_page(UI_ROUTE_RIDE_SUMMARY, &summary);
+    (void)ui_router_register_page(UI_ROUTE_HISTORY, &history);
     (void)ui_router_register_page(UI_ROUTE_PROFILE, &profile);
     (void)ui_router_register_page(UI_ROUTE_SETTINGS, &settings);
     (void)ui_router_register_page(UI_ROUTE_SYSTEM, &system);
@@ -1172,7 +1251,12 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_SYSTEM: app_show(UI_PAGE_SYSTEM); break;
         case UI_ACTION_QUICK: app_open_quick(); break;
         case UI_ACTION_SAVE_RIDE:
-            (void)app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U);
+            if((ui_ride_history_repository_has_pending() ||
+                app_prepare_ride_save()) &&
+               !app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U)) {
+                (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
+                                        UI_EVENT_PRIORITY_P0_CRITICAL);
+            }
             break;
         case UI_ACTION_UPLOAD_RIDE:
             (void)app_submit_command(UI_COMMAND_RIDE_UPLOAD, 0, 5000U);
@@ -1220,7 +1304,7 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_BRIGHTNESS:
         case UI_ACTION_SOUND:
             break;
-        case UI_ACTION_HISTORY:
+        case UI_ACTION_HISTORY: app_show(UI_PAGE_HISTORY); break;
         case UI_ACTION_ACHIEVEMENT:
             /* Phase 6F placeholders intentionally do not present an
              * Interaction card. A non-functional Home entry must not
@@ -1270,11 +1354,18 @@ void ui_app_init(void) {
     ui_state_machine_init();
     ui_state_machine_set_changed_callback(app_ride_state_changed, NULL);
     ui_home_data_model_init();
+    ui_ride_history_repository_init();
+    ui_ride_history_result_t history_result =
+        ui_ride_history_repository_load();
+    if(history_result != UI_RIDE_HISTORY_OK)
+        LV_LOG_WARN("Ride history load failed result=%d",
+                    (int)history_result);
     ui_ride_data_model_init();
     ui_ride_summary_model_init();
     ui_router_init(UI_ROUTE_HOME);
     ui_router_set_changed_callback(app_route_changed, NULL);
     app_create_screens();
+    app_refresh_history_models();
     app_register_routes();
     ui_dock_view_init();
     ui_event_bus_set_overflow_callback(app_event_overflow, NULL);
@@ -1384,10 +1475,19 @@ void ui_app_handle_input(ui_input_event_t input) {
         if(!s_powered_off) app_show(UI_PAGE_SETTINGS);
         return;
     }
+    if(input == UI_INPUT_NAV_DEMO_NEXT) {
+        if(!s_powered_off && !s_quick_visible &&
+           ui_router_current() == UI_PAGE_NAVIGATION)
+            ui_navigation_demo_next_state();
+        return;
+    }
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_handle_input(input)) return;
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_HOME &&
        ui_home_page_handle_input(input)) return;
+    if(!s_powered_off && !s_quick_visible &&
+       ui_router_current() == UI_PAGE_HISTORY &&
+       ui_history_page_handle_input(input)) return;
     if(!s_powered_off && !s_quick_visible && ui_router_current() == UI_PAGE_NAVIGATION &&
        ui_navigation_handle_input(input)) return;
     if(!s_powered_off && !s_quick_visible &&

@@ -14,6 +14,15 @@ typedef enum
     UI_RIDE_PAUSE_REASON_AUTO
 } ui_ride_pause_reason_t;
 
+/* Semantic navigation payload carried by UI_EVENT_NAVIGATION_TURN.value. */
+typedef enum
+{
+    UI_NAVIGATION_TURN_STRAIGHT = 0,
+    UI_NAVIGATION_TURN_LEFT,
+    UI_NAVIGATION_TURN_RIGHT,
+    UI_NAVIGATION_TURN_U_TURN
+} ui_navigation_turn_t;
+
 typedef enum
 {
     UI_EVENT_BOOT_COMPLETE = 0,

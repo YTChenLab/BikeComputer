@@ -8,11 +8,37 @@
 
 typedef enum
 {
-    NAV_DIRECTION_STRAIGHT = 0,
-    NAV_DIRECTION_LEFT,
-    NAV_DIRECTION_RIGHT,
-    NAV_DIRECTION_U_TURN
-} nav_direction_t;
+    NAV_MANEUVER_STRAIGHT = 0,
+    NAV_MANEUVER_LEFT,
+    NAV_MANEUVER_RIGHT,
+    NAV_MANEUVER_SLIGHT_LEFT,
+    NAV_MANEUVER_SLIGHT_RIGHT,
+    NAV_MANEUVER_SHARP_LEFT,
+    NAV_MANEUVER_SHARP_RIGHT,
+    NAV_MANEUVER_U_TURN,
+    NAV_MANEUVER_ROUNDABOUT,
+    NAV_MANEUVER_ARRIVE,
+    NAV_MANEUVER_COUNT
+} nav_maneuver_t;
+
+/* Source compatibility for the existing map/service adapters. */
+typedef nav_maneuver_t nav_direction_t;
+#define NAV_DIRECTION_STRAIGHT NAV_MANEUVER_STRAIGHT
+#define NAV_DIRECTION_LEFT     NAV_MANEUVER_LEFT
+#define NAV_DIRECTION_RIGHT    NAV_MANEUVER_RIGHT
+#define NAV_DIRECTION_U_TURN   NAV_MANEUVER_U_TURN
+
+typedef enum
+{
+    NAV_UI_CRUISE = 0,
+    NAV_UI_APPROACH,
+    NAV_UI_IMMINENT,
+    NAV_UI_NOW,
+    NAV_UI_REROUTING,
+    NAV_UI_GPS_WEAK,
+    NAV_UI_ARRIVED,
+    NAV_UI_STATE_COUNT
+} nav_ui_state_t;
 
 typedef enum
 {
@@ -33,6 +59,8 @@ typedef struct
     uint8_t zoom;
     nav_direction_t direction;
     uint32_t direction_distance;
+    nav_ui_state_t ui_state;
+    char road_name[64];
 } nav_model_t;
 
 typedef void (*ui_navigation_observer_cb_t)(const nav_model_t *model,

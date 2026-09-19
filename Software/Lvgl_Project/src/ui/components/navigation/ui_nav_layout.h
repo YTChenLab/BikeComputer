@@ -3,20 +3,22 @@
 
 #include "../../design/ui_design_tokens.h"
 
-/* Navigation page geometry. Keep the map and 2 x 2 data grid aligned to the
- * same 10 px page margin. The Bottom Interaction Surface occupies its shared
- * page slot only while an event is active. */
+/* Navigation V2 fixed geometry. The page status bar ends at y=56 and the
+ * existing status divider occupies the following few pixels, so the map starts
+ * at y=62. The remaining 792 px are split into a 500 px map, a 92 px data
+ * strip and a 200 px command region. */
 #define UI_NAV_PAGE_MARGIN       10
 #define UI_NAV_MAP_TOP           62
 #define UI_NAV_MAP_WIDTH        460
-#define UI_NAV_MAP_HEIGHT       460
-#define UI_NAV_SECTION_GAP        8
-#define UI_NAV_GRID_TOP         (UI_NAV_MAP_TOP + UI_NAV_MAP_HEIGHT + \
-                                 UI_NAV_SECTION_GAP)
-#define UI_NAV_GRID_WIDTH       UI_NAV_MAP_WIDTH
-#define UI_NAV_GRID_HEIGHT      314
-#define UI_NAV_CARD_GAP           6
-#define UI_NAV_CARD_WIDTH       227
-#define UI_NAV_CARD_HEIGHT      154
+#define UI_NAV_MAP_HEIGHT       500
+#define UI_NAV_DATA_TOP         (UI_NAV_MAP_TOP + UI_NAV_MAP_HEIGHT)
+#define UI_NAV_DATA_WIDTH       UI_NAV_MAP_WIDTH
+#define UI_NAV_DATA_HEIGHT       92
+#define UI_NAV_DOCK_REGION_TOP  (UI_NAV_DATA_TOP + UI_NAV_DATA_HEIGHT)
+#define UI_NAV_DOCK_X            10
+#define UI_NAV_DOCK_Y           (UI_NAV_DOCK_REGION_TOP + 2)
+#define UI_NAV_DOCK_WIDTH       460
+#define UI_NAV_DOCK_HEIGHT      188
+#define UI_NAV_DOCK_BOTTOM      (UI_NAV_DOCK_Y + UI_NAV_DOCK_HEIGHT)
 
 #endif /* UI_NAV_LAYOUT_H */

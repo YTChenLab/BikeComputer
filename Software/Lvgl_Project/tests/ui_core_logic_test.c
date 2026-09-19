@@ -10,6 +10,7 @@
 #include "platform/pc/ui_pc_services.h"
 #include "platform/stm32/ui_stm32_services.h"
 #include "services/ui_command_service.h"
+#include "services/ui_ride_history_repository.h"
 #include "services/ui_system_services.h"
 
 #include <assert.h>
@@ -461,6 +462,61 @@ static uint8_t process_platform_events(void)
     return ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
 }
 
+typedef struct
+{
+    ui_ride_record_t records[UI_RIDE_HISTORY_MAX_RECORDS];
+    size_t count;
+    int64_t now;
+    uint32_t store_calls;
+    bool fail_store;
+} pc_history_memory_t;
+
+static ui_ride_history_result_t pc_history_load(
+    ui_ride_record_t *records, size_t capacity, size_t *count, void *context)
+{
+    pc_history_memory_t *memory = context;
+    if(memory == NULL || records == NULL || count == NULL ||
+       capacity < memory->count) return UI_RIDE_HISTORY_INVALID_DATA;
+    *count = memory->count;
+    if(memory->count == 0U) return UI_RIDE_HISTORY_EMPTY;
+    memcpy(records, memory->records,
+           memory->count * sizeof(memory->records[0]));
+    return UI_RIDE_HISTORY_OK;
+}
+
+static ui_ride_history_result_t pc_history_store(
+    const ui_ride_record_t *records, size_t count, void *context)
+{
+    pc_history_memory_t *memory = context;
+    if(memory == NULL || count > UI_RIDE_HISTORY_MAX_RECORDS ||
+       (count > 0U && records == NULL))
+        return UI_RIDE_HISTORY_INVALID_DATA;
+    memory->store_calls++;
+    if(memory->fail_store) return UI_RIDE_HISTORY_IO_ERROR;
+    memcpy(memory->records, records, count * sizeof(records[0]));
+    memory->count = count;
+    return UI_RIDE_HISTORY_OK;
+}
+
+static int64_t pc_history_now(void *context)
+{
+    return ((pc_history_memory_t *)context)->now;
+}
+
+static ui_ride_summary_t pc_history_summary(float distance_km)
+{
+    return (ui_ride_summary_t) {
+        .distance_km = distance_km,
+        .duration_seconds = 3600U,
+        .average_speed_kmh = distance_km,
+        .maximum_speed_kmh = distance_km + 12.0f,
+        .ascent_m = 420U,
+        .average_heart_rate = 142U,
+        .average_power = 210U,
+        .average_cadence = 88U
+    };
+}
+
 static void test_async_pc_services(void)
 {
     ui_event_bus_init();
@@ -469,6 +525,20 @@ static void test_async_pc_services(void)
     ui_app_state_init();
     ui_state_adapter_init();
     ui_pc_services_register();
+
+    /* Keep this integration test independent from the real runtime file while
+     * exercising the same PC command -> repository commit path. */
+    pc_history_memory_t history_memory = {.now = 1750000000};
+    const ui_ride_history_storage_t history_backend = {
+        .load = pc_history_load,
+        .store = pc_history_store,
+        .now_utc = pc_history_now,
+        .context = &history_memory
+    };
+    assert(ui_ride_history_repository_register_storage(&history_backend));
+    ui_ride_history_repository_init();
+    assert(ui_ride_history_repository_load() == UI_RIDE_HISTORY_OK);
+
     assert(!ui_pc_services_is_stationary());
     assert(ui_pc_services_toggle_stationary());
     ui_system_services_tick(1U);
@@ -543,7 +613,44 @@ static void test_async_pc_services(void)
     assert(process_platform_events() == 1);
     assert(s_event_order[3] == UI_EVENT_RIDE_SAVE_SUCCESS);
 
+    ui_ride_summary_t first_summary = pc_history_summary(31.5f);
+    assert(ui_ride_history_repository_prepare(&first_summary) ==
+           UI_RIDE_HISTORY_OK);
+    uint32_t save_command = ui_command_service_submit(
+        UI_COMMAND_RIDE_SAVE, 0, 5000U);
+    assert(save_command != 0U);
+    ui_command_service_process(1U);
+    ui_command_service_process(UI_PC_STORAGE_DELAY_MS);
+    assert(ui_ride_history_model_count() == 1U);
+    assert(history_memory.store_calls == 1U);
+    assert(!ui_ride_history_repository_has_pending());
+
+    history_memory.now++;
+    history_memory.fail_store = true;
+    ui_ride_summary_t retry_summary = pc_history_summary(48.25f);
+    assert(ui_ride_history_repository_prepare(&retry_summary) ==
+           UI_RIDE_HISTORY_OK);
+    save_command = ui_command_service_submit(
+        UI_COMMAND_RIDE_SAVE, 0, 5000U);
+    assert(save_command != 0U);
+    ui_command_service_process(1U);
+    ui_command_service_process(UI_PC_STORAGE_DELAY_MS);
+    assert(ui_ride_history_model_count() == 1U);
+    assert(history_memory.store_calls == 2U);
+    assert(ui_ride_history_repository_has_pending());
+
+    history_memory.fail_store = false;
+    save_command = ui_command_service_submit(
+        UI_COMMAND_RIDE_SAVE, 0, 5000U);
+    assert(save_command != 0U);
+    ui_command_service_process(1U);
+    ui_command_service_process(UI_PC_STORAGE_DELAY_MS);
+    assert(ui_ride_history_model_count() == 2U);
+    assert(history_memory.store_calls == 3U);
+    assert(!ui_ride_history_repository_has_pending());
+
     ui_system_services_reset();
+    ui_command_service_reset_backend();
 }
 
 static void publish_and_process(ui_event_type_t type)

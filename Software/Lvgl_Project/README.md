@@ -4,7 +4,7 @@ BikeComputer 公路车码表的 LVGL UI 工程和 Windows PC Simulator。
 
 ## 版本信息
 
-- BikeComputer UI 工程版本：`v1.0.0`
+- BikeComputer UI 工程版本：`v1.1.1`
 - LVGL 源码版本：`9.3.0-dev`
 - 目标分辨率：`480 × 854`
 - 色彩格式：RGB565
@@ -109,6 +109,9 @@ Phase 6 页面 Slot 与 Router 生命周期迁移见 [docs/UI_PAGE_MIGRATION_PHA
 Phase 6A Home / Ride Hub 实现与验收见 [docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md](docs/PHASE_6A_HOME_RIDE_HUB_REPORT.md)。
 Phase 6B Quick Control Center 实现与验收见 [docs/PHASE_6B_CONTROL_CENTER_REPORT.md](docs/PHASE_6B_CONTROL_CENTER_REPORT.md)。
 Phase 6C Navigation 视觉与交互统一见 [docs/PHASE_6C_NAVIGATION_REPORT.md](docs/PHASE_6C_NAVIGATION_REPORT.md)。
+Phase 6D Settings / System / Power 实现见 [docs/PHASE_6D_SETTINGS_SYSTEM_POWER_REPORT.md](docs/PHASE_6D_SETTINGS_SYSTEM_POWER_REPORT.md)。
+Phase 6E Ride Summary 实现见 [docs/PHASE_6E_RIDE_SUMMARY_REPORT.md](docs/PHASE_6E_RIDE_SUMMARY_REPORT.md)。
+Phase 6F 骑行历史与 PC 持久化见 [docs/PHASE_6F_HISTORY_AND_STORAGE_REPORT.md](docs/PHASE_6F_HISTORY_AND_STORAGE_REPORT.md)。
 返回键骑行控制与自动暂停规则见 [docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md](docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md)。
 
 ## 版本发布约定
@@ -120,7 +123,8 @@ Phase 6C Navigation 视觉与交互统一见 [docs/PHASE_6C_NAVIGATION_REPORT.md
 
 ## 当前边界
 
-- Navigation 已完成 Phase 6C 视觉、Focus、转向抢占和低内存动画统一；当前地图仍是离线数据接口原型，不等同于完整真实地图引擎。
-- STM32 工程尚未导入，PC 服务接口已经为后续硬件适配预留。
+- Navigation 已升级为 V2：500 px 地图区、92 px 的 1×3 数据条和 460×188 固定 Navigation Command Dock；当前地图仍是 LVGL Mock 几何，不等同于真实地图引擎。
+- PC 已完成最近 100 条骑行记录的版本化文件持久化、CRC32 校验、临时文件替换、备份恢复、Home 聚合和 History 列表；History 当前展示最近 50 条。
+- STM32 工程尚未导入；历史存储抽象接口已经预留，但 FatFs/TF 卡后端、掉电测试和真机性能尚未实现或验证。
 - Home / Ride Hub 已按 UI V4 完成第一版真实 LVGL 页面；头像、山景与最近路线仍是可替换的本地 Mock 图形资源。
 - Dashboard 的顶部状态栏、实时速度、黄色速度条、2×3 数据区、背景资源和 MiSans 字体保持冻结。

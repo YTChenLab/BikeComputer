@@ -63,6 +63,10 @@ LV_FONT_DECLARE(ui_font_misans_speed_110);
 LV_FONT_DECLARE(ui_font_misans_metric_60);
 LV_FONT_DECLARE(ui_font_misans_metric_small_46);
 LV_FONT_DECLARE(ui_font_misans_ui_20);
+LV_FONT_DECLARE(ui_font_misans_ui_24);
+LV_FONT_DECLARE(ui_font_misans_nav_metric_40);
+LV_FONT_DECLARE(ui_font_misans_nav_action_32);
+LV_FONT_DECLARE(ui_font_misans_nav_unit_16);
 
 /* P0-P7 共用字体：覆盖当前中文、完整可打印 ASCII 和常用界面标点。 */
 #define UI_FONT_PAGE_TEXT \
@@ -196,16 +200,24 @@ LV_FONT_DECLARE(ui_font_misans_ui_20);
 /*
  * Bottom Interaction Surface typography roles.
  *
- * These aliases intentionally reuse the confirmed MiSans assets. Phase 4 only
- * establishes semantic roles; it does not regenerate fonts or change pixels.
+ * Body/action copy stays on the shared 20 px face. Titles and navigation
+ * instructions use a generated 24 px face with the same runtime glyph set.
  */
-#define UI_FONT_SURFACE_TITLE   UI_FONT_PAGE_TEXT
+#define UI_FONT_SURFACE_TITLE   (&ui_font_misans_ui_24)
 #define UI_FONT_SURFACE_BODY    UI_FONT_PAGE_TEXT
+#define UI_FONT_SURFACE_EMPHASIS (&ui_font_misans_ui_24)
 /* Dock type badges are ASCII words (INFO/ACTION/CONFIRM/...).  The compact
  * status font only contains digits, ':' and '%', so use a complete ASCII
  * face here instead of relying on missing-glyph boxes. */
 #define UI_FONT_SURFACE_BADGE   (&lv_font_montserrat_14)
 #define UI_FONT_SURFACE_ACTION  UI_FONT_PAGE_TEXT
+
+/* Navigation V2 compact type roles.  The 40 px numeric face fits a value and
+ * its unit inside one 153 px data-strip column.  The 32 px action face only
+ * contains the fixed maneuver vocabulary, keeping the embedded cost small. */
+#define UI_FONT_NAV_STRIP_VALUE (&ui_font_misans_nav_metric_40)
+#define UI_FONT_NAV_STRIP_UNIT  (&ui_font_misans_nav_unit_16)
+#define UI_FONT_NAV_ACTION      (&ui_font_misans_nav_action_32)
 
 
 /*

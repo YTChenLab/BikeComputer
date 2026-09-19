@@ -6,6 +6,7 @@
 #include "ui/models/ui_ride_data_model.h"
 #include "services/ui_command_service.h"
 #include "services/ui_navigation_service.h"
+#include "services/ui_ride_history_repository.h"
 #include "services/ui_state_adapter.h"
 
 #include <stdbool.h>
@@ -26,6 +27,12 @@ typedef struct
 
 /* Call once before GNSS/storage/sensor producer tasks are started. */
 bool ui_stm32_services_register(const ui_stm32_service_port_t *port);
+
+/* Register a board storage adapter before ui_app_init(). The adapter may use
+ * FatFs, littlefs or another STM32 storage implementation; UI code remains
+ * independent of the concrete filesystem. */
+bool ui_stm32_services_register_history_storage(
+    const ui_ride_history_storage_t *storage);
 
 /* Task-context producer APIs. ISR code must notify a task first. */
 bool ui_stm32_services_publish_event(const ui_event_t *event);

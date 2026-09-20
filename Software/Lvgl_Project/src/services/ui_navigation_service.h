@@ -51,6 +51,7 @@ typedef struct
 {
     float speed;
     float distance;
+    uint32_t remaining_ascent_m;
     uint8_t eta_hour;
     uint8_t eta_min;
     float latitude;

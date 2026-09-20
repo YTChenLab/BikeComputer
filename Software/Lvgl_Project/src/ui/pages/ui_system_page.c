@@ -39,7 +39,7 @@ lv_obj_t *ui_system_page_create(ui_page_action_cb_t callback,
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_MODEL,
         UI_SETTINGS_ROW_INFO, "设备型号", "DEVICE MODEL", "BIKE COMPUTER");
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_UI_VERSION,
-        UI_SETTINGS_ROW_INFO, "UI 版本", "SOFTWARE RELEASE", "v1.1.2");
+        UI_SETTINGS_ROW_INFO, "UI 版本", "SOFTWARE RELEASE", "v1.2.0");
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_LVGL,
         UI_SETTINGS_ROW_INFO, "LVGL 版本", "GRAPHICS RUNTIME", "9.3-dev");
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_STORAGE,
@@ -73,4 +73,9 @@ void ui_system_page_set_info(const ui_system_info_t *info)
 bool ui_system_page_handle_input(ui_input_event_t input)
 {
     return ui_settings_list_handle_input(&s_list, input);
+}
+
+bool ui_system_page_contains_scroll_point(int32_t x, int32_t y)
+{
+    return ui_settings_list_contains_point(&s_list, x, y);
 }

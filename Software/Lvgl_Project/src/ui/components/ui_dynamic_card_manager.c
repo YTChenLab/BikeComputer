@@ -7,6 +7,9 @@
 #include "../core/ui_theme.h"
 #include "../design/ui_design_tokens.h"
 #include "../../services/ui_command_service.h"
+#include "../../services/ui_navigation_service.h"
+#include "../models/ui_weather_model.h"
+#include "../models/ui_ride_data_model.h"
 
 #include "lvgl/src/draw/lv_draw_line.h"
 #include "lvgl/src/draw/lv_draw_triangle.h"
@@ -38,15 +41,32 @@ typedef struct
     lv_obj_t *indicator_overlay;
     lv_obj_t *indicator_dots[UI_DYNAMIC_CARD_COUNT];
     lv_obj_t *music_controls[MUSIC_CONTROL_COUNT];
+    lv_obj_t *extended_values[8];
     lv_obj_t *music_play_icon;
     lv_obj_t *music_track_label;
     lv_obj_t *music_artist_label;
     lv_obj_t *music_mode_label;
+    lv_obj_t *weather_temperature;
+    lv_obj_t *weather_condition;
+    lv_obj_t *weather_advice;
+    lv_obj_t *weather_wind;
+    lv_obj_t *weather_rain;
+    lv_obj_t *weather_air;
+    lv_obj_t *navigation_arrow;
+    lv_obj_t *navigation_distance;
+    lv_obj_t *navigation_road;
+    lv_obj_t *navigation_instruction;
+    lv_obj_t *navigation_remaining;
+    lv_obj_t *navigation_eta;
+    lv_obj_t *navigation_ascent;
     ui_dynamic_card_id_t active_card;
     ui_dynamic_card_id_t target_card;
     ui_dynamic_card_mode_t mode;
     int8_t control_focus;
     int32_t music_state_subscription;
+    int32_t weather_subscription;
+    int32_t ride_data_subscription;
+    int32_t navigation_subscription;
     bool created;
 } dynamic_card_manager_t;
 
@@ -54,6 +74,14 @@ static dynamic_card_manager_t s_manager;
 
 static void update_control_visuals(void);
 static void execute_music_control(uint8_t control_index);
+
+static const char * const s_weather_conditions[] = {
+    "晴朗", "多云", "小雨"
+};
+
+static const char * const s_weather_advice[] = {
+    "适合骑行", "适合骑行", "注意湿滑"
+};
 
 static const char * const s_music_tracks[] = {
     "End of a Long Day",
@@ -93,6 +121,124 @@ static void music_state_changed(const ui_app_state_t *state,
     (void)changed;
     (void)user_data;
     apply_music_state(state);
+}
+
+static void apply_weather(const ui_weather_data_t *weather)
+{
+    if(weather == NULL || s_manager.weather_temperature == NULL) return;
+    ui_weather_condition_t condition = weather->condition;
+    if(condition >= UI_WEATHER_CONDITION_COUNT)
+        condition = UI_WEATHER_CLOUDY;
+    char text[32];
+    lv_snprintf(text, sizeof(text), "%d", weather->temperature_c);
+    lv_label_set_text(s_manager.weather_temperature, text);
+    lv_label_set_text(s_manager.weather_condition,
+                      s_weather_conditions[condition]);
+    lv_label_set_text(s_manager.weather_advice,
+                      s_weather_advice[condition]);
+    lv_snprintf(text, sizeof(text), "%u km/h", weather->wind_kmh);
+    lv_label_set_text(s_manager.weather_wind, text);
+    lv_snprintf(text, sizeof(text), "%u%%", weather->rain_percent);
+    lv_label_set_text(s_manager.weather_rain, text);
+    lv_snprintf(text, sizeof(text), "AQI  %u", weather->air_quality_index);
+    lv_label_set_text(s_manager.weather_air, text);
+}
+
+static void weather_changed(const ui_weather_data_t *weather,
+                            void *user_data)
+{
+    (void)user_data;
+    apply_weather(weather);
+}
+
+static void apply_ride_data(const ui_ride_data_t *data)
+{
+    if(data == NULL || s_manager.extended_values[0] == NULL) return;
+    char text[24];
+    lv_snprintf(text, sizeof(text), "%.1f", (double)data->average_speed);
+    lv_label_set_text(s_manager.extended_values[0], text);
+    lv_snprintf(text, sizeof(text), "%.1f", (double)data->maximum_speed);
+    lv_label_set_text(s_manager.extended_values[1], text);
+    lv_snprintf(text, sizeof(text), "%ld", (long)data->altitude_m);
+    lv_label_set_text(s_manager.extended_values[2], text);
+    lv_snprintf(text, sizeof(text), "%lu", (unsigned long)data->ascent_m);
+    lv_label_set_text(s_manager.extended_values[3], text);
+    lv_snprintf(text, sizeof(text), "%lu",
+                (unsigned long)data->calories_kcal);
+    lv_label_set_text(s_manager.extended_values[4], text);
+    lv_snprintf(text, sizeof(text), "%d", data->temperature_c);
+    lv_label_set_text(s_manager.extended_values[5], text);
+    lv_snprintf(text, sizeof(text), "Z%u", data->heart_rate_zone);
+    lv_label_set_text(s_manager.extended_values[6], text);
+    lv_snprintf(text, sizeof(text), "%u/%u", data->current_lap,
+                data->total_laps);
+    lv_label_set_text(s_manager.extended_values[7], text);
+}
+
+static void ride_data_changed(const ui_ride_data_t *data, uint32_t version,
+                              void *user_data)
+{
+    (void)version;
+    (void)user_data;
+    apply_ride_data(data);
+}
+
+static const char *navigation_instruction(nav_maneuver_t maneuver)
+{
+    switch(maneuver) {
+        case NAV_MANEUVER_LEFT: return "左转进入前方道路";
+        case NAV_MANEUVER_RIGHT: return "右转进入前方道路";
+        case NAV_MANEUVER_SLIGHT_LEFT: return "靠左继续行驶";
+        case NAV_MANEUVER_SLIGHT_RIGHT: return "靠右继续行驶";
+        case NAV_MANEUVER_U_TURN: return "前方安全位置掉头";
+        case NAV_MANEUVER_ROUNDABOUT: return "进入环岛";
+        case NAV_MANEUVER_ARRIVE: return "即将到达目的地";
+        default: return "沿当前道路直行";
+    }
+}
+
+static void apply_navigation(const nav_model_t *model)
+{
+    if(model == NULL || s_manager.navigation_distance == NULL) return;
+    char text[40];
+    lv_snprintf(text, sizeof(text), "%lu",
+                (unsigned long)model->direction_distance);
+    lv_label_set_text(s_manager.navigation_distance, text);
+    lv_label_set_text(s_manager.navigation_road,
+                      model->road_name[0] != '\0' ? model->road_name :
+                                                   "未命名道路");
+    lv_label_set_text(s_manager.navigation_instruction,
+                      navigation_instruction(model->direction));
+    lv_snprintf(text, sizeof(text), "%.1f km", (double)model->distance);
+    lv_label_set_text(s_manager.navigation_remaining, text);
+    lv_snprintf(text, sizeof(text), "%02u:%02u",
+                model->eta_hour, model->eta_min);
+    lv_label_set_text(s_manager.navigation_eta, text);
+    lv_snprintf(text, sizeof(text), "%lu m",
+                (unsigned long)model->remaining_ascent_m);
+    lv_label_set_text(s_manager.navigation_ascent, text);
+
+    int32_t rotation = 2700;
+    if(model->direction == NAV_MANEUVER_RIGHT ||
+       model->direction == NAV_MANEUVER_SLIGHT_RIGHT ||
+       model->direction == NAV_MANEUVER_SHARP_RIGHT)
+        rotation = 0;
+    else if(model->direction == NAV_MANEUVER_LEFT ||
+            model->direction == NAV_MANEUVER_SLIGHT_LEFT ||
+            model->direction == NAV_MANEUVER_SHARP_LEFT)
+        rotation = 1800;
+    else if(model->direction == NAV_MANEUVER_U_TURN)
+        rotation = 900;
+    lv_obj_set_style_transform_rotation(s_manager.navigation_arrow,
+                                        rotation, 0);
+}
+
+static void navigation_changed(const nav_model_t *model, uint32_t version,
+                               void *user_data)
+{
+    (void)version;
+    (void)user_data;
+    apply_navigation(model);
 }
 
 static lv_obj_t *create_rect(lv_obj_t *parent, int32_t x, int32_t y,
@@ -165,9 +311,6 @@ static void create_extended_card(lv_obj_t *card)
         "平均速度", "最大速度", "当前海拔", "累计爬升",
         "卡路里", "当前温度", "心率区间", "当前圈数"
     };
-    static const char * const values[8] = {
-        "33.5", "56.8", "318", "692", "850", "24", "Z4", "2/5"
-    };
     static const char * const units[8] = {
         "km/h", "km/h", "m", "m", "kcal", "℃", "阈值区间", "圈"
     };
@@ -189,8 +332,9 @@ static void create_extended_card(lv_obj_t *card)
 
         create_label(card, x, y, 88, labels[index], UI_FONT_PAGE_TEXT,
                      secondary, LV_TEXT_ALIGN_LEFT);
-        create_label(card, x, y + 25, 88, values[index], &lv_font_montserrat_24,
-                     UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+        s_manager.extended_values[index] = create_label(
+            card, x, y + 25, 88, "--", &lv_font_montserrat_24,
+            UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
         create_label(card, x, y + 52, 88, units[index], UI_FONT_PAGE_TEXT,
                      UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
     }
@@ -256,34 +400,43 @@ static void create_navigation_card(lv_obj_t *card)
     create_card_header(card, LV_SYMBOL_GPS, "导航中", "NAVIGATION", "2/4");
 
     lv_obj_t *arrow = lv_obj_create(card);
+    s_manager.navigation_arrow = arrow;
     lv_obj_remove_style_all(arrow);
     lv_obj_set_pos(arrow, 42, 59);
     lv_obj_set_size(arrow, 103, 112);
+    lv_obj_set_style_transform_pivot_x(arrow, 51, 0);
+    lv_obj_set_style_transform_pivot_y(arrow, 56, 0);
     lv_obj_clear_flag(arrow, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(arrow, navigation_arrow_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
 
-    create_label(card, 144, 55, 126, "300", UI_FONT_METRIC_VALUE_SMALL,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_RIGHT);
+    s_manager.navigation_distance = create_label(
+        card, 144, 55, 126, "300", UI_FONT_METRIC_VALUE_SMALL,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_RIGHT);
     create_label(card, 273, 75, 25, "m", UI_FONT_SPEED_UNIT,
                  UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 146, 108, 146, "中山路", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
-    create_label(card, 146, 137, 146, "右转进入中山路", UI_FONT_PAGE_TEXT,
-                 secondary, LV_TEXT_ALIGN_CENTER);
+    s_manager.navigation_road = create_label(
+        card, 146, 108, 146, "中山路", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    s_manager.navigation_instruction = create_label(
+        card, 146, 137, 146, "右转进入中山路", UI_FONT_PAGE_TEXT,
+        secondary, LV_TEXT_ALIGN_CENTER);
 
     create_rect(card, 302, 52, 1, 129, border, LV_OPA_80);
     create_label(card, 324, 50, 120, "剩余里程", UI_FONT_PAGE_TEXT,
                  secondary, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 324, 73, 120, "12.8 km", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    s_manager.navigation_remaining = create_label(
+        card, 324, 73, 120, "12.8 km", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
     create_label(card, 324, 100, 120, "预计到达", UI_FONT_PAGE_TEXT,
                  secondary, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 324, 123, 120, "10:52", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    s_manager.navigation_eta = create_label(
+        card, 324, 123, 120, "10:52", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
     create_label(card, 324, 150, 120, "剩余爬升", UI_FONT_PAGE_TEXT,
                  secondary, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 324, 173, 120, "156 m", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    s_manager.navigation_ascent = create_label(
+        card, 324, 173, 120, "156 m", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
 }
 
 static lv_obj_t *create_music_control(lv_obj_t *card, int32_t x, int32_t y,
@@ -456,27 +609,33 @@ static void create_weather_card(lv_obj_t *card)
     create_card_header(card, LV_SYMBOL_CHARGE, "天气信息", "WEATHER", "4/4");
     create_weather_graphic(card);
 
-    create_label(card, 178, 66, 92, "22", UI_FONT_METRIC_VALUE_SMALL,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_RIGHT);
+    s_manager.weather_temperature = create_label(
+        card, 178, 66, 92, "22", UI_FONT_METRIC_VALUE_SMALL,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_RIGHT);
     create_label(card, 272, 83, 48, "℃", UI_FONT_PAGE_TEXT,
                  UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 194, 119, 112, "多云", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
-    create_label(card, 194, 147, 112, "适合骑行", UI_FONT_PAGE_TEXT,
-                 secondary, LV_TEXT_ALIGN_CENTER);
+    s_manager.weather_condition = create_label(
+        card, 194, 119, 112, "多云", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    s_manager.weather_advice = create_label(
+        card, 194, 147, 112, "适合骑行", UI_FONT_PAGE_TEXT,
+        secondary, LV_TEXT_ALIGN_CENTER);
 
     create_rect(card, 317, 52, 1, 129, UI_TOKEN_COLOR_SURFACE_BORDER,
                 UI_TOKEN_OPA_SECONDARY);
     create_label(card, 340, 53, 105, "风速", UI_FONT_PAGE_TEXT,
                  secondary, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 340, 76, 105, "12 km/h", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    s_manager.weather_wind = create_label(
+        card, 340, 76, 105, "12 km/h", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
     create_label(card, 340, 108, 105, "降雨概率", UI_FONT_PAGE_TEXT,
                  secondary, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 340, 131, 105, "10%", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 340, 163, 105, "空气质量  优", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    s_manager.weather_rain = create_label(
+        card, 340, 131, 105, "10%", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    s_manager.weather_air = create_label(
+        card, 340, 163, 105, "AQI  42", UI_FONT_PAGE_TEXT,
+        UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
 }
 
 static void update_indicator(void)
@@ -655,9 +814,24 @@ void ui_dynamic_card_manager_create(lv_obj_t *parent)
     s_manager.control_focus = -1;
     s_manager.music_state_subscription = ui_app_state_subscribe(
         UI_APP_STATE_CHANGE_MEDIA, music_state_changed, NULL);
+    s_manager.weather_subscription = ui_weather_model_subscribe(
+        weather_changed, NULL);
+    s_manager.ride_data_subscription = ui_ride_data_model_subscribe(
+        ride_data_changed, NULL);
+    s_manager.navigation_subscription = ui_navigation_service_subscribe(
+        navigation_changed, NULL);
     s_manager.created = true;
     ui_app_state_t app_state;
     if(ui_app_state_get(&app_state)) apply_music_state(&app_state);
+    ui_weather_data_t weather;
+    if(ui_weather_model_get(&weather)) apply_weather(&weather);
+    ui_ride_data_t ride_data;
+    if(ui_ride_data_model_get(&ride_data, NULL)) apply_ride_data(&ride_data);
+    nav_model_t navigation;
+    uint32_t navigation_version = 0U;
+    if(ui_navigation_service_get(&navigation, &navigation_version) &&
+       navigation_version > 0U)
+        apply_navigation(&navigation);
     update_indicator();
     update_control_visuals();
 }

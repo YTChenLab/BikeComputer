@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NAV_MOCK_PERIOD_MS 900
 #define NAV_EVENT_SOURCE   0x4E415600UL
 
 typedef struct
@@ -21,9 +20,7 @@ typedef struct
     ui_nav_data_strip_t data_strip;
     ui_nav_command_dock_t command_dock;
     nav_model_t model;
-    lv_timer_t *mock_timer;
     int32_t service_subscription;
-    uint32_t mock_tick;
     uint8_t demo_index;
     bool active;
     bool created;
@@ -98,23 +95,6 @@ static void navigation_model_changed(const nav_model_t *model,
     }
 }
 
-static void navigation_mock_timer_cb(lv_timer_t *timer)
-{
-    nav_model_t model = s_navigation.model;
-    s_navigation.mock_tick++;
-    model.speed = 25.0f + (float)(s_navigation.mock_tick % 47U) / 10.0f;
-    if(model.distance > 0.02f) model.distance -= 0.02f;
-    model.heading += 7.0f;
-    if(model.heading >= 360.0f) model.heading -= 360.0f;
-    model.latitude += 0.000015f;
-    model.longitude += 0.000010f;
-    if(model.ui_state < NAV_UI_REROUTING && model.direction_distance > 10U) {
-        model.direction_distance -= 5U;
-    }
-    ui_navigation_service_submit(&model);
-    (void)timer;
-}
-
 void ui_navigation_create(lv_obj_t *screen)
 {
     if(screen == NULL || s_navigation.created) return;
@@ -130,6 +110,7 @@ void ui_navigation_create(lv_obj_t *screen)
     s_navigation.model = (nav_model_t){
         .speed = 28.6f,
         .distance = 12.6f,
+        .remaining_ascent_m = 156U,
         .eta_hour = 11,
         .eta_min = 5,
         .latitude = 34.3416f,
@@ -142,9 +123,6 @@ void ui_navigation_create(lv_obj_t *screen)
         .road_name = "科技二路"
     };
     apply_model(&s_navigation.model);
-    s_navigation.mock_timer = lv_timer_create(navigation_mock_timer_cb, NAV_MOCK_PERIOD_MS, NULL);
-    lv_timer_pause(s_navigation.mock_timer);
-    ui_navigation_service_submit(&s_navigation.model);
     s_navigation.created = true;
 }
 
@@ -157,10 +135,6 @@ void ui_navigation_set_active(bool active)
         uint32_t version;
         if(ui_navigation_service_get(&latest, &version) && version > 0U)
             apply_model(&latest);
-        lv_timer_resume(s_navigation.mock_timer);
-    }
-    else {
-        lv_timer_pause(s_navigation.mock_timer);
     }
 }
 

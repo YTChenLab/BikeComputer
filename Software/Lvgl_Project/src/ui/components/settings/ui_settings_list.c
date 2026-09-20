@@ -229,3 +229,13 @@ bool ui_settings_list_handle_input(ui_settings_list_t *list,
     ui_sound_play(UI_SFX_FOCUS);
     return true;
 }
+
+bool ui_settings_list_contains_point(const ui_settings_list_t *list,
+                                     int32_t x, int32_t y)
+{
+    if(list == NULL || list->root == NULL) return false;
+    lv_area_t area;
+    lv_obj_get_coords(list->root, &area);
+    return x >= area.x1 && x <= area.x2 &&
+           y >= area.y1 && y <= area.y2;
+}

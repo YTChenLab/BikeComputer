@@ -10,6 +10,7 @@
 #include "platform/pc/ui_pc_services.h"
 #include "platform/stm32/ui_stm32_services.h"
 #include "services/ui_command_service.h"
+#include "services/ui_navigation_service.h"
 #include "services/ui_ride_history_repository.h"
 #include "services/ui_system_services.h"
 
@@ -524,6 +525,7 @@ static void test_async_pc_services(void)
     ui_ride_data_model_init();
     ui_app_state_init();
     ui_state_adapter_init();
+    ui_navigation_service_init();
     ui_pc_services_register();
 
     /* Keep this integration test independent from the real runtime file while
@@ -543,6 +545,14 @@ static void test_async_pc_services(void)
     assert(ui_pc_services_toggle_stationary());
     ui_system_services_tick(1U);
     assert(ui_ride_data_model_process());
+    assert(ui_navigation_service_process());
+    nav_model_t pc_navigation;
+    uint32_t pc_navigation_version = 0U;
+    assert(ui_navigation_service_get(&pc_navigation,
+                                     &pc_navigation_version));
+    assert(pc_navigation_version == 1U);
+    assert(pc_navigation.zoom == 14U);
+    assert(strcmp(pc_navigation.road_name, "科技二路") == 0);
     ui_ride_data_t stopped_data;
     assert(ui_ride_data_model_get(&stopped_data, NULL));
     assert(stopped_data.speed == 0.0f);

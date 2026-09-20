@@ -33,6 +33,8 @@
 #include "../pages/ui_boot_page.h"
 #include "../pages/ui_home_page.h"
 #include "../pages/ui_history_page.h"
+#include "../pages/ui_achievements_page.h"
+#include "../pages/ui_ride_detail_page.h"
 #include "../pages/ui_page_action.h"
 #include "../pages/ui_page_common.h"
 #include "../pages/ui_power_page.h"
@@ -44,6 +46,7 @@
 #include "../models/ui_ride_summary_model.h"
 #include "../models/ui_home_data_model.h"
 #include "../models/ui_ride_history_model.h"
+#include "../models/ui_weather_model.h"
 #include "../overlays/ui_control_center.h"
 
 #include <stdbool.h>
@@ -58,7 +61,9 @@ typedef ui_route_id_t ui_page_t;
 #define UI_PAGE_NAVIGATION  UI_ROUTE_NAVIGATION
 #define UI_PAGE_SUMMARY     UI_ROUTE_RIDE_SUMMARY
 #define UI_PAGE_HISTORY     UI_ROUTE_HISTORY
+#define UI_PAGE_RIDE_DETAIL UI_ROUTE_RIDE_DETAIL
 #define UI_PAGE_PROFILE     UI_ROUTE_PROFILE
+#define UI_PAGE_ACHIEVEMENTS UI_ROUTE_ACHIEVEMENTS
 #define UI_PAGE_SETTINGS    UI_ROUTE_SETTINGS
 #define UI_PAGE_SYSTEM      UI_ROUTE_SYSTEM
 #define UI_PAGE_POWER       UI_ROUTE_POWER
@@ -87,6 +92,7 @@ static bool s_page_swiping, s_home_swiping;
 static bool s_dynamic_card_gesture_owned;
 static bool s_navigation_map_gesture_owned;
 static bool s_bottom_surface_gesture_owned;
+static bool s_page_scroll_gesture_owned;
 static bool s_touch_sequence_blocked;
 static ui_control_center_slider_t s_active_slider;
 static lv_point_t s_pointer_start;
@@ -164,6 +170,18 @@ static bool app_prepare_ride_save(void);
 static void app_dismiss_settings_control(void);
 static void app_handoff_control_feedback_to_bottom(void);
 static void app_reclaim_control_feedback_to_top(void);
+static void app_surface_page_enter(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data);
+static void app_surface_page_leave(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data);
+static void app_profile_enter(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data);
+static void app_profile_leave(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data);
+static void app_achievements_enter(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data);
+static void app_achievements_leave(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -952,6 +970,34 @@ static void app_navigation_leave(ui_route_id_t route, lv_obj_t *screen,
     ui_bottom_surface_unmount();
 }
 
+static void app_profile_enter(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    app_surface_page_enter(route, screen, user_data);
+    ui_profile_page_set_active(true);
+}
+
+static void app_profile_leave(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    ui_profile_page_set_active(false);
+    app_surface_page_leave(route, screen, user_data);
+}
+
+static void app_achievements_enter(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data)
+{
+    app_surface_page_enter(route, screen, user_data);
+    ui_achievements_page_set_active(true);
+}
+
+static void app_achievements_leave(ui_route_id_t route, lv_obj_t *screen,
+                                   void *user_data)
+{
+    ui_achievements_page_set_active(false);
+    app_surface_page_leave(route, screen, user_data);
+}
+
 static void app_surface_page_enter(ui_route_id_t route, lv_obj_t *screen,
                                    void *user_data)
 {
@@ -1247,6 +1293,15 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
         case UI_PAGE_ACTION_SAVE_RIDE: app_action(UI_ACTION_SAVE_RIDE); break;
         case UI_PAGE_ACTION_UPLOAD_RIDE: app_action(UI_ACTION_UPLOAD_RIDE); break;
         case UI_PAGE_ACTION_HISTORY: app_action(UI_ACTION_HISTORY); break;
+        case UI_PAGE_ACTION_RIDE_DETAIL: {
+            ui_ride_record_t record;
+            if(ui_history_page_selected_record(&record)) {
+                ui_ride_detail_page_set_record(&record);
+                app_show(UI_PAGE_RIDE_DETAIL);
+            }
+            break;
+        }
+        case UI_PAGE_ACTION_PROFILE: app_action(UI_ACTION_PROFILE); break;
         case UI_PAGE_ACTION_ACHIEVEMENT: app_action(UI_ACTION_ACHIEVEMENT); break;
         case UI_PAGE_ACTION_SETTINGS: app_action(UI_ACTION_SETTINGS); break;
         case UI_PAGE_ACTION_SYSTEM: app_action(UI_ACTION_SYSTEM); break;
@@ -1332,12 +1387,19 @@ static void app_create_screens(void) {
     s_pages[UI_PAGE_SUMMARY].screen = ui_summary_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_SUMMARY].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SUMMARY].screen);
-    s_pages[UI_PAGE_HISTORY].screen = ui_history_page_create();
+    s_pages[UI_PAGE_HISTORY].screen =
+        ui_history_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_HISTORY].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_HISTORY].screen);
+    s_pages[UI_PAGE_RIDE_DETAIL].screen = ui_ride_detail_page_create();
+    s_pages[UI_PAGE_RIDE_DETAIL].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_RIDE_DETAIL].screen);
     s_pages[UI_PAGE_PROFILE].screen = ui_profile_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_PROFILE].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_PROFILE].screen);
+    s_pages[UI_PAGE_ACHIEVEMENTS].screen = ui_achievements_page_create();
+    s_pages[UI_PAGE_ACHIEVEMENTS].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_ACHIEVEMENTS].screen);
     s_pages[UI_PAGE_SETTINGS].screen = ui_settings_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_SETTINGS].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SETTINGS].screen);
@@ -1381,10 +1443,20 @@ static void app_register_routes(void) {
         .on_enter = app_history_enter,
         .on_leave = app_history_leave
     };
-    const ui_router_page_t profile = {
-        .screen = s_pages[UI_PAGE_PROFILE].screen,
+    const ui_router_page_t ride_detail = {
+        .screen = s_pages[UI_PAGE_RIDE_DETAIL].screen,
         .on_enter = app_surface_page_enter,
         .on_leave = app_surface_page_leave
+    };
+    const ui_router_page_t profile = {
+        .screen = s_pages[UI_PAGE_PROFILE].screen,
+        .on_enter = app_profile_enter,
+        .on_leave = app_profile_leave
+    };
+    const ui_router_page_t achievements = {
+        .screen = s_pages[UI_PAGE_ACHIEVEMENTS].screen,
+        .on_enter = app_achievements_enter,
+        .on_leave = app_achievements_leave
     };
     const ui_router_page_t settings = {
         .screen = s_pages[UI_PAGE_SETTINGS].screen,
@@ -1406,7 +1478,9 @@ static void app_register_routes(void) {
     (void)ui_router_register_page(UI_ROUTE_NAVIGATION, &navigation);
     (void)ui_router_register_page(UI_ROUTE_RIDE_SUMMARY, &summary);
     (void)ui_router_register_page(UI_ROUTE_HISTORY, &history);
+    (void)ui_router_register_page(UI_ROUTE_RIDE_DETAIL, &ride_detail);
     (void)ui_router_register_page(UI_ROUTE_PROFILE, &profile);
+    (void)ui_router_register_page(UI_ROUTE_ACHIEVEMENTS, &achievements);
     (void)ui_router_register_page(UI_ROUTE_SETTINGS, &settings);
     (void)ui_router_register_page(UI_ROUTE_SYSTEM, &system);
     (void)ui_router_register_page(UI_ROUTE_POWER, &power);
@@ -1631,11 +1705,7 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_SOUND:
             break;
         case UI_ACTION_HISTORY: app_show(UI_PAGE_HISTORY); break;
-        case UI_ACTION_ACHIEVEMENT:
-            /* Phase 6F placeholders intentionally do not present an
-             * Interaction card. A non-functional Home entry must not
-             * replace the user's current Dynamic Card state. */
-            break;
+        case UI_ACTION_ACHIEVEMENT: app_show(UI_PAGE_ACHIEVEMENTS); break;
         case UI_ACTION_POWER_OFF:
             app_hide_quick_immediate();
             ui_dock_clear();
@@ -1684,6 +1754,7 @@ void ui_app_init(void) {
     ui_state_machine_init();
     ui_state_machine_set_changed_callback(app_ride_state_changed, NULL);
     ui_home_data_model_init();
+    ui_weather_model_init();
     ui_ride_history_repository_init();
     ui_ride_history_result_t history_result =
         ui_ride_history_repository_load();
@@ -1812,7 +1883,7 @@ void ui_app_handle_input(ui_input_event_t input) {
         return;
     }
     if(input == UI_INPUT_OPEN_PROFILE) {
-        if(!s_powered_off && !app_ride_domain_active()) app_show(UI_PAGE_HOME);
+        if(!s_powered_off && !app_ride_domain_active()) app_show(UI_PAGE_PROFILE);
         return;
     }
     if(input == UI_INPUT_OPEN_SETTINGS) {
@@ -1834,6 +1905,12 @@ void ui_app_handle_input(ui_input_event_t input) {
     if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_HISTORY &&
        ui_history_page_handle_input(input)) return;
+    if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_PROFILE &&
+       ui_profile_page_handle_input(input)) return;
+    if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_ACHIEVEMENTS &&
+       ui_achievements_page_handle_input(input)) return;
     if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_NAVIGATION &&
        ui_navigation_handle_input(input)) return;
@@ -1973,9 +2050,21 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         s_bottom_surface_gesture_owned =
             app_control_shade_visible() && ui_dock_view_is_visible() &&
             app_point_inside(ui_bottom_surface_root(), point.x, point.y);
+        ui_route_id_t route = ui_router_current();
+        s_page_scroll_gesture_owned =
+            shade == UI_SYSTEM_CONTROL_SHADE_CLOSED &&
+            ((route == UI_PAGE_HISTORY &&
+              ui_history_page_contains_scroll_point(point.x, point.y)) ||
+             (route == UI_PAGE_ACHIEVEMENTS &&
+              ui_achievements_page_contains_scroll_point(point.x, point.y)) ||
+             (route == UI_PAGE_SETTINGS &&
+              ui_settings_page_contains_scroll_point(point.x, point.y)) ||
+             (route == UI_PAGE_SYSTEM &&
+              ui_system_page_contains_scroll_point(point.x, point.y)));
 
         if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned ||
-           s_bottom_surface_gesture_owned) return;
+           s_bottom_surface_gesture_owned ||
+           s_page_scroll_gesture_owned) return;
 
         if(shade == UI_SYSTEM_CONTROL_SHADE_EXPANDED &&
            lv_obj_get_y(s_control_surface) == 0) {
@@ -1989,7 +2078,8 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
     if(event->type == UI_INPUT_TOUCH_MOVE) {
         if(s_touch_sequence_blocked) return;
         if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned ||
-           s_bottom_surface_gesture_owned) return;
+           s_bottom_surface_gesture_owned ||
+           s_page_scroll_gesture_owned) return;
 
         int32_t delta_x = point.x - s_pointer_start.x;
         int32_t delta_y = point.y - s_pointer_start.y;
@@ -2115,6 +2205,13 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         }
         if(s_bottom_surface_gesture_owned) {
             s_bottom_surface_gesture_owned = false;
+            s_pointer_dragging = false;
+            s_page_swiping = false;
+            s_home_swiping = false;
+            return;
+        }
+        if(s_page_scroll_gesture_owned) {
+            s_page_scroll_gesture_owned = false;
             s_pointer_dragging = false;
             s_page_swiping = false;
             s_home_swiping = false;

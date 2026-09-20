@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define UI_PAGE_STATUS_CAPACITY 16U
+
 lv_obj_t *ui_page_screen_create(void);
 lv_obj_t *ui_page_bottom_surface_slot_create(lv_obj_t *screen);
 lv_obj_t *ui_page_box(lv_obj_t *parent, int32_t x, int32_t y,

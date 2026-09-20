@@ -1,4 +1,5 @@
 #include "ui/pages/ui_history_page.h"
+#include "ui/pages/ui_ride_detail_page.h"
 #include "ui/pages/ui_page_common.h"
 #include "ui/core/ui_app_state.h"
 #include "ui/core/ui_motion.h"
@@ -15,6 +16,13 @@
 
 static uint8_t s_draw_buffer[TEST_W * 20 * 2];
 static bool s_memory_failed;
+static ui_page_action_t s_action;
+
+static void page_action(ui_page_action_t action, void *user_data)
+{
+    (void)user_data;
+    s_action = action;
+}
 
 static void flush(lv_display_t *display, const lv_area_t *area,
                   uint8_t *pixels)
@@ -29,7 +37,8 @@ static void log_message(lv_log_level_t level, const char *message)
     (void)level;
     if(message != NULL &&
        (strstr(message, "No memory") != NULL ||
-        strstr(message, "Allocating layer buffer failed") != NULL))
+        strstr(message, "Allocating layer buffer failed") != NULL ||
+        strstr(message, "glyph dsc. not found") != NULL))
         s_memory_failed = true;
 }
 
@@ -67,13 +76,17 @@ int main(void)
     ui_page_status_registry_init();
     ui_ride_history_model_init();
 
-    lv_obj_t *screen = ui_history_page_create();
+    lv_obj_t *screen = ui_history_page_create(page_action, NULL);
     assert(screen != NULL);
     lv_screen_load(screen);
     ui_history_page_set_active(true);
     lv_obj_update_layout(screen);
     lv_refr_now(display);
     assert(!s_memory_failed);
+    assert(ui_history_page_contains_scroll_point(16, 278));
+    assert(ui_history_page_contains_scroll_point(463, 833));
+    assert(!ui_history_page_contains_scroll_point(15, 278));
+    assert(!ui_history_page_contains_scroll_point(16, 834));
     assert(ui_history_page_visible_count() == 0U);
     assert(!ui_history_page_handle_input(UI_INPUT_ENCODER_CW));
     lv_obj_t *empty_state = lv_obj_get_child(
@@ -98,6 +111,18 @@ int main(void)
     assert(ui_history_page_handle_input(UI_INPUT_ENCODER_CCW));
     assert(ui_history_page_selected_index() == 0);
     assert(ui_history_page_handle_input(UI_INPUT_ENCODER_PRESS));
+    assert(s_action == UI_PAGE_ACTION_RIDE_DETAIL);
+    ui_ride_record_t selected;
+    assert(ui_history_page_selected_record(&selected));
+    assert(selected.id == UI_RIDE_HISTORY_MAX_RECORDS);
+
+    lv_obj_t *detail = ui_ride_detail_page_create();
+    assert(detail != NULL);
+    ui_ride_detail_page_set_record(&selected);
+    lv_screen_load(detail);
+    lv_obj_update_layout(detail);
+    lv_refr_now(display);
+    assert(!s_memory_failed);
 
     ui_page_status_registry_deinit();
     lv_display_delete(display);

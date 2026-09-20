@@ -50,6 +50,11 @@ int main(void)
     assert(ui_settings_list_add(&list, 12U, UI_SETTINGS_ROW_INFO,
                                 "版本", "VERSION", "v1.1.1"));
     assert(list.row_count == 3U && list.selection == 0U);
+    lv_obj_update_layout(list.root);
+    assert(ui_settings_list_contains_point(&list, 20, 100));
+    assert(ui_settings_list_contains_point(&list, 459, 399));
+    assert(!ui_settings_list_contains_point(&list, 19, 100));
+    assert(!ui_settings_list_contains_point(&list, 20, 400));
     assert(ui_settings_list_set_toggle(&list, 10U, true));
     assert(list.rows[0].enabled);
     assert(ui_settings_list_set_value(&list, 11U, "65%"));

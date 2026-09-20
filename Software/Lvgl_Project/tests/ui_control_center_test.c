@@ -76,7 +76,8 @@ static void capture_log(lv_log_level_t level, const char *message)
     (void)level;
     if(message != NULL &&
        (strstr(message, "No memory") != NULL ||
-        strstr(message, "Allocating layer buffer failed") != NULL))
+        strstr(message, "Allocating layer buffer failed") != NULL ||
+        strstr(message, "glyph dsc. not found") != NULL))
         s_layer_failure = true;
 }
 

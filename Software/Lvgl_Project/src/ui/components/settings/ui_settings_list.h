@@ -70,5 +70,7 @@ bool ui_settings_list_set_feedback(ui_settings_list_t *list, uint16_t id,
                                    ui_settings_row_feedback_t feedback);
 bool ui_settings_list_handle_input(ui_settings_list_t *list,
                                    ui_input_event_t input);
+bool ui_settings_list_contains_point(const ui_settings_list_t *list,
+                                     int32_t x, int32_t y);
 
 #endif /* UI_SETTINGS_LIST_H */

@@ -278,6 +278,14 @@ if(BUILD_TESTING)
         ${PROJECT_SOURCE_DIR}/src)
     add_test(NAME ui_home_data_model_test COMMAND ui_home_data_model_test)
 
+    add_executable(ui_weather_model_test
+        tests/ui_weather_model_test.c
+        src/ui/models/ui_weather_model.c
+    )
+    target_include_directories(ui_weather_model_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_weather_model_test COMMAND ui_weather_model_test)
+
     add_executable(ui_back_key_gesture_test
         tests/ui_back_key_gesture_test.c
         src/ui/core/ui_back_key_gesture.c
@@ -315,6 +323,7 @@ if(BUILD_TESTING)
         src/ui/models/ui_ride_data_model.c
         src/ui/models/ui_ride_history_model.c
         src/ui/models/ui_ride_summary_model.c
+        src/ui/models/ui_weather_model.c
         src/platform/stm32/ui_stm32_services.c
     )
     target_include_directories(ui_core_logic_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
@@ -575,6 +584,7 @@ if(BUILD_TESTING)
     add_executable(ui_history_page_test
         tests/ui_history_page_test.c
         src/ui/pages/ui_history_page.c
+        src/ui/pages/ui_ride_detail_page.c
         src/ui/pages/ui_page_common.c
         src/ui/components/ui_status_bar.c
         src/ui/core/ui_app_state.c
@@ -630,6 +640,39 @@ if(BUILD_TESTING)
         target_link_libraries(ui_summary_page_test m pthread)
     endif()
     add_test(NAME ui_summary_page_test COMMAND ui_summary_page_test)
+
+    add_executable(ui_profile_achievements_test
+        tests/ui_profile_achievements_test.c
+        src/ui/pages/ui_profile_page.c
+        src/ui/pages/ui_achievements_page.c
+        src/ui/pages/ui_page_common.c
+        src/ui/components/ui_status_bar.c
+        src/ui/core/ui_app_state.c
+        src/ui/core/ui_background.c
+        src/ui/core/ui_concurrency.c
+        src/ui/core/ui_motion.c
+        src/ui/core/ui_sound.c
+        src/ui/models/ui_home_data_model.c
+        src/ui/models/ui_ride_history_model.c
+        src/ui/fonts/ui_font_misans_ui_20.c
+        src/ui/fonts/ui_font_misans_en_18.c
+        src/ui/fonts/ui_font_misans_status_20.c
+        src/ui/fonts/ui_font_misans_status_16.c
+        src/ui/fonts/ui_font_misans_metric_small_46.c
+        src/ui/fonts/ui_font_misans_num_48.c
+    )
+    target_include_directories(ui_profile_achievements_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}
+    )
+    target_compile_definitions(ui_profile_achievements_test PRIVATE
+        LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_profile_achievements_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_profile_achievements_test m pthread)
+    endif()
+    add_test(NAME ui_profile_achievements_test
+             COMMAND ui_profile_achievements_test)
 endif()
 
 # On Windows, GUI applications do not show a console by default,

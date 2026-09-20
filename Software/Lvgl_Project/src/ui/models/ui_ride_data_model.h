@@ -14,6 +14,15 @@ typedef struct
     uint16_t cadence;
     float grade;
     float distance;
+    float average_speed;
+    float maximum_speed;
+    int32_t altitude_m;
+    uint32_t ascent_m;
+    uint32_t calories_kcal;
+    int8_t temperature_c;
+    uint8_t heart_rate_zone;
+    uint8_t current_lap;
+    uint8_t total_laps;
     uint32_t ride_seconds;
     uint8_t clock_hour;
     uint8_t clock_minute;

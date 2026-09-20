@@ -10,9 +10,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#define UI_PAGE_STATUS_MAX 10
-
-static ui_status_bar_t *s_status_bars[UI_PAGE_STATUS_MAX];
+static ui_status_bar_t *s_status_bars[UI_PAGE_STATUS_CAPACITY];
 static uint8_t s_status_bar_count;
 static int32_t s_status_subscription = -1;
 
@@ -66,7 +64,7 @@ bool ui_page_status_register(ui_status_bar_t *status)
     for(uint8_t index = 0; index < s_status_bar_count; index++) {
         if(s_status_bars[index] == status) return true;
     }
-    if(s_status_bar_count >= UI_PAGE_STATUS_MAX) return false;
+    if(s_status_bar_count >= UI_PAGE_STATUS_CAPACITY) return false;
     s_status_bars[s_status_bar_count++] = status;
     ui_app_state_t state;
     if(ui_app_state_get(&state)) apply_status(status, &state);

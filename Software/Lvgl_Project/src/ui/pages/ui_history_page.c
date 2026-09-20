@@ -28,6 +28,8 @@ typedef struct
     size_t visible_count;
     int32_t selected;
     bool active;
+    ui_page_action_cb_t callback;
+    void *user_data;
 } ui_history_page_context_t;
 
 static ui_history_page_context_t s_history;
@@ -81,6 +83,8 @@ static void row_clicked(lv_event_t *event)
     s_history.selected = (int32_t)(uintptr_t)lv_event_get_user_data(event);
     update_focus();
     ui_sound_play(UI_SFX_PRESS);
+    if(s_history.callback != NULL)
+        s_history.callback(UI_PAGE_ACTION_RIDE_DETAIL, s_history.user_data);
 }
 
 static lv_obj_t *create_row(size_t index, const ui_ride_record_t *record)
@@ -132,9 +136,12 @@ static lv_obj_t *create_row(size_t index, const ui_ride_record_t *record)
     return row;
 }
 
-lv_obj_t *ui_history_page_create(void)
+lv_obj_t *ui_history_page_create(ui_page_action_cb_t callback,
+                                 void *user_data)
 {
     memset(&s_history, 0, sizeof(s_history));
+    s_history.callback = callback;
+    s_history.user_data = user_data;
     s_history.selected = -1;
     s_history.screen = ui_page_screen_create();
     ui_page_status_create(&s_history.status, s_history.screen);
@@ -250,6 +257,9 @@ bool ui_history_page_handle_input(ui_input_event_t input)
     }
     if(input == UI_INPUT_ENCODER_PRESS) {
         ui_sound_play(UI_SFX_PRESS);
+        if(s_history.callback != NULL)
+            s_history.callback(UI_PAGE_ACTION_RIDE_DETAIL,
+                               s_history.user_data);
         return true;
     }
     return false;
@@ -263,4 +273,22 @@ size_t ui_history_page_visible_count(void)
 int32_t ui_history_page_selected_index(void)
 {
     return s_history.selected;
+}
+
+bool ui_history_page_selected_record(ui_ride_record_t *record)
+{
+    if(record == NULL || s_history.selected < 0 ||
+       s_history.selected >= (int32_t)s_history.visible_count)
+        return false;
+    return ui_ride_history_model_get_newest((size_t)s_history.selected,
+                                            record);
+}
+
+bool ui_history_page_contains_scroll_point(int32_t x, int32_t y)
+{
+    if(s_history.list == NULL) return false;
+    lv_area_t area;
+    lv_obj_get_coords(s_history.list, &area);
+    return x >= area.x1 && x <= area.x2 &&
+           y >= area.y1 && y <= area.y2;
 }

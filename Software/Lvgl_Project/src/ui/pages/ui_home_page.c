@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define HOME_ACTION_COUNT 5
+#define HOME_ACTION_COUNT 7
 
 typedef struct
 {
@@ -293,6 +293,7 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
     home_label(identity, 374, 18, 80, "RIDE\nEXPLORE\nKEEP GOING",
                &lv_font_montserrat_12, UI_TOKEN_COLOR_TEXT_SECONDARY,
                LV_TEXT_ALIGN_LEFT);
+    make_action(identity, 0, UI_PAGE_ACTION_PROFILE);
 
     lv_obj_t *lifetime = home_card(s_home.screen, 8, 160, 464, 180);
     create_lifetime_decoration(lifetime);
@@ -348,7 +349,7 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
     home_label(start, 218, 29, 24, LV_SYMBOL_RIGHT,
                &lv_font_montserrat_22, UI_TOKEN_COLOR_CANVAS,
                LV_TEXT_ALIGN_CENTER);
-    make_action(start, 0, UI_PAGE_ACTION_START_RIDE);
+    make_action(start, 1, UI_PAGE_ACTION_START_RIDE);
 
     lv_obj_t *navigation = home_card(s_home.screen, 266, 350, 206, 88);
     home_label(navigation, 16, 27, 42, LV_SYMBOL_GPS,
@@ -362,7 +363,7 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
     home_label(navigation, 174, 29, 24, LV_SYMBOL_RIGHT,
                &lv_font_montserrat_22, UI_TOKEN_COLOR_TEXT_PRIMARY,
                LV_TEXT_ALIGN_CENTER);
-    make_action(navigation, 1, UI_PAGE_ACTION_START_NAVIGATION);
+    make_action(navigation, 2, UI_PAGE_ACTION_START_NAVIGATION);
 
     lv_obj_t *recent = home_card(s_home.screen, 8, 448, 464, 146);
     home_label(recent, 16, 12, 150, "最近一次骑行", UI_FONT_PAGE_TEXT,
@@ -399,13 +400,16 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
                                      UI_FONT_PAGE_TEXT,
                                      UI_TOKEN_COLOR_TEXT_PRIMARY,
                                      LV_TEXT_ALIGN_LEFT);
-    make_action(recent, 2, UI_PAGE_ACTION_HISTORY);
+    make_action(recent, 3, UI_PAGE_ACTION_HISTORY);
 
     create_menu_row(s_home.screen, 604, LV_SYMBOL_LIST,
-                    "历史记录", "RIDE HISTORY", 3,
+                    "历史记录", "RIDE HISTORY", 4,
                     UI_PAGE_ACTION_HISTORY);
-    create_menu_row(s_home.screen, 670, LV_SYMBOL_SETTINGS,
-                    "系统设置", "SYSTEM SETTINGS", 4,
+    create_menu_row(s_home.screen, 670, LV_SYMBOL_OK,
+                    "我的成就", "ACHIEVEMENTS", 5,
+                    UI_PAGE_ACTION_ACHIEVEMENT);
+    create_menu_row(s_home.screen, 736, LV_SYMBOL_SETTINGS,
+                    "系统设置", "SYSTEM SETTINGS", 6,
                     UI_PAGE_ACTION_SETTINGS);
 
     ui_home_data_t data;

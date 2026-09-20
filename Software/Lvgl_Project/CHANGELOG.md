@@ -2,6 +2,23 @@
 
 本项目遵循语义化版本编号，Git 标签格式为 `vMAJOR.MINOR.PATCH`。
 
+## v1.2.0 - 2026-09-21
+
+- 将 Profile 从 Legacy 升级为正式页面，补齐个人资料、累计骑行指标、历史、成就和设置入口，并支持 Touch、Encoder 与统一 Back。
+- 新增完整 Achievements 页面，基于持久化骑行历史计算 6 项里程碑、进度和解锁状态，不再显示固定演示数字。
+- 新增 Ride Detail 路由与页面，History 的 Touch/Encoder 选择可进入单次记录详情，展示路线预览和完整骑行指标。
+- Home 恢复正式 Profile、History、Achievements、Settings 入口，并将 Encoder 焦点顺序统一为视觉从上到下的 7 项。
+- Dynamic Card 的 Extended Ride Data 改为订阅统一 Ride Data Model，新增平均/最大速度、海拔、爬升、卡路里、温度、心率区间和圈数。
+- Weather Card 接入独立 Weather Model；Navigation Card 接入 Navigation Service，并增加剩余爬升数据。
+- 将 Navigation 周期 Mock 从 UI 页面下沉到 PC 平台服务层，Simulator 与未来 STM32 共用同一页面和模型接口。
+- 修复 History、Achievements、Settings、System 列表与全局上下滑手势冲突，列表触摸从 PRESS 到 RELEASE 全程拥有本次手势。
+- 修复 Profile 数字专用字体误绘 `km`、Achievements 数字字体误绘百分号和 Montserrat 中点缺字问题。
+- 页面渲染测试统一把缺字、LVGL 内存不足和图层缓冲分配失败视为测试失败；MiSans 运行时子集覆盖 443 glyph。
+- 状态栏注册容量由 10 提升到 16，并增加 12 个并存状态栏实例的回归测试。
+- 新增 Weather、Profile/Achievements、History/Detail、导航平台数据和滚动区域命中测试；自动化测试为 25 项全部通过。
+- 完成 Navigation、Profile、Achievements 离屏视觉检查，以及静态/动态数据性能基准。
+- 明确 Simulator 能力边界：真实 GNSS、BLE、TF/FatFs、地图瓦片、GPX/FIT、联网天气和音频后端仍需后续平台开发，不伪装成已完成能力。
+
 ## v1.1.2 - 2026-09-19
 
 - 新增固定四项快捷控制条 V1：WiFi、蓝牙、声音、亮度，使用真实 LVGL 对象和单一 Focus Capsule。

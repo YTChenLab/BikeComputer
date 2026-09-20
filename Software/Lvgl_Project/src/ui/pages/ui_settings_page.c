@@ -120,3 +120,8 @@ bool ui_settings_page_handle_key(uint32_t key)
         return ui_settings_page_handle_input(UI_INPUT_ENCODER_PRESS);
     return false;
 }
+
+bool ui_settings_page_contains_scroll_point(int32_t x, int32_t y)
+{
+    return ui_settings_list_contains_point(&s_list, x, y);
+}

@@ -37,5 +37,6 @@ void ui_settings_page_set_feedback(ui_settings_item_t item,
                                    ui_settings_feedback_t feedback);
 bool ui_settings_page_handle_input(ui_input_event_t input);
 bool ui_settings_page_handle_key(uint32_t key);
+bool ui_settings_page_contains_scroll_point(int32_t x, int32_t y);
 
 #endif /* UI_SETTINGS_PAGE_H */

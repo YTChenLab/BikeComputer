@@ -2,10 +2,12 @@
 #include "ui_pc_ride_history_storage.h"
 
 #include "services/ui_command_service.h"
+#include "services/ui_navigation_service.h"
 #include "services/ui_system_services.h"
 #include "services/ui_state_adapter.h"
 #include "ui/core/ui_event_bridge.h"
 #include "ui/models/ui_ride_data_model.h"
+#include "ui/models/ui_weather_model.h"
 #include "services/ui_ride_history_repository.h"
 
 #include <stdio.h>
@@ -19,7 +21,11 @@ typedef struct
     uint32_t ride_data_remaining_ms;
     uint32_t ride_clock_remainder_ms;
     uint32_t command_remaining_ms;
+    uint32_t weather_remaining_ms;
+    uint32_t navigation_remaining_ms;
+    uint32_t navigation_tick;
     uint32_t ride_rng_state;
+    nav_model_t navigation;
     ui_command_t command;
     ui_state_adapter_snapshot_t device_state;
     bool gnss_busy;
@@ -64,6 +70,11 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
         data.ride_seconds = 1800U + random_value(pc, 7200U);
         data.clock_hour = (uint8_t)random_value(pc, 24U);
         data.clock_minute = (uint8_t)random_value(pc, 60U);
+        data.maximum_speed = data.speed;
+        data.altitude_m = (int32_t)(260U + random_value(pc, 180U));
+        data.ascent_m = 420U + random_value(pc, 420U);
+        data.current_lap = 2U;
+        data.total_laps = 5U;
         pc->ride_data_initialized = true;
     }
     else if(pc->ride_recording) {
@@ -80,6 +91,20 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
     data.cadence = pc->simulate_stationary ? 0U :
         (uint16_t)(60U + random_value(pc, 56U));
     data.grade = (float)((int32_t)random_value(pc, 151U) - 50) / 10.0f;
+    if(data.speed > data.maximum_speed) data.maximum_speed = data.speed;
+    data.average_speed = data.ride_seconds > 0U ?
+        data.distance * 3600.0f / (float)data.ride_seconds : data.speed;
+    data.altitude_m += (int32_t)random_value(pc, 5U) - 2;
+    if(pc->ride_recording && data.grade > 1.0f)
+        data.ascent_m += (uint32_t)(data.grade / 2.0f);
+    data.calories_kcal = (uint32_t)(data.ride_seconds *
+                                     (data.power > 0U ? data.power : 120U) /
+                                     2400U);
+    data.temperature_c = (int8_t)(20 + random_value(pc, 9U));
+    data.heart_rate_zone = data.heart_rate >= 170U ? 5U :
+                           data.heart_rate >= 155U ? 4U :
+                           data.heart_rate >= 140U ? 3U :
+                           data.heart_rate >= 120U ? 2U : 1U;
     data.satellites = (uint8_t)(5U + random_value(pc, 12U));
     data.battery = (uint8_t)(68U + random_value(pc, 32U));
     ui_ride_data_model_submit(&data);
@@ -100,6 +125,39 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
     (void)ui_state_adapter_submit(
         &platform_state,
         UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_SATELLITES);
+}
+
+static void publish_weather(ui_pc_services_context_t *pc)
+{
+    ui_weather_data_t weather;
+    if(!ui_weather_model_get(&weather)) return;
+    weather.temperature_c = (int8_t)(18 + random_value(pc, 11U));
+    weather.feels_like_c = (int8_t)(weather.temperature_c - 1);
+    weather.wind_kmh = (uint8_t)(5U + random_value(pc, 21U));
+    weather.rain_percent = (uint8_t)random_value(pc, 61U);
+    weather.air_quality_index = (uint16_t)(25U + random_value(pc, 76U));
+    weather.condition = weather.rain_percent >= 45U ? UI_WEATHER_RAIN :
+                        weather.rain_percent >= 20U ? UI_WEATHER_CLOUDY :
+                                                     UI_WEATHER_CLEAR;
+    (void)ui_weather_model_submit(&weather);
+}
+
+static void publish_navigation(ui_pc_services_context_t *pc)
+{
+    nav_model_t *model = &pc->navigation;
+    pc->navigation_tick++;
+    model->speed = 25.0f +
+                   (float)(pc->navigation_tick % 47U) / 10.0f;
+    if(model->distance > 0.02f) model->distance -= 0.02f;
+    model->heading += 7.0f;
+    if(model->heading >= 360.0f) model->heading -= 360.0f;
+    model->latitude += 0.000015f;
+    model->longitude += 0.000010f;
+    if(model->ui_state < NAV_UI_REROUTING &&
+       model->direction_distance > 10U) {
+        model->direction_distance -= 5U;
+    }
+    ui_navigation_service_submit(model);
 }
 
 static bool request_gnss_fix(void *context)
@@ -301,6 +359,18 @@ static void tick(uint32_t elapsed_ms, void *context)
     }
     else pc->ride_data_remaining_ms -= elapsed_ms;
 
+    if(elapsed_ms >= pc->weather_remaining_ms) {
+        publish_weather(pc);
+        pc->weather_remaining_ms = 30000U;
+    }
+    else pc->weather_remaining_ms -= elapsed_ms;
+
+    if(elapsed_ms >= pc->navigation_remaining_ms) {
+        publish_navigation(pc);
+        pc->navigation_remaining_ms = 900U;
+    }
+    else pc->navigation_remaining_ms -= elapsed_ms;
+
     bool gnss_result = pc->next_gnss_success;
     bool storage_result = pc->next_storage_success;
     bool gnss_was_busy = pc->gnss_busy;
@@ -326,6 +396,8 @@ void ui_pc_services_register(void)
     s_pc.next_storage_success = true;
     s_pc.next_command_success = true;
     s_pc.ride_data_remaining_ms = 1U;
+    s_pc.weather_remaining_ms = 1U;
+    s_pc.navigation_remaining_ms = 1U;
     s_pc.ride_rng_state = (uint32_t)time(NULL) ^
                           (uint32_t)(uintptr_t)&s_pc;
     s_pc.device_state.gps_enabled = true;
@@ -336,6 +408,21 @@ void ui_pc_services_register(void)
     s_pc.device_state.bluetooth_connected = true;
     s_pc.device_state.sound_level = 62U;
     s_pc.device_state.brightness_level = 75U;
+    s_pc.navigation = (nav_model_t){
+        .speed = 28.6f,
+        .distance = 12.6f,
+        .remaining_ascent_m = 156U,
+        .eta_hour = 11U,
+        .eta_min = 5U,
+        .latitude = 34.3416f,
+        .longitude = 108.9398f,
+        .heading = 36.0f,
+        .zoom = 14U,
+        .direction = NAV_DIRECTION_RIGHT,
+        .direction_distance = 420U,
+        .ui_state = NAV_UI_CRUISE,
+        .road_name = "科技二路"
+    };
     snprintf(s_pc.device_state.wifi_name,
              sizeof(s_pc.device_state.wifi_name), "%s", "Bike-SpeedView");
     snprintf(s_pc.device_state.bluetooth_name,

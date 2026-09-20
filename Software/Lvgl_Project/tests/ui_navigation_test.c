@@ -72,7 +72,8 @@ static void capture_log(lv_log_level_t level, const char *message)
     (void)level;
     if(message != NULL &&
        (strstr(message, "No memory") != NULL ||
-        strstr(message, "Allocating layer buffer failed") != NULL))
+        strstr(message, "Allocating layer buffer failed") != NULL ||
+        strstr(message, "glyph dsc. not found") != NULL))
         s_layer_failure = true;
 }
 
@@ -96,6 +97,8 @@ static lv_obj_t *make_screen(void)
     lv_obj_t *screen = lv_obj_create(NULL);
     lv_obj_remove_style_all(screen);
     lv_obj_set_size(screen, TEST_W, TEST_H);
+    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
     lv_screen_load(screen);
     return screen;
 }
@@ -105,6 +108,7 @@ static nav_model_t test_model(void)
     nav_model_t model = {
         .speed = 27.0f,
         .distance = 12.6f,
+        .remaining_ascent_m = 156U,
         .eta_hour = 11,
         .eta_min = 5,
         .latitude = 34.3417f,

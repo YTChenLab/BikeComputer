@@ -6,6 +6,7 @@
 #include "lvgl.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct
 {
@@ -21,5 +22,6 @@ lv_obj_t *ui_system_page_create(ui_page_action_cb_t callback,
                                 void *user_data);
 void ui_system_page_set_info(const ui_system_info_t *info);
 bool ui_system_page_handle_input(ui_input_event_t input);
+bool ui_system_page_contains_scroll_point(int32_t x, int32_t y);
 
 #endif /* UI_SYSTEM_PAGE_H */

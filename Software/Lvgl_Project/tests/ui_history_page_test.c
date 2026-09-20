@@ -53,9 +53,21 @@ static ui_ride_record_t record(uint64_t id)
         .average_speed_kmh = 29.5f,
         .maximum_speed_kmh = 48.0f,
         .ascent_m = 300U + (uint32_t)id,
+        .descent_m = 280U + (uint32_t)id,
+        .maximum_elevation_m = 760,
+        .calories_kcal = 540U,
+        .has_heart_rate = true,
         .average_heart_rate = 145U,
+        .maximum_heart_rate = 178U,
+        .minimum_heart_rate = 96U,
+        .has_power = true,
         .average_power = 210U,
-        .average_cadence = 88U
+        .maximum_power = 610U,
+        .has_cadence = true,
+        .average_cadence = 88U,
+        .maximum_cadence = 112U,
+        .has_temperature = true,
+        .average_temperature_tenths_c = 215
     };
 }
 
@@ -116,13 +128,16 @@ int main(void)
     assert(ui_history_page_selected_record(&selected));
     assert(selected.id == UI_RIDE_HISTORY_MAX_RECORDS);
 
-    lv_obj_t *detail = ui_ride_detail_page_create();
+    lv_obj_t *detail = ui_ride_detail_page_create(page_action, NULL);
     assert(detail != NULL);
     ui_ride_detail_page_set_record(&selected);
+    ui_ride_detail_page_set_active(true);
     lv_screen_load(detail);
     lv_obj_update_layout(detail);
     lv_refr_now(display);
     assert(!s_memory_failed);
+    assert(ui_ride_detail_page_contains_scroll_point(16, 150));
+    assert(ui_ride_detail_page_handle_input(UI_INPUT_ENCODER_CW));
 
     ui_page_status_registry_deinit();
     lv_display_delete(display);

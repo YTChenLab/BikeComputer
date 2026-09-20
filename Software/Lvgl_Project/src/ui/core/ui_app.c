@@ -182,6 +182,10 @@ static void app_achievements_enter(ui_route_id_t route, lv_obj_t *screen,
                                    void *user_data);
 static void app_achievements_leave(ui_route_id_t route, lv_obj_t *screen,
                                    void *user_data);
+static void app_ride_detail_enter(ui_route_id_t route, lv_obj_t *screen,
+                                  void *user_data);
+static void app_ride_detail_leave(ui_route_id_t route, lv_obj_t *screen,
+                                  void *user_data);
 
 static void app_input_received(const ui_input_message_t *message,
                                void *user_data)
@@ -998,6 +1002,20 @@ static void app_achievements_leave(ui_route_id_t route, lv_obj_t *screen,
     app_surface_page_leave(route, screen, user_data);
 }
 
+static void app_ride_detail_enter(ui_route_id_t route, lv_obj_t *screen,
+                                  void *user_data)
+{
+    app_surface_page_enter(route, screen, user_data);
+    ui_ride_detail_page_set_active(true);
+}
+
+static void app_ride_detail_leave(ui_route_id_t route, lv_obj_t *screen,
+                                  void *user_data)
+{
+    ui_ride_detail_page_set_active(false);
+    app_surface_page_leave(route, screen, user_data);
+}
+
 static void app_surface_page_enter(ui_route_id_t route, lv_obj_t *screen,
                                    void *user_data)
 {
@@ -1284,6 +1302,7 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
     (void)user_data;
     switch(action) {
         case UI_PAGE_ACTION_HOME: app_action(UI_ACTION_HOME); break;
+        case UI_PAGE_ACTION_BACK: ui_app_handle_back(); break;
         case UI_PAGE_ACTION_START_RIDE:
             app_action(UI_ACTION_START_RIDE);
             break;
@@ -1391,7 +1410,8 @@ static void app_create_screens(void) {
         ui_history_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_HISTORY].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_HISTORY].screen);
-    s_pages[UI_PAGE_RIDE_DETAIL].screen = ui_ride_detail_page_create();
+    s_pages[UI_PAGE_RIDE_DETAIL].screen =
+        ui_ride_detail_page_create(app_page_action, NULL);
     s_pages[UI_PAGE_RIDE_DETAIL].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_RIDE_DETAIL].screen);
     s_pages[UI_PAGE_PROFILE].screen = ui_profile_page_create(app_page_action, NULL);
@@ -1445,8 +1465,8 @@ static void app_register_routes(void) {
     };
     const ui_router_page_t ride_detail = {
         .screen = s_pages[UI_PAGE_RIDE_DETAIL].screen,
-        .on_enter = app_surface_page_enter,
-        .on_leave = app_surface_page_leave
+        .on_enter = app_ride_detail_enter,
+        .on_leave = app_ride_detail_leave
     };
     const ui_router_page_t profile = {
         .screen = s_pages[UI_PAGE_PROFILE].screen,
@@ -1926,6 +1946,9 @@ void ui_app_handle_input(ui_input_event_t input) {
     if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_SUMMARY &&
        ui_summary_page_handle_input(input)) return;
+    if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_RIDE_DETAIL &&
+       ui_ride_detail_page_handle_input(input)) return;
 
     if(input == UI_INPUT_ENCODER_CW) app_handle_key(LV_KEY_DOWN);
     else if(input == UI_INPUT_ENCODER_CCW) app_handle_key(LV_KEY_UP);
@@ -2060,7 +2083,11 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
              (route == UI_PAGE_SETTINGS &&
               ui_settings_page_contains_scroll_point(point.x, point.y)) ||
              (route == UI_PAGE_SYSTEM &&
-              ui_system_page_contains_scroll_point(point.x, point.y)));
+              ui_system_page_contains_scroll_point(point.x, point.y)) ||
+             (route == UI_PAGE_SUMMARY &&
+              ui_summary_page_contains_scroll_point(point.x, point.y)) ||
+             (route == UI_PAGE_RIDE_DETAIL &&
+              ui_ride_detail_page_contains_scroll_point(point.x, point.y)));
 
         if(s_dynamic_card_gesture_owned || s_navigation_map_gesture_owned ||
            s_bottom_surface_gesture_owned ||

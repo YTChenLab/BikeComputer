@@ -20,7 +20,8 @@ static bool valid_record(const ui_ride_record_t *record)
            isfinite(record->average_speed_kmh) &&
            record->average_speed_kmh >= 0.0f &&
            isfinite(record->maximum_speed_kmh) &&
-           record->maximum_speed_kmh >= 0.0f;
+           record->maximum_speed_kmh >= 0.0f &&
+           record->trace.point_count <= UI_RIDE_REPORT_POINT_MAX;
 }
 
 void ui_ride_history_model_init(void)

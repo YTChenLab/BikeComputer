@@ -15,7 +15,7 @@ BikeComputer/
 
 ## 当前版本
 
-- BikeComputer LVGL UI 工程版本：`v1.2.0`
+- BikeComputer LVGL UI 工程版本：`v1.3.0`
 - 内置 LVGL 源码版本：`9.3.0-dev`
 - PC 构建环境：Anaconda/MSYS2 UCRT64 + GCC + Ninja + CMake
 
@@ -24,7 +24,7 @@ BikeComputer/
 ## 版本规则
 
 - 小型修复：`1.0.0 -> 1.0.1 -> 1.0.2`
-- 向后兼容的较大功能更新：`1.0.x -> 1.1.0 -> 1.2.0`
+- 向后兼容的较大功能更新：`1.0.x -> 1.1.0 -> 1.2.0 -> 1.3.0`
 - 整套 UI 架构或视觉系统升级：`1.x -> 2.0.0`
 - Git 标签统一使用 `vMAJOR.MINOR.PATCH`，例如 `v1.0.0`
 

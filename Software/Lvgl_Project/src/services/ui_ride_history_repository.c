@@ -94,12 +94,27 @@ ui_ride_history_result_t ui_ride_history_repository_prepare(
         .finished_at_utc = finished,
         .distance_km = summary->distance_km,
         .duration_seconds = summary->duration_seconds,
+        .moving_time_seconds = summary->moving_time_seconds,
         .average_speed_kmh = summary->average_speed_kmh,
         .maximum_speed_kmh = summary->maximum_speed_kmh,
         .ascent_m = summary->ascent_m,
+        .descent_m = summary->descent_m,
+        .maximum_elevation_m = summary->maximum_elevation_m,
+        .calories_kcal = summary->calories_kcal,
+        .has_heart_rate = summary->has_heart_rate,
         .average_heart_rate = summary->average_heart_rate,
+        .maximum_heart_rate = summary->maximum_heart_rate,
+        .minimum_heart_rate = summary->minimum_heart_rate,
+        .has_power = summary->has_power,
         .average_power = summary->average_power,
-        .average_cadence = summary->average_cadence
+        .maximum_power = summary->maximum_power,
+        .has_cadence = summary->has_cadence,
+        .average_cadence = summary->average_cadence,
+        .maximum_cadence = summary->maximum_cadence,
+        .has_temperature = summary->has_temperature,
+        .average_temperature_tenths_c =
+            summary->average_temperature_tenths_c,
+        .trace = summary->trace
     };
     s_repository.pending_valid = true;
     s_repository.last_result = UI_RIDE_HISTORY_OK;

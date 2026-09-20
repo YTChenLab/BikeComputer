@@ -5,8 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ui_ride_report_data.h"
+
 #define UI_RIDE_HISTORY_MAX_RECORDS 100U
-#define UI_RIDE_RECORD_FORMAT_VERSION 1U
+#define UI_RIDE_RECORD_FORMAT_VERSION 2U
 
 typedef struct
 {
@@ -15,12 +17,26 @@ typedef struct
     int64_t finished_at_utc;
     float distance_km;
     uint32_t duration_seconds;
+    uint32_t moving_time_seconds;
     float average_speed_kmh;
     float maximum_speed_kmh;
     uint32_t ascent_m;
+    uint32_t descent_m;
+    int32_t maximum_elevation_m;
+    uint32_t calories_kcal;
+    bool has_heart_rate;
     uint16_t average_heart_rate;
+    uint16_t maximum_heart_rate;
+    uint16_t minimum_heart_rate;
+    bool has_power;
     uint16_t average_power;
+    uint16_t maximum_power;
+    bool has_cadence;
     uint16_t average_cadence;
+    uint16_t maximum_cadence;
+    bool has_temperature;
+    int16_t average_temperature_tenths_c;
+    ui_ride_report_trace_t trace;
 } ui_ride_record_t;
 
 typedef struct

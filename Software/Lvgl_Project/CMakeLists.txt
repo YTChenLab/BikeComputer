@@ -286,6 +286,17 @@ if(BUILD_TESTING)
         ${PROJECT_SOURCE_DIR}/src)
     add_test(NAME ui_weather_model_test COMMAND ui_weather_model_test)
 
+    add_executable(ui_ride_report_model_test
+        tests/ui_ride_report_model_test.c
+        src/ui/models/ui_ride_report_model.c
+    )
+    target_include_directories(ui_ride_report_model_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/src)
+    if(NOT MSVC)
+        target_link_libraries(ui_ride_report_model_test m)
+    endif()
+    add_test(NAME ui_ride_report_model_test COMMAND ui_ride_report_model_test)
+
     add_executable(ui_back_key_gesture_test
         tests/ui_back_key_gesture_test.c
         src/ui/core/ui_back_key_gesture.c
@@ -585,6 +596,7 @@ if(BUILD_TESTING)
         tests/ui_history_page_test.c
         src/ui/pages/ui_history_page.c
         src/ui/pages/ui_ride_detail_page.c
+        src/ui/pages/ui_ride_report_page.c
         src/ui/pages/ui_page_common.c
         src/ui/components/ui_status_bar.c
         src/ui/core/ui_app_state.c
@@ -593,10 +605,12 @@ if(BUILD_TESTING)
         src/ui/core/ui_motion.c
         src/ui/core/ui_sound.c
         src/ui/models/ui_ride_history_model.c
+        src/ui/models/ui_ride_report_model.c
         src/ui/fonts/ui_font_misans_ui_20.c
         src/ui/fonts/ui_font_misans_en_18.c
         src/ui/fonts/ui_font_misans_status_20.c
         src/ui/fonts/ui_font_misans_status_16.c
+        src/ui/fonts/ui_font_misans_metric_60.c
         src/ui/fonts/ui_font_misans_num_48.c
     )
     target_include_directories(ui_history_page_test PRIVATE
@@ -614,6 +628,7 @@ if(BUILD_TESTING)
     add_executable(ui_summary_page_test
         tests/ui_summary_page_test.c
         src/ui/pages/ui_summary_page.c
+        src/ui/pages/ui_ride_report_page.c
         src/ui/pages/ui_page_common.c
         src/ui/components/ui_status_bar.c
         src/ui/core/ui_app_state.c
@@ -621,6 +636,7 @@ if(BUILD_TESTING)
         src/ui/core/ui_concurrency.c
         src/ui/core/ui_motion.c
         src/ui/core/ui_sound.c
+        src/ui/models/ui_ride_report_model.c
         src/ui/fonts/ui_font_misans_ui_20.c
         src/ui/fonts/ui_font_misans_en_18.c
         src/ui/fonts/ui_font_misans_en_16.c

@@ -4,7 +4,7 @@ BikeComputer 公路车码表的 LVGL UI 工程和 Windows PC Simulator。
 
 ## 版本信息
 
-- BikeComputer UI 工程版本：`v1.3.0`
+- BikeComputer UI 工程版本：`v1.3.1`
 - LVGL 源码版本：`9.3.0-dev`
 - 目标分辨率：`480 × 854`
 - 色彩格式：RGB565
@@ -124,6 +124,7 @@ Phase 7G 统一 System Control Surface、三态 Morph 和 Inline Adjust 见 [doc
 Phase 7 控制中心最终化记录见 [docs/PHASE_7_UI_V1.1.2_FINALIZATION_REPORT.md](docs/PHASE_7_UI_V1.1.2_FINALIZATION_REPORT.md)。
 `v1.2.0` 阶段的页面、交互、Mock 数据边界和验收证据见 [docs/PHASE_8_LVGL_SIMULATOR_COMPLETION_REPORT.md](docs/PHASE_8_LVGL_SIMULATOR_COMPLETION_REPORT.md)。
 统一骑行报告的 v1.3.0 实现、数据边界与验收证据见 [docs/V1.3.0_RIDE_REPORT_IMPLEMENTATION.md](docs/V1.3.0_RIDE_REPORT_IMPLEMENTATION.md)。
+v1.3.1 全局 UI、交互和稳定性验收见 [docs/v1.3.1报告.md](docs/v1.3.1报告.md)。
 返回键骑行控制与自动暂停规则见 [docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md](docs/RIDE_BACK_KEY_AND_AUTO_PAUSE.md)。
 
 ## 版本发布约定

@@ -94,9 +94,14 @@ file(
     CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/src/ui/*.c"
 )
-# This generated source may not exist during the first configure of a clean
-# checkout. Keep it out of the glob and add it explicitly below.
+# Generated font sources can be removed by `cmake --build --clean-first` before
+# CMake re-runs. Never let their presence at configure time decide whether the
+# main target links them; exclude every generated source from the glob and add
+# the complete fixed list explicitly below.
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_ui_20\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_ui_24\\.c$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_metric_60\\.c$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_num_68\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_metric_40\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_action_32\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_unit_16\\.c$")
@@ -151,7 +156,10 @@ list(
     APPEND
     MAIN_SOURCES
     ${UI_SOURCES}
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_20.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_24.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_metric_60.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_num_68.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_metric_40.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_action_32.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_unit_16.c"

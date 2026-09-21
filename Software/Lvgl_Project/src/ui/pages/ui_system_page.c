@@ -39,7 +39,7 @@ lv_obj_t *ui_system_page_create(ui_page_action_cb_t callback,
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_MODEL,
         UI_SETTINGS_ROW_INFO, "设备型号", "DEVICE MODEL", "BIKE COMPUTER");
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_UI_VERSION,
-        UI_SETTINGS_ROW_INFO, "UI 版本", "SOFTWARE RELEASE", "v1.3.0");
+        UI_SETTINGS_ROW_INFO, "UI 版本", "SOFTWARE RELEASE", "v1.3.1");
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_LVGL,
         UI_SETTINGS_ROW_INFO, "LVGL 版本", "GRAPHICS RUNTIME", "9.3-dev");
     (void)ui_settings_list_add(&s_list, SYSTEM_ROW_STORAGE,

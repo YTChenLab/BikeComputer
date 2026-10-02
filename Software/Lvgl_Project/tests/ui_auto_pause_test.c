@@ -41,6 +41,15 @@ int main(void)
                               UI_AUTO_PAUSE_RESUME_DELAY_MS) ==
            UI_AUTO_PAUSE_ACTION_NONE);
 
+    /* A stale speed sample breaks the continuous stop window. */
+    ui_auto_pause_set_speed(&controller, 0.0f);
+    assert(ui_auto_pause_tick(&controller, UI_RIDE_STATE_RIDING, 2999U) == UI_AUTO_PAUSE_ACTION_NONE);
+    controller.speed_valid = false;
+    assert(ui_auto_pause_tick(&controller, UI_RIDE_STATE_RIDING, 2000U) == UI_AUTO_PAUSE_ACTION_NONE);
+    ui_auto_pause_set_speed(&controller, 0.0f);
+    assert(ui_auto_pause_tick(&controller, UI_RIDE_STATE_RIDING, 1U) == UI_AUTO_PAUSE_ACTION_NONE);
+    assert(ui_auto_pause_tick(&controller, UI_RIDE_STATE_RIDING, 2999U) == UI_AUTO_PAUSE_ACTION_PAUSE);
+
     puts("ui_auto_pause_test: PASS");
     return 0;
 }

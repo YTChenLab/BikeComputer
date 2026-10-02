@@ -58,6 +58,7 @@ typedef struct
     uint8_t sound_level;
     uint8_t brightness_level;
     uint8_t battery_percent;
+    bool battery_valid;
 } ui_control_center_state_t;
 
 typedef void (*ui_control_center_action_cb_t)(

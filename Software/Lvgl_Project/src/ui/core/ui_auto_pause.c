@@ -26,8 +26,11 @@ ui_auto_pause_action_t ui_auto_pause_tick(ui_auto_pause_t *controller,
                                           ui_ride_state_t ride_state,
                                           uint32_t elapsed_ms)
 {
-    if(controller == NULL || elapsed_ms == 0U ||
-       !controller->speed_valid) return UI_AUTO_PAUSE_ACTION_NONE;
+    if(controller == NULL || elapsed_ms == 0U) return UI_AUTO_PAUSE_ACTION_NONE;
+    if(!controller->speed_valid) {
+        controller->stopped_ms = controller->moving_ms = 0U;
+        return UI_AUTO_PAUSE_ACTION_NONE;
+    }
 
     if(ride_state == UI_RIDE_STATE_RIDING) {
         controller->moving_ms = 0U;

@@ -33,6 +33,7 @@ bool ui_state_machine_dispatch(ui_ride_event_t event)
             break;
         case UI_RIDE_STATE_HOME:
             if(event == UI_RIDE_EVENT_START_REQUEST) next = UI_RIDE_STATE_PRE_RIDE;
+            else if(event == UI_RIDE_EVENT_SAVE_RETRY) next = UI_RIDE_STATE_SAVING;
             else return false;
             break;
         case UI_RIDE_STATE_PRE_RIDE:
@@ -61,9 +62,23 @@ bool ui_state_machine_dispatch(ui_ride_event_t event)
             break;
         case UI_RIDE_STATE_FINISHING:
             if(event == UI_RIDE_EVENT_FINISH_CANCEL) next = s_state.before_finishing;
-            else if(event == UI_RIDE_EVENT_FINISH_CONFIRMED ||
-                    event == UI_RIDE_EVENT_SAVE_FAILED) next = previous;
+            else if(event == UI_RIDE_EVENT_FINISH_CONFIRMED) next = UI_RIDE_STATE_STOPPING;
+            else return false;
+            break;
+        case UI_RIDE_STATE_STOPPING:
+            if(event == UI_RIDE_EVENT_FINISH_CANCEL) next = s_state.before_finishing;
+            else if(event == UI_RIDE_EVENT_RECORDING_STOPPED) next = UI_RIDE_STATE_SAVING;
+            else return false;
+            break;
+        case UI_RIDE_STATE_SAVING:
+            if(event == UI_RIDE_EVENT_SAVE_FAILED) next = UI_RIDE_STATE_UNSAVED;
             else if(event == UI_RIDE_EVENT_SAVE_SUCCESS) next = UI_RIDE_STATE_SUMMARY;
+            else return false;
+            break;
+        case UI_RIDE_STATE_UNSAVED:
+            if(event == UI_RIDE_EVENT_SAVE_RETRY) next = UI_RIDE_STATE_SAVING;
+            else if(event == UI_RIDE_EVENT_SAVE_SUCCESS) next = UI_RIDE_STATE_SUMMARY;
+            else if(event == UI_RIDE_EVENT_SUMMARY_DISMISSED) next = UI_RIDE_STATE_HOME;
             else return false;
             break;
         case UI_RIDE_STATE_SUMMARY:
@@ -90,7 +105,8 @@ bool ui_state_machine_is_riding(void)
 {
     return s_state.state == UI_RIDE_STATE_RIDING ||
            s_state.state == UI_RIDE_STATE_PAUSED ||
-           s_state.state == UI_RIDE_STATE_FINISHING;
+           s_state.state == UI_RIDE_STATE_FINISHING ||
+           s_state.state == UI_RIDE_STATE_STOPPING;
 }
 
 bool ui_state_machine_is_paused(void)
@@ -109,7 +125,7 @@ const char *ui_state_machine_state_name(ui_ride_state_t state)
 {
     static const char * const names[] = {
         "IDLE", "HOME", "PRE_RIDE", "GPS_READY", "RIDING",
-        "PAUSED", "FINISHING", "SUMMARY"
+        "PAUSED", "FINISHING", "STOPPING", "SAVING", "UNSAVED", "SUMMARY"
     };
     return state <= UI_RIDE_STATE_SUMMARY ? names[state] : "UNKNOWN";
 }

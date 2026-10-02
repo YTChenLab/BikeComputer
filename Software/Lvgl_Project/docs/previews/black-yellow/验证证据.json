@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-01",
+  "render_source": "LVGL 9.3.0-dev native RGB565 test framebuffer",
+  "resolution": [
+    480,
+    854
+  ],
+  "full_partial_compared": 215,
+  "full_partial_missing": [],
+  "full_partial_mismatches": [],
+  "profile_fixture": "10 synthetic saved rides: each 55 km, 5 h, 250 m; not user history",
+  "home_fixture": "Synthetic view snapshot: lifetime 1234 km, 73 h 24 m, 18460 m; latest 52.7 km, 2 h 07 m, 836 m; not user history",
+  "hardware_frame_rate_measured": false,
+  "ctest": {
+    "passed": 32,
+    "total": 32,
+    "final_elapsed_seconds": 6.82
+  },
+  "black_canvas_samples": {
+    "home": [
+      0,
+      0,
+      0
+    ],
+    "profile_empty": [
+      0,
+      0,
+      0
+    ],
+    "settings_top": [
+      0,
+      0,
+      0
+    ],
+    "riding_steady": [
+      0,
+      0,
+      0
+    ]
+  },
+  "neutral_surface_samples": {
+    "home_populated": [
+      24,
+      24,
+      24
+    ],
+    "profile_populated": [
+      24,
+      24,
+      24
+    ],
+    "settings_top": [
+      24,
+      24,
+      24
+    ]
+  },
+  "boot_frames_unchanged_from_previous_round": 50,
+  "preview_sha256": {
+    "home": "47c12863282d39f95f6ba8fbac5479de189edddb475cdcd198e4425273c67fee",
+    "home_populated": "3224cb465064253ae17b779838c9c89d699ac0ce7844c6bc4765297dc4679d87",
+    "home_unavailable": "ee608056687077f3d92e32cda0cbc93259e653317f1b6c6780155f3d8b9eccb6",
+    "home_long_values": "7eae5721400504c139807bf882935952e2a47238c59020c33ad569094ffe6aa2",
+    "profile_empty": "e9c8b388239fdcbf9048148e9d83d265c30f813f10cc4c65b01d4a8ab700e579",
+    "profile_populated": "d1910c2a691ee20dedc20d4ce00aa66983a6bec9a65198e92764e8a1c06b0535",
+    "profile_complete": "f30550d976296f20f8f49297e714305360bf2fa13b83f3b3a71462db155d65a7",
+    "settings_top": "9cec76d077ee3172ad6a79736ccc085fb2f985acb31060d09510e3f26c622540",
+    "settings_middle": "6e0d0caa2fd886b2e9a83f3239d2f41357a3e84929589642743f5888d117bbcb",
+    "settings_bottom": "564e789d8e8ab341f18c3d65bbdc904e208208026d8bd3d0dc87298cc9a1e8e4",
+    "boot_30": "e06ad529e9abf498b0aa8e424141398dc10284cee115b6e90619ca767d69ab19",
+    "handoff_48": "fc39934f8c9adbce143c2f065187d0fe6820bd28755880cc6694251a34f38663",
+    "handoff_72": "47c12863282d39f95f6ba8fbac5479de189edddb475cdcd198e4425273c67fee",
+    "achievements": "7a72f6b250f3c425bc92970406c46ec452e3f8841e0fb70e2dd83561cc1382d5",
+    "achievement_detail": "4cf8652395722bbb5671b2320d1f7dd5677326c03b104fa94a76754616515e6b",
+    "expanded": "8584905c8e2f3e8dd9f34d046723d43b17e9f0d583cc743168eb2f99b12374fb",
+    "riding_steady": "a85b09651b077b371693f85a6a8a2fece01e7f6a71d74384e5c30b178ab8d926"
+  }
+}

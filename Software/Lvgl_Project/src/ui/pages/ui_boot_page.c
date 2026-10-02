@@ -1,23 +1,30 @@
 #include "ui_boot_page.h"
+#include "ui_boot_motion.h"
+#include "../../services/ui_preferences.h"
 
-#include "ui_page_common.h"
-#include "../core/ui_colors.h"
-#include "../core/ui_theme.h"
+static lv_obj_t *s_boot_screen;
+
+static void deleted(lv_event_t *event)
+{
+    if(lv_event_get_target_obj(event) == s_boot_screen) s_boot_screen = NULL;
+}
 
 lv_obj_t *ui_boot_page_create(void)
 {
-    lv_obj_t *screen = ui_page_screen_create();
-    ui_page_label(screen, 0, 245, 480, "智能骑行码表", UI_FONT_PAGE_TEXT,
-                  LV_TEXT_ALIGN_CENTER);
-    ui_page_label(screen, 0, 278, 480, "SMART BIKE COMPUTER",
-                  UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_CENTER);
-    ui_page_line(screen, 120, 342, 240, 3, UI_COLOR_YELLOW);
-    ui_page_label(screen, 0, 380, 480, "系统启动中", UI_FONT_PAGE_TEXT,
-                  LV_TEXT_ALIGN_CENTER);
-    ui_page_label(screen, 0, 418, 480,
-                  "初始化显示屏  ·  卫星定位  ·  蓝牙连接",
-                  UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_CENTER);
-    ui_page_label(screen, 0, 780, 480, "按 M 进入快捷控制",
-                  UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_CENTER);
-    return screen;
+    s_boot_screen = ui_boot_motion_create(NULL);
+    if(s_boot_screen != NULL)
+        lv_obj_add_event_cb(s_boot_screen, deleted, LV_EVENT_DELETE, NULL);
+    return s_boot_screen;
+}
+
+void ui_boot_page_set_active(bool active)
+{
+    ui_preferences_t preferences;
+    bool reduced = active && ui_preferences_get(&preferences) && preferences.reduced_motion;
+    ui_boot_motion_set_active(s_boot_screen, active, reduced);
+}
+
+bool ui_boot_page_is_complete(void)
+{
+    return ui_boot_motion_is_complete(s_boot_screen);
 }

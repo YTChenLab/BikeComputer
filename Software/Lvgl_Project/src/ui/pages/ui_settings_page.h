@@ -2,6 +2,7 @@
 #define UI_SETTINGS_PAGE_H
 
 #include "ui_page_action.h"
+#include "services/ui_preferences.h"
 #include "../core/ui_app_state.h"
 #include "../core/ui_input.h"
 #include "lvgl.h"
@@ -20,6 +21,12 @@ typedef enum
     UI_SETTINGS_ITEM_TOUCH_LOCK,
     UI_SETTINGS_ITEM_SYSTEM,
     UI_SETTINGS_ITEM_POWER,
+    UI_SETTINGS_ITEM_AUTO_PAUSE,
+    UI_SETTINGS_ITEM_REDUCED_MOTION,
+    UI_SETTINGS_ITEM_IDLE_SLEEP,
+    UI_SETTINGS_ITEM_ZONES,
+    UI_SETTINGS_ITEM_CONFIGURATION_STORAGE,
+    UI_SETTINGS_ITEM_DASHBOARD_LAYOUT,
     UI_SETTINGS_ITEM_COUNT
 } ui_settings_item_t;
 
@@ -33,6 +40,9 @@ typedef enum
 lv_obj_t *ui_settings_page_create(ui_page_action_cb_t callback,
                                   void *user_data);
 void ui_settings_page_set_state(const ui_app_state_t *state);
+void ui_settings_page_set_preferences(bool auto_pause, bool reduced_motion, uint32_t idle_sleep_ms);
+void ui_settings_page_set_storage_state(ui_preferences_storage_state_t state);
+void ui_settings_page_set_dashboard_preset(unsigned preset);
 void ui_settings_page_set_feedback(ui_settings_item_t item,
                                    ui_settings_feedback_t feedback);
 bool ui_settings_page_handle_input(ui_input_event_t input);

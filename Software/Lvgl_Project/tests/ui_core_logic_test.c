@@ -8,6 +8,10 @@
 #include "ui/core/ui_state_machine.h"
 #include "ui/models/ui_ride_data_model.h"
 #include "platform/pc/ui_pc_services.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "platform/stm32/ui_stm32_services.h"
 #include "services/ui_command_service.h"
 #include "services/ui_navigation_service.h"
@@ -17,6 +21,17 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+
+static void wait_storage_worker(void)
+{
+    for(unsigned i = 0; i < 1000 && ui_ride_history_repository_busy(); ++i) {
+#ifdef _WIN32
+        Sleep(1);
+#endif
+        ui_command_service_process(1);
+    }
+    assert(!ui_ride_history_repository_busy());
+}
 
 static uint32_t s_action_card_id;
 static ui_dock_interaction_t s_action_interaction;
@@ -93,6 +108,13 @@ static void test_state_machine(void)
     assert(ui_state_machine_is_paused());
     assert(ui_state_machine_dispatch(UI_RIDE_EVENT_FINISH_REQUEST));
     assert(ui_state_machine_dispatch(UI_RIDE_EVENT_FINISH_CONFIRMED));
+    assert(ui_state_machine_state() == UI_RIDE_STATE_STOPPING);
+    assert(ui_state_machine_dispatch(UI_RIDE_EVENT_RECORDING_STOPPED));
+    assert(ui_state_machine_state() == UI_RIDE_STATE_SAVING);
+    assert(ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_FAILED));
+    assert(ui_state_machine_state() == UI_RIDE_STATE_UNSAVED);
+    assert(!ui_state_machine_dispatch(UI_RIDE_EVENT_FINISH_CANCEL));
+    assert(ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_RETRY));
     assert(ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_SUCCESS));
     assert(ui_state_machine_state() == UI_RIDE_STATE_SUMMARY);
     assert(ui_state_machine_dispatch(UI_RIDE_EVENT_SUMMARY_DISMISSED));
@@ -397,8 +419,16 @@ static void test_stm32_service_contract(void)
         command_id, UI_COMMAND_STATUS_SUCCESS, 0, &command_state,
         UI_STATE_ADAPTER_CONNECTIVITY));
     ui_command_service_process(20U);
-    assert(ui_state_adapter_process() == UI_STATE_ADAPTER_CONNECTIVITY);
+    assert(ui_state_adapter_process() == 0);
     ui_app_state_t command_app_state;
+    assert(ui_app_state_get(&command_app_state));
+    assert(!command_app_state.wifi_enabled);
+    ui_state_adapter_snapshot_t late = command_state;
+    late.wifi_enabled = true;
+    assert(ui_stm32_services_complete_command(command_id, UI_COMMAND_STATUS_SUCCESS, 0,
+        &late, UI_STATE_ADAPTER_CONNECTIVITY));
+    ui_command_service_process(20);
+    assert(ui_state_adapter_process() == 0);
     assert(ui_app_state_get(&command_app_state));
     assert(!command_app_state.wifi_enabled);
 
@@ -580,7 +610,7 @@ static void test_async_pc_services(void)
     assert(!ui_system_services_request_gnss_fix());
     ui_system_services_tick(UI_PC_GNSS_DELAY_MS - 1U);
     assert(ui_state_adapter_process() ==
-           (UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_SATELLITES));
+           (UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_SATELLITES | UI_STATE_ADAPTER_GNSS | UI_STATE_ADAPTER_CONNECTIVITY));
     ui_app_state_t state;
     assert(ui_app_state_get(&state));
     assert(state.clock_hour < 24U && state.clock_minute < 60U);
@@ -631,6 +661,7 @@ static void test_async_pc_services(void)
     assert(save_command != 0U);
     ui_command_service_process(1U);
     ui_command_service_process(UI_PC_STORAGE_DELAY_MS);
+    wait_storage_worker();
     assert(ui_ride_history_model_count() == 1U);
     assert(history_memory.store_calls == 1U);
     assert(!ui_ride_history_repository_has_pending());
@@ -645,6 +676,7 @@ static void test_async_pc_services(void)
     assert(save_command != 0U);
     ui_command_service_process(1U);
     ui_command_service_process(UI_PC_STORAGE_DELAY_MS);
+    wait_storage_worker();
     assert(ui_ride_history_model_count() == 1U);
     assert(history_memory.store_calls == 2U);
     assert(ui_ride_history_repository_has_pending());
@@ -655,6 +687,7 @@ static void test_async_pc_services(void)
     assert(save_command != 0U);
     ui_command_service_process(1U);
     ui_command_service_process(UI_PC_STORAGE_DELAY_MS);
+    wait_storage_worker();
     assert(ui_ride_history_model_count() == 2U);
     assert(history_memory.store_calls == 3U);
     assert(!ui_ride_history_repository_has_pending());
@@ -740,7 +773,7 @@ static void test_ride_event_workflow(void)
     assert(ui_dock_invoke(ui_dock_current()->id,
                           UI_DOCK_INTERACTION_PRIMARY, 0));
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
-    assert(ui_state_machine_state() == UI_RIDE_STATE_FINISHING);
+    assert(ui_state_machine_state() == UI_RIDE_STATE_STOPPING);
     assert(ui_dock_current() != NULL);
     assert(ui_dock_current()->type == UI_DOCK_TYPE_INFO);
     assert(strcmp(ui_dock_current()->title, "正在结束骑行") == 0);

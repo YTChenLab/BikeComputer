@@ -309,6 +309,8 @@ static void map_event(const ui_event_t *event, void *user_data)
             break;
         case UI_EVENT_STORAGE_ERROR:
         case UI_EVENT_RIDE_SAVE_FAILED:
+            clear_timeout(DOCK_ID_RIDE);
+            (void)ui_dock_hide(DOCK_ID_RIDE);
             card = base_card(event, DOCK_ID_STORAGE, UI_DOCK_TYPE_CONFIRM);
             card.priority = UI_DOCK_PRIORITY_P0_CRITICAL;
             copy_text(card.title, sizeof(card.title), event->title, "存储异常");
@@ -321,6 +323,8 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout);
             break;
         case UI_EVENT_RIDE_SAVE_STARTED:
+            clear_timeout(DOCK_ID_RIDE);
+            (void)ui_dock_hide(DOCK_ID_RIDE);
             card = base_card(event, DOCK_ID_STORAGE, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             copy_text(card.title, sizeof(card.title), event->title,
@@ -439,6 +443,12 @@ static void map_event(const ui_event_t *event, void *user_data)
         case UI_EVENT_STORAGE_RETRY:
             clear_timeout(DOCK_ID_STORAGE);
             (void)ui_dock_hide(DOCK_ID_STORAGE);
+            card = base_card(event, DOCK_ID_STORAGE, UI_DOCK_TYPE_INFO);
+            card.priority = UI_DOCK_PRIORITY_P0_CRITICAL;
+            copy_text(card.title, sizeof(card.title), NULL, "正在重试保存");
+            copy_text(card.message, sizeof(card.message), NULL, "请稍候，骑行已停止记录");
+            card.dismissible = false;
+            (void)present(&card, 0);
             break;
         default:
             break;

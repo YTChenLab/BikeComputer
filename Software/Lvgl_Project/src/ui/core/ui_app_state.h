@@ -43,6 +43,7 @@ typedef struct
     uint8_t battery_percent;
     uint8_t satellites;
     bool battery_charging;
+    bool clock_valid, battery_valid;
 
     bool wifi_enabled;
     bool wifi_connected;
@@ -87,6 +88,7 @@ void ui_app_state_set_telemetry(uint8_t hour, uint8_t minute,
                                 uint8_t battery_percent, bool charging,
                                 uint8_t satellites);
 void ui_app_state_set_clock(uint8_t hour, uint8_t minute);
+void ui_app_state_set_status_validity(bool clock_valid, bool battery_valid);
 void ui_app_state_set_battery(uint8_t percent, bool charging);
 void ui_app_state_set_gnss(bool enabled, uint8_t satellites);
 void ui_app_state_set_satellites(uint8_t satellites);

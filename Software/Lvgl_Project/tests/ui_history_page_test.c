@@ -96,9 +96,9 @@ int main(void)
     lv_refr_now(display);
     assert(!s_memory_failed);
     assert(ui_history_page_contains_scroll_point(16, 278));
-    assert(ui_history_page_contains_scroll_point(463, 833));
+    assert(ui_history_page_contains_scroll_point(463, UI_PAGE_ACTION_Y - 13));
     assert(!ui_history_page_contains_scroll_point(15, 278));
-    assert(!ui_history_page_contains_scroll_point(16, 834));
+    assert(!ui_history_page_contains_scroll_point(16, UI_PAGE_ACTION_Y - 12));
     assert(ui_history_page_visible_count() == 0U);
     assert(!ui_history_page_handle_input(UI_INPUT_ENCODER_CW));
     lv_obj_t *empty_state = lv_obj_get_child(
@@ -116,7 +116,7 @@ int main(void)
     lv_obj_update_layout(screen);
     lv_refr_now(display);
     assert(!s_memory_failed);
-    assert(ui_history_page_visible_count() == 50U);
+    assert(ui_history_page_visible_count() == 10U);
     assert(ui_history_page_selected_index() == 0);
     assert(ui_history_page_handle_input(UI_INPUT_ENCODER_CW));
     assert(ui_history_page_selected_index() == 1);
@@ -127,6 +127,14 @@ int main(void)
     ui_ride_record_t selected;
     assert(ui_history_page_selected_record(&selected));
     assert(selected.id == UI_RIDE_HISTORY_MAX_RECORDS);
+    for(unsigned i = 0; i < 10; ++i) assert(ui_history_page_handle_input(UI_INPUT_ENCODER_CW));
+    assert(ui_history_page_selected_index() == 0);
+    assert(ui_history_page_selected_record(&selected));
+    assert(selected.id == UI_RIDE_HISTORY_MAX_RECORDS - 10);
+    assert(ui_history_page_handle_input(UI_INPUT_ENCODER_CCW));
+    assert(ui_history_page_selected_index() == 9);
+    assert(ui_history_page_selected_record(&selected));
+    assert(selected.id == UI_RIDE_HISTORY_MAX_RECORDS - 9);
 
     lv_obj_t *detail = ui_ride_detail_page_create(page_action, NULL);
     assert(detail != NULL);

@@ -60,6 +60,12 @@ static void handle_event(const ui_event_t *event, void *user_data)
             if(ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_SUCCESS))
                 publish_ride_event(UI_EVENT_RIDE_SUMMARY_READY, 0, 0);
             break;
+        case UI_EVENT_RIDE_SAVE_STARTED:
+            (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RECORDING_STOPPED);
+            break;
+        case UI_EVENT_STORAGE_RETRY:
+            (void)ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_RETRY);
+            break;
         case UI_EVENT_RIDE_SAVE_FAILED:
             (void)ui_state_machine_dispatch(UI_RIDE_EVENT_SAVE_FAILED);
             break;
@@ -84,6 +90,8 @@ void ui_ride_controller_init(void)
         UI_EVENT_MASK(UI_EVENT_RIDE_FINISH_CONFIRMED) |
         UI_EVENT_MASK(UI_EVENT_RIDE_FINISH_CANCELLED) |
         UI_EVENT_MASK(UI_EVENT_RIDE_SAVE_SUCCESS) |
+        UI_EVENT_MASK(UI_EVENT_RIDE_SAVE_STARTED) |
+        UI_EVENT_MASK(UI_EVENT_STORAGE_RETRY) |
         UI_EVENT_MASK(UI_EVENT_RIDE_SAVE_FAILED) |
         UI_EVENT_MASK(UI_EVENT_RIDE_SUMMARY_DISMISSED);
     s_subscription_id = ui_event_bus_subscribe(mask, handle_event, NULL);

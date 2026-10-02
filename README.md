@@ -15,7 +15,7 @@ BikeComputer/
 
 ## 当前版本
 
-- BikeComputer LVGL UI 工程版本：`v1.3.1`
+- BikeComputer LVGL UI 工程版本：`v1.4.0`
 - 内置 LVGL 源码版本：`9.3.0-dev`
 - PC 构建环境：Anaconda/MSYS2 UCRT64 + GCC + Ninja + CMake
 
@@ -29,3 +29,5 @@ BikeComputer/
 - Git 标签统一使用 `vMAJOR.MINOR.PATCH`，例如 `v1.0.0`
 
 LVGL UI 的构建、运行、输入映射和目录说明见 [Software/Lvgl_Project/README.md](Software/Lvgl_Project/README.md)。
+
+当前版本迭代日志与验证边界见 [v1.4.0 发布记录](Software/Lvgl_Project/docs/V1.4.0_RELEASE_NOTES.md)。

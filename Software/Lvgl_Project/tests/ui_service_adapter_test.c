@@ -49,7 +49,7 @@ static void test_state_adapter(void)
 
     ui_app_state_t state;
     assert(ui_app_state_get(&state));
-    assert(state.clock_hour == 10 && state.clock_minute == 24);
+    assert(!state.clock_valid && !state.battery_valid);
     assert(ui_state_adapter_pending() ==
            (UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_SATELLITES));
     assert(ui_state_adapter_process() ==
@@ -58,6 +58,19 @@ static void test_state_adapter(void)
     assert(state.clock_hour == 7 && state.clock_minute == 19);
     assert(state.battery_percent == 100 && state.satellites == 13);
     assert(state.gps_enabled);
+    latest.status_quality_known = true;
+    latest.clock_valid = false;
+    latest.battery_valid = true;
+    assert(ui_state_adapter_submit(&latest, UI_STATE_ADAPTER_STATUS));
+    assert(ui_state_adapter_process() == UI_STATE_ADAPTER_STATUS);
+    assert(ui_app_state_get(&state));
+    assert(!state.clock_valid && state.battery_valid);
+    latest.clock_valid = true;
+    latest.battery_valid = false;
+    assert(ui_state_adapter_submit(&latest, UI_STATE_ADAPTER_STATUS));
+    (void)ui_state_adapter_process();
+    assert(ui_app_state_get(&state));
+    assert(state.clock_valid && !state.battery_valid);
 
     ui_state_adapter_snapshot_t external = {
         .gps_enabled = false,

@@ -10,9 +10,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
+#include <stdlib.h>
+#include <limits.h>
+#include "../models/ui_ride_data_model.h"
 
 #define REPORT_VIEWPORT_Y       150
-#define REPORT_VIEWPORT_HEIGHT  684
+#define REPORT_VIEWPORT_HEIGHT  (UI_PAGE_CONTENT_BOTTOM - REPORT_VIEWPORT_Y)
 #define REPORT_SECTION_GAP       12
 #define REPORT_SCROLL_STEP      260
 
@@ -22,6 +26,8 @@ typedef struct
     lv_obj_t *viewport;
     lv_obj_t *content;
     lv_obj_t *distance_label;
+    lv_obj_t *completion_status;
+    lv_obj_t *done_button;
     ui_status_bar_t status;
     ui_page_action_cb_t callback;
     void *user_data;
@@ -29,6 +35,7 @@ typedef struct
     ui_ride_report_mode_t mode;
     uint32_t content_height;
     bool active;
+    lv_point_precise_t map_points[UI_RIDE_REPORT_POINT_MAX];
 } report_page_t;
 
 typedef struct
@@ -41,20 +48,6 @@ typedef struct
 
 static report_page_t s_pages[UI_RIDE_REPORT_MODE_COUNT];
 
-static const lv_point_precise_t s_road_0[] = {
-    {0, 35}, {65, 48}, {134, 27}, {205, 54}, {286, 30}, {414, 44}
-};
-static const lv_point_precise_t s_road_1[] = {
-    {24, 0}, {70, 58}, {118, 92}, {164, 160}, {211, 205}
-};
-static const lv_point_precise_t s_road_2[] = {
-    {260, 0}, {248, 62}, {290, 114}, {278, 205}
-};
-static const lv_point_precise_t s_route[] = {
-    {28, 172}, {58, 151}, {92, 155}, {120, 132}, {148, 139},
-    {176, 85}, {207, 98}, {237, 80}, {271, 62}, {301, 86},
-    {332, 77}, {354, 111}, {384, 100}, {402, 49}
-};
 
 static lv_obj_t *report_label(lv_obj_t *parent, int32_t x, int32_t y,
                               int32_t width, const char *text,
@@ -63,7 +56,10 @@ static lv_obj_t *report_label(lv_obj_t *parent, int32_t x, int32_t y,
 {
     lv_obj_t *label = ui_page_label(parent, x, y, width, text, font, align);
     lv_obj_set_style_text_color(label, color, 0);
-    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+    /* DOT needs a stable single-line height while long report sections are
+     * rebuilt offscreen; content-size height can transiently collapse. */
+    lv_obj_set_height(label,font->line_height);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
     return label;
 }
 
@@ -71,9 +67,9 @@ static lv_obj_t *report_card(lv_obj_t *parent, int32_t y, int32_t height)
 {
     lv_obj_t *card = ui_page_card(parent, 0, y, 448, height);
     lv_obj_set_style_radius(card, 10, 0);
-    lv_obj_set_style_bg_color(card, lv_color_hex(0x030607), 0);
-    lv_obj_set_style_bg_opa(card, LV_OPA_90, 0);
-    lv_obj_set_style_border_color(card, lv_color_hex(0xD7DBDC), 0);
+    lv_obj_set_style_bg_color(card, UI_TOKEN_COLOR_SURFACE, 0);
+    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(card, UI_TOKEN_COLOR_SURFACE_OUTLINE, 0);
     return card;
 }
 
@@ -84,7 +80,7 @@ static void section_title(lv_obj_t *card, const char *title,
                  UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
     report_label(card, 116, 15, 230, subtitle, &lv_font_montserrat_12,
                  UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
-    ui_page_line(card, 14, 43, 420, 1, UI_TOKEN_COLOR_SURFACE_BORDER);
+    ui_page_line(card, 14, 43, 420, 1, UI_TOKEN_COLOR_DIVIDER);
 }
 
 static void format_duration(uint32_t seconds, char *text, size_t capacity)
@@ -105,7 +101,7 @@ static void format_short_time(uint32_t seconds, char *text, size_t capacity)
 static void format_date(int64_t seconds, char *text, size_t capacity)
 {
     if(seconds <= 0) {
-        snprintf(text, capacity, "JUST COMPLETED");
+        snprintf(text, capacity, "DATE UNAVAILABLE");
         return;
     }
     time_t value = (time_t)seconds;
@@ -135,46 +131,85 @@ static lv_obj_t *map_line(lv_obj_t *parent,
     return line;
 }
 
+static bool trace_position_valid(const ui_ride_report_trace_t *trace, unsigned i)
+{
+    return (trace->valid_fields[i] & UI_RIDE_FIELD_BIT(UI_RIDE_FIELD_POSITION)) &&
+        trace->latitude_microdegrees[i] >= -90000000 && trace->latitude_microdegrees[i] <= 90000000 &&
+        trace->longitude_microdegrees[i] >= -180000000 && trace->longitude_microdegrees[i] <= 180000000;
+}
+
+static double longitude_delta(double longitude, double origin)
+{
+    double delta = longitude - origin;
+    if(delta > 180) delta -= 360;
+    if(delta < -180) delta += 360;
+    return delta;
+}
+
 static int32_t create_map(report_page_t *page, int32_t y)
 {
     lv_obj_t *card = report_card(page->content, y, 226);
-    lv_obj_set_style_bg_color(card, lv_color_hex(0x080B0C), 0);
-    (void)map_line(card, s_road_0,
-                   sizeof(s_road_0) / sizeof(s_road_0[0]),
-                   lv_color_hex(0x34393B), 4);
-    (void)map_line(card, s_road_1,
-                   sizeof(s_road_1) / sizeof(s_road_1[0]),
-                   lv_color_hex(0x2C3133), 4);
-    (void)map_line(card, s_road_2,
-                   sizeof(s_road_2) / sizeof(s_road_2[0]),
-                   lv_color_hex(0x2C3133), 4);
-    for(int32_t offset = 30; offset < 210; offset += 36)
-        ui_page_line(card, 0, offset, 448, 1, lv_color_hex(0x15191B));
-    lv_obj_t *route = map_line(card, s_route,
-        sizeof(s_route) / sizeof(s_route[0]), UI_COLOR_YELLOW, 4);
-    lv_obj_set_style_shadow_color(route, UI_COLOR_YELLOW, 0);
-    lv_obj_set_style_shadow_width(route, 5, 0);
-    lv_obj_set_style_shadow_opa(route, LV_OPA_30, 0);
-
-    lv_obj_t *start = ui_page_box(card, 22, 166, 13, 13,
-                                  UI_COLOR_YELLOW, 2);
-    lv_obj_set_style_radius(start, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(start, UI_COLOR_YELLOW, 0);
-    lv_obj_set_style_bg_opa(start, LV_OPA_COVER, 0);
-    lv_obj_t *finish = ui_page_box(card, 394, 40, 18, 18,
-                                   UI_COLOR_YELLOW, 3);
-    lv_obj_set_style_radius(finish, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_opa(finish, LV_OPA_TRANSP, 0);
-    ui_page_line(card, 410, 18, 2, 28, UI_COLOR_YELLOW);
-    ui_page_line(card, 412, 18, 14, 8, UI_COLOR_YELLOW);
-    lv_obj_t *north = ui_page_box(card, 14, 14, 42, 42,
-                                  UI_TOKEN_COLOR_TEXT_SECONDARY, 1);
-    lv_obj_set_style_radius(north, LV_RADIUS_CIRCLE, 0);
-    report_label(north, 0, 10, 42, "N", &lv_font_montserrat_16,
-                 UI_COLOR_YELLOW, LV_TEXT_ALIGN_CENTER);
-    report_label(card, 370, 190, 58, "5 km", &lv_font_montserrat_12,
+    section_title(card, "轨迹预览", "RECORDED TRACK");
+    const ui_ride_report_trace_t *trace = &page->model.trace;
+    unsigned first = UI_RIDE_REPORT_POINT_MAX, last = 0, count = 0;
+    for(unsigned i = 0; i < trace->point_count; ++i) {
+        if(!trace_position_valid(trace, i)) continue;
+        if(first == UI_RIDE_REPORT_POINT_MAX) first = i;
+        last = i;
+        ++count;
+    }
+    if(count < 2) {
+        report_label(card, 22, 102, 400, "没有有效的 GPS 轨迹", UI_FONT_PAGE_TEXT,
+                     UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_CENTER);
+        return y + 226 + REPORT_SECTION_GAP;
+    }
+    double lat0 = trace->latitude_microdegrees[first] * 0.000001;
+    double lon0 = trace->longitude_microdegrees[first] * 0.000001;
+    double longitude_scale = 111319.490 * cos(lat0 * 0.0174532925199433);
+    double min_x = 0, max_x = 0, min_y = 0, max_y = 0;
+    for(unsigned i = 0; i < trace->point_count; ++i) {
+        if(!trace_position_valid(trace, i)) continue;
+        double x = longitude_delta(trace->longitude_microdegrees[i] * 0.000001, lon0) * longitude_scale;
+        double latitude = trace->latitude_microdegrees[i] * 0.000001;
+        double yy = (latitude - lat0) * 111319.490;
+        min_x = fmin(min_x, x); max_x = fmax(max_x, x);
+        min_y = fmin(min_y, yy); max_y = fmax(max_y, yy);
+    }
+    double scale = fmin(392 / fmax(max_x - min_x, 20), 136 / fmax(max_y - min_y, 20));
+    double center_x = (min_x + max_x) / 2, center_y = (min_y + max_y) / 2;
+    for(int32_t offset = 65; offset < 196; offset += 32)
+        ui_page_line(card, 16, offset, 416, 1, UI_TOKEN_COLOR_DIVIDER);
+    unsigned segment_start = 0, segment_count = 0;
+    for(unsigned i = 0; i <= trace->point_count; ++i) {
+        if(i < trace->point_count && trace_position_valid(trace, i)) {
+            double x = longitude_delta(trace->longitude_microdegrees[i] * 0.000001, lon0) * longitude_scale;
+            double yy = (trace->latitude_microdegrees[i] * 0.000001 - lat0) * 111319.490;
+            page->map_points[i] = (lv_point_precise_t){(int32_t)lround(224 + (x - center_x) * scale),
+                                                     (int32_t)lround(124 - (yy - center_y) * scale)};
+            if(segment_count == 0) segment_start = i;
+            ++segment_count;
+        }
+        else {
+            if(segment_count >= 2)
+                map_line(card, &page->map_points[segment_start], segment_count, UI_COLOR_YELLOW, 4);
+            segment_count = 0;
+        }
+    }
+    unsigned endpoints[2] = {first, last};
+    for(unsigned i = 0; i < 2; ++i) {
+        lv_point_precise_t point = page->map_points[endpoints[i]];
+        lv_obj_t *dot = ui_page_box(card, point.x - 5, point.y - 5, 10, 10, UI_COLOR_YELLOW, 2);
+        lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_color(dot, i == 0 ? UI_COLOR_YELLOW : lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
+    }
+    report_label(card, 16, 196, 278, "仅显示采样轨迹", UI_FONT_PAGE_TEXT,
+                 UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
+    char scale_text[32];
+    snprintf(scale_text, sizeof(scale_text), "%.0f m", 56 / scale);
+    report_label(card, 330, 194, 100, scale_text, &lv_font_montserrat_12,
                  UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_RIGHT);
-    ui_page_line(card, 372, 207, 56, 2, UI_TOKEN_COLOR_TEXT_PRIMARY);
+    ui_page_line(card, 374, 212, 56, 2, UI_TOKEN_COLOR_TEXT_PRIMARY);
     return y + 226 + REPORT_SECTION_GAP;
 }
 
@@ -192,6 +227,12 @@ static int32_t create_identity(report_page_t *page, int32_t y)
     report_label(card, 238, 15, 196, date, &lv_font_montserrat_12,
                  UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_RIGHT);
     return y + 54 + REPORT_SECTION_GAP;
+}
+
+static bool has_metric(const report_page_t *page, uint8_t flag)
+{
+    return !(page->model.metric_flags & UI_REPORT_METRICS_KNOWN) ||
+           (page->model.metric_flags & flag) != 0U;
 }
 
 static void hero_metric(lv_obj_t *card, int32_t x, int32_t y,
@@ -214,26 +255,37 @@ static int32_t create_hero(report_page_t *page, int32_t y)
     report_label(card, 118, 17, 180, "DISTANCE", &lv_font_montserrat_12,
                  UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
     char text[40];
-    snprintf(text, sizeof(text), "%.1f", page->model.distance_km);
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_DISTANCE) ? "%.1f" : "--", page->model.distance_km);
     page->distance_label = report_label(
-        card, 16, 48, 295, text, &ui_font_misans_metric_60,
+        card, 16, 48, 295, text, has_metric(page, UI_REPORT_HAS_DISTANCE) ? &ui_font_misans_metric_60 : &lv_font_montserrat_48,
         UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
-    report_label(card, 310, 82, 92, "km", &lv_font_montserrat_24,
-                 UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
-    ui_page_line(card, 16, 122, 416, 1, UI_TOKEN_COLOR_SURFACE_BORDER);
+    const lv_font_t *distance_font = lv_obj_get_style_text_font(page->distance_label,0);
+    lv_point_t extent;
+    lv_text_get_size(&extent,text,distance_font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_EXPAND);
+    if(extent.x > 295) {
+        distance_font = &lv_font_montserrat_32;
+        lv_obj_set_style_text_font(page->distance_label,distance_font,0);
+        lv_text_get_size(&extent,text,distance_font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_EXPAND);
+    }
+    int32_t baseline = 48 + distance_font->line_height - distance_font->base_line;
+    report_label(card, 26+LV_MIN(extent.x,295),
+                 baseline-lv_font_montserrat_24.line_height+lv_font_montserrat_24.base_line,
+                 92,"km",&lv_font_montserrat_24,
+                 UI_TOKEN_COLOR_TEXT_SECONDARY,LV_TEXT_ALIGN_LEFT);
+    ui_page_line(card, 16, 122, 416, 1, UI_TOKEN_COLOR_DIVIDER);
     format_duration(page->model.duration_seconds, text, sizeof(text));
     hero_metric(card, 16, 136, "骑行时间", "DURATION", text);
-    snprintf(text, sizeof(text), "%.1f km/h",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_DISTANCE) ? "%.1f km/h" : "--",
              page->model.average_speed_kmh);
     hero_metric(card, 230, 136, "平均速度", "AVG SPEED", text);
-    ui_page_line(card, 220, 138, 1, 55, UI_TOKEN_COLOR_SURFACE_BORDER);
-    snprintf(text, sizeof(text), "%.1f km/h",
+    ui_page_line(card, 220, 138, 1, 55, UI_TOKEN_COLOR_DIVIDER);
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_SPEED) ? "%.1f km/h" : "--",
              page->model.maximum_speed_kmh);
     hero_metric(card, 16, 210, "最高速度", "MAX SPEED", text);
-    snprintf(text, sizeof(text), "%lu m",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_ASCENT) ? "%lu m" : "--",
              (unsigned long)page->model.total_ascent_m);
     hero_metric(card, 230, 210, "累计爬升", "TOTAL ASCENT", text);
-    ui_page_line(card, 220, 212, 1, 55, UI_TOKEN_COLOR_SURFACE_BORDER);
+    ui_page_line(card, 220, 212, 1, 55, UI_TOKEN_COLOR_DIVIDER);
     return y + 286 + REPORT_SECTION_GAP;
 }
 
@@ -264,12 +316,12 @@ static int32_t create_performance(report_page_t *page, int32_t y)
         add_performance_item(items, &count, "平均踏频", "AVG CADENCE",
                              "rpm", "%ld",
                              page->model.average_cadence);
-    add_performance_item(items, &count, "热量", "CALORIES", "kcal", "%ld",
+    add_performance_item(items, &count, "热量", "CALORIES", "kcal", has_metric(page, UI_REPORT_HAS_CALORIES) ? "%ld" : "--",
                          (int32_t)page->model.calories_kcal);
     add_performance_item(items, &count, "最高海拔", "MAX ELEVATION", "m",
-                         "%ld", page->model.maximum_elevation_m);
+                         has_metric(page, UI_REPORT_HAS_ALTITUDE) ? "%ld" : "--", page->model.maximum_elevation_m);
     add_performance_item(items, &count, "总下降", "TOTAL DESCENT", "m",
-                         "%ld", (int32_t)page->model.total_descent_m);
+                         has_metric(page, UI_REPORT_HAS_ALTITUDE) ? "%ld" : "--", (int32_t)page->model.total_descent_m);
     uint8_t rows = (uint8_t)((count + 2U) / 3U);
     int32_t height = 54 + rows * 96;
     lv_obj_t *card = report_card(page->content, y, height);
@@ -279,7 +331,7 @@ static int32_t create_performance(report_page_t *page, int32_t y)
         int32_t row = index / 3U;
         lv_obj_t *cell = ui_page_box(card, 12 + column * 141,
                                      52 + row * 94, 132, 84,
-                                     UI_TOKEN_COLOR_SURFACE_BORDER, 1);
+                                     UI_TOKEN_COLOR_DIVIDER, 1);
         lv_obj_set_style_radius(cell, 6, 0);
         report_label(cell, 10, 8, 112, items[index].title,
                      UI_FONT_PAGE_TEXT,
@@ -320,11 +372,23 @@ static void chart_style(lv_obj_t *chart)
     lv_obj_set_style_size(chart, 0, 0, LV_PART_INDICATOR);
 }
 
-static void create_chart_u16(lv_obj_t *card, int32_t y,
+static void create_chart_u16(report_page_t *page, lv_obj_t *card, int32_t y,
                              const uint16_t *values, uint16_t count,
                              int32_t maximum, lv_color_t color)
 {
-    if(values == NULL || count < 2U) {
+    const ui_ride_report_trace_t *trace = &page->model.trace;
+    ui_ride_field_t field = values == trace->speed_tenths ? UI_RIDE_FIELD_SPEED :
+        values == trace->heart_rate ? UI_RIDE_FIELD_HEART_RATE :
+        values == trace->power ? UI_RIDE_FIELD_POWER :
+        values == trace->cadence ? UI_RIDE_FIELD_CADENCE : UI_RIDE_FIELD_ALTITUDE;
+    unsigned valid_count = 0;
+    int32_t minimum = 0;
+    for(unsigned i = 0; i < count; ++i) {
+        if(!(trace->valid_fields[i] & UI_RIDE_FIELD_BIT(field))) continue;
+        ++valid_count;
+        if(field == UI_RIDE_FIELD_ALTITUDE && trace->elevation_m[i] < minimum) minimum = trace->elevation_m[i];
+    }
+    if(count < 2U || valid_count < 2) {
         report_label(card, 20, y + 42, 408,
                      "暂无趋势数据 / NO TRACE DATA",
                      UI_FONT_PAGE_TEXT,
@@ -334,17 +398,26 @@ static void create_chart_u16(lv_obj_t *card, int32_t y,
     }
     lv_obj_t *chart = lv_chart_create(card);
     lv_obj_set_pos(chart, 38, y);
-    lv_obj_set_size(chart, 388, 130);
-    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+    lv_obj_set_size(chart, 388, 92);
+    lv_chart_set_type(chart, LV_CHART_TYPE_SCATTER);
     lv_chart_set_point_count(chart, count);
     lv_chart_set_div_line_count(chart, 4, 5);
-    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0,
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_X, 0,
+        page->model.duration_seconds > 0 && page->model.duration_seconds <= INT32_MAX ?
+        page->model.duration_seconds : 1);
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, minimum,
                        maximum > 0 ? maximum : 100);
     chart_style(chart);
     lv_chart_series_t *series = lv_chart_add_series(
         chart, color, LV_CHART_AXIS_PRIMARY_Y);
-    for(uint16_t index = 0U; index < count; index++)
-        lv_chart_set_next_value(chart, series, values[index]);
+    for(uint16_t index = 0U; index < count; index++) {
+        int32_t value = field == UI_RIDE_FIELD_ALTITUDE ? trace->elevation_m[index] : values[index];
+        if(!(trace->valid_fields[index] & UI_RIDE_FIELD_BIT(field))) value = LV_CHART_POINT_NONE;
+        lv_chart_set_next_value2(chart, series, trace->time_seconds[index], value);
+    }
+    report_label(card, 20, y + 95, 406,
+        trace->time_is_estimated ? "估算时间轴" : "横轴：有效记录时间 (s)",
+        UI_FONT_PAGE_TEXT, UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_RIGHT);
 }
 
 static int32_t create_speed(report_page_t *page, int32_t y)
@@ -352,19 +425,19 @@ static int32_t create_speed(report_page_t *page, int32_t y)
     lv_obj_t *card = report_card(page->content, y, 270);
     section_title(card, "速度", "SPEED");
     char text[32];
-    snprintf(text, sizeof(text), "%.1f km/h",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_DISTANCE) ? "%.1f km/h" : "--",
              page->model.average_speed_kmh);
     metric_header(card, 18, 56, 185, "平均速度", "AVG SPEED", text);
-    snprintf(text, sizeof(text), "%.1f km/h",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_SPEED) ? "%.1f km/h" : "--",
              page->model.maximum_speed_kmh);
     metric_header(card, 230, 56, 190, "最高速度", "MAX SPEED", text);
-    ui_page_line(card, 216, 58, 1, 66, UI_TOKEN_COLOR_SURFACE_BORDER);
+    ui_page_line(card, 216, 58, 1, 66, UI_TOKEN_COLOR_DIVIDER);
     report_label(card, 18, 132, 120, "速度 (km/h)",
                  UI_FONT_PAGE_TEXT, UI_TOKEN_COLOR_TEXT_SECONDARY,
                  LV_TEXT_ALIGN_LEFT);
     int32_t maximum = (int32_t)(page->model.maximum_speed_kmh * 10.0f);
     if(maximum < 100) maximum = 100;
-    create_chart_u16(card, 148, page->model.trace.speed_tenths,
+    create_chart_u16(page, card, 148, page->model.trace.speed_tenths,
                      page->model.trace.point_count,
                      maximum + maximum / 5, UI_COLOR_YELLOW);
     return y + 270 + REPORT_SECTION_GAP;
@@ -387,7 +460,7 @@ static int32_t create_sensor_chart(report_page_t *page, int32_t y,
     snprintf(text, sizeof(text), "%u %s", average, unit);
     metric_header(card, 18, 56, minimum > 0U ? 120 : 185,
                   average_title, "AVERAGE", text);
-    snprintf(text, sizeof(text), maximum > 0U ? "%u %s" : "--", maximum,
+    snprintf(text, sizeof(text), "%u %s", maximum,
              unit);
     metric_header(card, minimum > 0U ? 158 : 230, 56,
                   minimum > 0U ? 120 : 190, maximum_title, "MAXIMUM", text);
@@ -400,7 +473,7 @@ static int32_t create_sensor_chart(report_page_t *page, int32_t y,
     int32_t chart_max = maximum > 0U ? maximum + maximum / 5U :
                                       average * 2U;
     if(chart_max < 10) chart_max = 10;
-    create_chart_u16(card, 148, values, page->model.trace.point_count,
+    create_chart_u16(page, card, 148, values, page->model.trace.point_count,
                      chart_max, color);
     return y + 270 + REPORT_SECTION_GAP;
 }
@@ -441,7 +514,7 @@ static int32_t create_zones(report_page_t *page, int32_t y,
         lv_bar_set_range(bar, 0, 100);
         uint32_t percent = seconds[index] * 100U / total;
         lv_bar_set_value(bar, (int32_t)percent, LV_ANIM_OFF);
-        lv_obj_set_style_bg_color(bar, lv_color_hex(0x24292B), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(bar, UI_TOKEN_COLOR_SEGMENT_INACTIVE, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_bg_color(bar, lv_color_hex(colors[index]),
                                   LV_PART_INDICATOR);
@@ -464,13 +537,13 @@ static int32_t create_elevation(report_page_t *page, int32_t y)
     lv_obj_t *card = report_card(page->content, y, 330);
     section_title(card, "海拔", "ELEVATION");
     char text[32];
-    snprintf(text, sizeof(text), "%lu m",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_ASCENT) ? "%lu m" : "--",
              (unsigned long)page->model.total_ascent_m);
     metric_header(card, 16, 58, 126, "累计爬升", "TOTAL ASCENT", text);
-    snprintf(text, sizeof(text), "%lu m",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_ALTITUDE) ? "%lu m" : "--",
              (unsigned long)page->model.total_descent_m);
     metric_header(card, 160, 58, 126, "累计下降", "TOTAL DESCENT", text);
-    snprintf(text, sizeof(text), "%ld m",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_ALTITUDE) ? "%ld m" : "--",
              (long)page->model.maximum_elevation_m);
     metric_header(card, 304, 58, 126, "最高海拔", "MAX ELEVATION", text);
     report_label(card, 16, 138, 120, "海拔 (m)",
@@ -483,7 +556,7 @@ static int32_t create_elevation(report_page_t *page, int32_t y)
         converted[index] = value > 0 ? (uint16_t)value : 0U;
         if(value > maximum) maximum = value;
     }
-    create_chart_u16(card, 156, converted, page->model.trace.point_count,
+    create_chart_u16(page, card, 156, converted, page->model.trace.point_count,
                      maximum + maximum / 5, UI_COLOR_YELLOW);
     return y + 330 + REPORT_SECTION_GAP;
 }
@@ -493,7 +566,7 @@ static void energy_cell(lv_obj_t *card, int32_t x, int32_t y,
                         const char *value)
 {
     lv_obj_t *cell = ui_page_box(card, x, y, 198, 76,
-                                 UI_TOKEN_COLOR_SURFACE_BORDER, 1);
+                                 UI_TOKEN_COLOR_DIVIDER, 1);
     lv_obj_set_style_radius(cell, 6, 0);
     report_label(cell, 12, 8, 174, title, UI_FONT_PAGE_TEXT,
                  UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
@@ -512,12 +585,12 @@ static int32_t create_energy(report_page_t *page, int32_t y)
                  &lv_font_montserrat_12,
                  UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
     char text[32];
-    snprintf(text, sizeof(text), "%lu kcal",
+    snprintf(text, sizeof(text), has_metric(page, UI_REPORT_HAS_CALORIES) ? "%lu kcal" : "--",
              (unsigned long)page->model.calories_kcal);
     energy_cell(card, 16, 54, "热量消耗", "CALORIES", text);
-    format_duration(page->model.moving_time_seconds > 0U ?
-                    page->model.moving_time_seconds :
-                    page->model.duration_seconds, text, sizeof(text));
+    if(has_metric(page, UI_REPORT_HAS_SPEED))
+        format_duration(page->model.moving_time_seconds, text, sizeof(text));
+    else snprintf(text, sizeof(text), "--");
     energy_cell(card, 234, 54, "运动时间", "MOVING TIME", text);
     if(page->model.has_temperature) {
         snprintf(text, sizeof(text), "%.1f C",
@@ -527,19 +600,24 @@ static int32_t create_energy(report_page_t *page, int32_t y)
     return y + height + REPORT_SECTION_GAP;
 }
 
-static void summary_rule(lv_obj_t *card, int32_t y, const char *title,
+static lv_obj_t *summary_rule(lv_obj_t *card, int32_t y, const char *title,
                          const char *subtitle, const char *description)
 {
     lv_obj_t *row = ui_page_box(card, 14, y, 420, 62,
-                                UI_TOKEN_COLOR_SURFACE_BORDER, 1);
+                                UI_TOKEN_COLOR_DIVIDER, 1);
     lv_obj_set_style_radius(row, 5, 0);
     ui_page_line(row, 12, 10, 3, 42, UI_COLOR_YELLOW);
     report_label(row, 26, 8, 170, title, UI_FONT_PAGE_TEXT,
                  UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
     report_label(row, 150, 11, 244, subtitle, &lv_font_montserrat_12,
                  UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
-    report_label(row, 26, 34, 374, description, UI_FONT_PAGE_TEXT,
+    return report_label(row, 26, 34, 374, description, UI_FONT_PAGE_TEXT,
                  UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
+}
+
+static const char *completion_text(bool saved)
+{
+    return saved ? "骑行已结束，记录已保存" : "骑行已结束，记录尚未保存";
 }
 
 static int32_t create_summary(report_page_t *page, int32_t y)
@@ -561,26 +639,27 @@ static int32_t create_summary(report_page_t *page, int32_t y)
     char description[96];
     if(long_ride) {
         snprintf(description, sizeof(description),
-                 "%.1f km，达到长距离骑行标准。",
+                 "本次距离 %.1f km",
                  page->model.distance_km);
         summary_rule(card, row_y, "长距离", "LONG RIDE", description);
         row_y += 70;
     }
     if(climbing) {
         snprintf(description, sizeof(description),
-                 "%lu m，达到爬升挑战标准。",
+                 "本次累计爬升 %lu m",
                  (unsigned long)page->model.total_ascent_m);
         summary_rule(card, row_y, "爬升挑战", "CLIMBING", description);
         row_y += 70;
     }
     if(aerobic) {
-        summary_rule(card, row_y, "有氧耐力", "AEROBIC ENDURANCE",
-                     "有氧区间达到 30%，节奏稳定。");
+        snprintf(description,sizeof(description),"Z3 占有效心率时间 %lu%%",
+                 (unsigned long)((uint64_t)page->model.trace.heart_rate_zone_seconds[2]*100U/heart_total));
+        summary_rule(card,row_y,"区间分布","HEART RATE ZONES",description);
         row_y += 70;
     }
     if(!long_ride && !climbing && !aerobic)
-        summary_rule(card, row_y, "骑行完成", "RIDE COMPLETE",
-                     "本次骑行已完成并记录。继续保持稳定训练。" );
+        page->completion_status=summary_rule(card,row_y,"骑行完成","RIDE COMPLETE",
+                                            completion_text(page->model.saved));
     return y + height + REPORT_SECTION_GAP;
 }
 
@@ -598,21 +677,19 @@ static void action_event(lv_event_t *event)
 static int32_t create_done(report_page_t *page, int32_t y)
 {
     if(page->mode != UI_RIDE_REPORT_SUMMARY_MODE) return y;
-    lv_obj_t *button = ui_page_box(page->content, 0, y, 448, 66,
+    if(page->done_button != NULL) return y;
+    lv_obj_t *button = ui_page_box(page->screen, 16, UI_PAGE_ACTION_Y, 448, UI_PAGE_ACTION_HEIGHT,
                                    UI_COLOR_YELLOW, 2);
+    page->done_button = button;
     lv_obj_set_style_bg_color(button, UI_COLOR_YELLOW, 0);
     lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(button, 8, 0);
     lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_transform_scale(button, 248, LV_STATE_PRESSED);
     lv_obj_add_event_cb(button, action_event, LV_EVENT_CLICKED, page);
-    report_label(button, 18, 10, 300, "完成", UI_FONT_PAGE_TEXT,
-                 UI_COLOR_BG, LV_TEXT_ALIGN_LEFT);
-    report_label(button, 18, 37, 300, "DONE", &lv_font_montserrat_12,
-                 UI_COLOR_BG, LV_TEXT_ALIGN_LEFT);
-    report_label(button, 398, 20, 30, LV_SYMBOL_RIGHT, LV_FONT_DEFAULT,
-                 UI_COLOR_BG, LV_TEXT_ALIGN_RIGHT);
-    return y + 66 + 20;
+    ui_align_label_center(report_label(button, 0, 0, 448, "完成", UI_FONT_PAGE_TEXT,
+                 UI_COLOR_BG, LV_TEXT_ALIGN_CENTER));
+    return y;
 }
 
 static void rebuild(report_page_t *page)
@@ -620,6 +697,7 @@ static void rebuild(report_page_t *page)
     if(page == NULL || page->content == NULL) return;
     lv_obj_clean(page->content);
     page->distance_label = NULL;
+    page->completion_status = NULL;
     int32_t y = 0;
     y = create_map(page, y);
     y = create_identity(page, y);
@@ -683,8 +761,8 @@ lv_obj_t *ui_ride_report_page_create(ui_ride_report_mode_t mode,
     lv_obj_add_flag(back, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_transform_scale(back, 242, LV_STATE_PRESSED);
     lv_obj_add_event_cb(back, action_event, LV_EVENT_CLICKED, page);
-    report_label(back, 0, 8, 42, LV_SYMBOL_LEFT, LV_FONT_DEFAULT,
-                 UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_CENTER);
+    ui_align_label_center(report_label(back, 0, 0, 52, LV_SYMBOL_LEFT, LV_FONT_DEFAULT,
+                 UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_CENTER));
     report_label(page->screen, 100, 84, 280, "骑行报告", UI_FONT_PAGE_TEXT,
                  UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_CENTER);
     report_label(page->screen, 100, 114, 280, "RIDE REPORT",
@@ -694,9 +772,10 @@ lv_obj_t *ui_ride_report_page_create(ui_ride_report_mode_t mode,
     page->viewport = lv_obj_create(page->screen);
     lv_obj_remove_style_all(page->viewport);
     lv_obj_set_pos(page->viewport, 16, REPORT_VIEWPORT_Y);
-    lv_obj_set_size(page->viewport, 448, REPORT_VIEWPORT_HEIGHT);
+    lv_obj_set_size(page->viewport, 448, mode == UI_RIDE_REPORT_SUMMARY_MODE ?
+        UI_PAGE_ACTION_Y - 12 - REPORT_VIEWPORT_Y : REPORT_VIEWPORT_HEIGHT);
     lv_obj_set_scroll_dir(page->viewport, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(page->viewport, LV_SCROLLBAR_MODE_AUTO);
+    ui_page_scrollbar_style(page->viewport);
     lv_obj_set_style_pad_all(page->viewport, 0, 0);
     lv_obj_set_style_pad_right(page->viewport, 0, 0);
     page->content = lv_obj_create(page->viewport);
@@ -704,6 +783,7 @@ lv_obj_t *ui_ride_report_page_create(ui_ride_report_mode_t mode,
     lv_obj_set_pos(page->content, 0, 0);
     lv_obj_set_size(page->content, 448, 1);
     lv_obj_clear_flag(page->content, LV_OBJ_FLAG_SCROLLABLE);
+    (void)create_done(page, 0);
     return page->screen;
 }
 
@@ -717,6 +797,15 @@ bool ui_ride_report_page_set_model(ui_ride_report_mode_t mode,
     page->model = *model;
     if(page->active) rebuild(page);
     return true;
+}
+
+void ui_ride_report_page_set_saved(ui_ride_report_mode_t mode,bool saved)
+{
+    if(mode >= UI_RIDE_REPORT_MODE_COUNT) return;
+    report_page_t *page=&s_pages[mode];
+    page->model.saved=saved;
+    if(page->completion_status != NULL)
+        lv_label_set_text(page->completion_status,completion_text(saved));
 }
 
 static void distance_frame(void *target, int32_t tenths)
@@ -742,15 +831,17 @@ void ui_ride_report_page_set_active(ui_ride_report_mode_t mode, bool active)
             lv_obj_set_height(page->content, 1);
         }
         page->distance_label = NULL;
+        page->completion_status = NULL;
         page->content_height = 0U;
         return;
     }
     if(page->content_height == 0U) rebuild(page);
     if(page->distance_label == NULL) return;
-    if(mode == UI_RIDE_REPORT_SUMMARY_MODE) {
-        int32_t tenths = (int32_t)(page->model.distance_km * 10.0f + 0.5f);
-        ui_motion_value(page->distance_label, distance_frame, 0, tenths,
-                        620U, lv_anim_path_ease_out, NULL, NULL);
+    if(mode == UI_RIDE_REPORT_SUMMARY_MODE && has_metric(page, UI_REPORT_HAS_DISTANCE)) {
+        double tenths = (double)page->model.distance_km * 10.0 + 0.5;
+        if(tenths <= INT32_MAX)
+            ui_motion_value(page->distance_label, distance_frame, 0, (int32_t)tenths,
+                            620U, lv_anim_path_ease_out, NULL, NULL);
     }
 }
 
@@ -762,14 +853,16 @@ bool ui_ride_report_page_handle_input(ui_ride_report_mode_t mode,
     if(!page->active || page->viewport == NULL) return false;
     if(input == UI_INPUT_ENCODER_CW || input == UI_INPUT_ENCODER_CCW) {
         int32_t maximum = (int32_t)page->content_height -
-                          REPORT_VIEWPORT_HEIGHT;
+                          lv_obj_get_height(page->viewport);
         if(maximum < 0) maximum = 0;
-        int32_t target = lv_obj_get_scroll_y(page->viewport) +
+        lv_point_t scroll_end;
+        lv_obj_get_scroll_end(page->viewport,&scroll_end);
+        int32_t target = scroll_end.y +
             (input == UI_INPUT_ENCODER_CW ? REPORT_SCROLL_STEP :
                                             -REPORT_SCROLL_STEP);
         if(target < 0) target = 0;
         if(target > maximum) target = maximum;
-        lv_obj_scroll_to_y(page->viewport, target, LV_ANIM_ON);
+        lv_obj_scroll_to_y(page->viewport, target, ui_motion_scroll_mode());
         ui_sound_play(UI_SFX_FOCUS);
         return true;
     }

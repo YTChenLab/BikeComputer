@@ -1,6 +1,7 @@
 #include "ui_control_center.h"
 
 #include "../core/ui_motion.h"
+#include "../core/ui_text.h"
 #include "../core/ui_theme.h"
 #include "../design/ui_design_tokens.h"
 
@@ -82,8 +83,8 @@ typedef struct
 } control_rect_t;
 
 static const control_rect_t s_compact_rects[4] = {
-    {12, 48, 108, 88}, {128, 48, 108, 88},
-    {244, 48, 108, 88}, {360, 48, 108, 88}
+    {12, 48, 108, 96}, {128, 48, 108, 96},
+    {244, 48, 108, 96}, {360, 48, 108, 96}
 };
 
 static const control_rect_t s_expanded_rects[4] = {
@@ -108,7 +109,8 @@ static int32_t expansion_progress(int32_t height)
 static int32_t staged_progress(int32_t progress, int32_t start)
 {
     if(progress <= start) return 0;
-    return LV_CLAMP(0, (progress - start) * 1000 / (1000 - start), 1000);
+    int32_t p = LV_CLAMP(0, (progress - start) * 1000 / (1000 - start), 1000);
+    return (int64_t)p * p * (3000 - 2 * p) / 1000000;
 }
 
 static lv_opa_t morph_text_opacity(int32_t progress,
@@ -274,6 +276,7 @@ static void apply_control_geometry(uint8_t index, int32_t progress)
             title, progress < 500 ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT,
             0);
         lv_obj_t *state = s_center.state_labels[action];
+        lv_obj_set_height(state, 24);
         lv_obj_set_pos(state, lerp_value(0, 74, layout_progress),
                        lerp_value(70, 40, layout_progress));
         lv_obj_set_width(state, lerp_value(compact->width, 128,
@@ -319,8 +322,10 @@ static void apply_control_geometry(uint8_t index, int32_t progress)
 
 static void apply_geometry(int32_t height)
 {
-    height = LV_CLAMP(UI_CONTROL_CENTER_COMPACT_HEIGHT, height,
-                      UI_CONTROL_CENTER_PANEL_HEIGHT);
+    /* Only geometry deforms: text and icons retain their native raster size.
+     * A small bounded overshoot keeps expansion alive without ARGB layers. */
+    height = LV_CLAMP(UI_CONTROL_CENTER_COMPACT_HEIGHT - 12, height,
+                      UI_CONTROL_CENTER_PANEL_HEIGHT + 20);
     int32_t progress = expansion_progress(height);
     lv_obj_set_height(s_center.panel, height);
     lv_obj_set_y(s_center.handle, height - 13);
@@ -331,6 +336,14 @@ static void apply_geometry(int32_t height)
 
     for(uint8_t index = 0U; index < 4U; index++)
         apply_control_geometry(index, progress);
+    if(height > UI_CONTROL_CENTER_PANEL_HEIGHT) {
+        int32_t rebound = height - UI_CONTROL_CENTER_PANEL_HEIGHT;
+        for(uint8_t index = 0; index < 4; ++index) {
+            lv_obj_t *control = s_center.controls[s_focus_order[index]];
+            lv_obj_set_y(control, s_expanded_rects[index].y + rebound * (index + 1) / 5);
+            lv_obj_set_height(control, s_expanded_rects[index].height + rebound / 4);
+        }
+    }
 
     bool details_visible = progress >= 850;
     for(uint8_t action = UI_CONTROL_CENTER_ACTION_GPS;
@@ -534,17 +547,17 @@ static void update_state_text(void)
         (s_center.state.wifi_connected ?
          (s_center.state.wifi_name[0] != '\0' ?
           s_center.state.wifi_name : "已连接") : "等待连接");
-    lv_label_set_text(s_center.state_labels[UI_CONTROL_CENTER_ACTION_WIFI],
-                      override != NULL ? override : wifi);
+    (void)ui_text_set_label(s_center.state_labels[UI_CONTROL_CENTER_ACTION_WIFI],
+                      override != NULL ? override : wifi, 20);
 
     override = feedback_text(UI_CONTROL_CENTER_ACTION_BLUETOOTH);
     const char *bluetooth = !s_center.state.bluetooth_enabled ? "未开启" :
         (s_center.state.bluetooth_connected ?
          (s_center.state.bluetooth_name[0] != '\0' ?
           s_center.state.bluetooth_name : "已连接") : "等待连接");
-    lv_label_set_text(
+    (void)ui_text_set_label(
         s_center.state_labels[UI_CONTROL_CENTER_ACTION_BLUETOOTH],
-        override != NULL ? override : bluetooth);
+        override != NULL ? override : bluetooth, 20);
 
     override = feedback_text(UI_CONTROL_CENTER_ACTION_GPS);
     const char *signal = s_center.state.satellites >= 8U ? "良好" :
@@ -569,7 +582,7 @@ static void update_state_text(void)
     snprintf(battery, sizeof(battery), "%u%%%s",
              (unsigned)s_center.state.battery_percent,
              s_center.state.battery_charging ? "+" : "");
-    lv_label_set_text(s_center.battery_state, battery);
+    lv_label_set_text(s_center.battery_state, s_center.state.battery_valid ? battery : "--%");
 }
 
 static void update_visuals(bool animate_sliders)
@@ -595,7 +608,7 @@ static void update_visuals(bool animate_sliders)
         if(s_center.icon_backgrounds[action] != NULL) {
             lv_obj_set_style_bg_color(s_center.icon_backgrounds[action],
                 action_enabled((ui_control_center_action_t)action) ?
-                UI_TOKEN_COLOR_ACCENT : lv_color_hex(0x253033), 0);
+                UI_TOKEN_COLOR_ACCENT : UI_TOKEN_COLOR_SEGMENT_INACTIVE, 0);
         }
     }
     update_state_text();

@@ -25,6 +25,9 @@ typedef struct
     uint32_t last_duration_minutes;
     uint32_t last_ascent_m;
     char last_ride_caption[UI_HOME_CAPTION_MAX];
+    bool last_ride_available;
+    bool last_distance_available;
+    bool last_ascent_available;
 
     uint32_t version;
 } ui_home_data_t;

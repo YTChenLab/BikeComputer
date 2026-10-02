@@ -3,6 +3,7 @@
 
 #include "lvgl.h"
 #include "../models/ui_ride_data_model.h"
+#include "../models/ui_dashboard_layout.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -57,6 +58,8 @@ void ui_dashboard_set_speed(
 
 /* Router lifecycle: hidden pages must not keep animation timers running. */
 void ui_dashboard_set_active(bool active);
+bool ui_dashboard_set_layout(unsigned preset, const uint8_t fields[UI_DASHBOARD_SLOT_COUNT]);
+ui_ride_field_t ui_dashboard_slot_field(unsigned slot);
 
 
 #endif /* UI_DASHBOARD_H */

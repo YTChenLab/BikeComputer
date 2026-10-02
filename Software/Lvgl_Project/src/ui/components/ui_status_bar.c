@@ -3,6 +3,7 @@
 #include "../core/ui_colors.h"
 #include "../core/ui_sizes.h"
 #include "../core/ui_theme.h"
+#include "../design/ui_alignment.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +22,7 @@ static lv_obj_t *create_status_symbol(
 {
     lv_obj_t *label = lv_label_create(parent);
     lv_label_set_text(label, symbol);
-    /* Montserrat 图标字体为 line_height=22、base_line=4；Y=16 时与
-     * MiSans 状态文字（line_height=16、base_line=0，Y=18）共用基线 Y=34。 */
+    /* Use a vertical anchor so changing the status font retains alignment. */
     lv_obj_set_pos(label, x, 16);
     lv_obj_set_width(label, width);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
@@ -189,7 +189,7 @@ void ui_status_bar_create(
 
     lv_obj_set_style_bg_color(
         top_line,
-        UI_COLOR_WHITE,
+        UI_COLOR_GRID_LINE,
         0
     );
 
@@ -227,7 +227,7 @@ void ui_status_bar_create(
 
     lv_obj_set_style_bg_color(
         bottom_line,
-        UI_COLOR_WHITE,
+        UI_COLOR_GRID_LINE,
         0
     );
 
@@ -450,6 +450,13 @@ void ui_status_bar_create(
     lv_obj_set_style_bg_opa(bar->battery_fill, LV_OPA_COVER, 0);
     lv_obj_clear_flag(bar->battery_fill, LV_OBJ_FLAG_SCROLLABLE);
 
+    ui_align_center_y(bar->sat_icon, 8);
+    ui_align_center_y(bar->sat_label, 36);
+    ui_align_center_y(bar->time_label, 160);
+    ui_align_center_y(bar->wifi_icon, 340);
+    ui_align_center_y(bar->bt_icon, 368);
+    ui_align_center_y(bar->battery_label, 374);
+    ui_align_center_y(bar->battery_icon, 442);
     update_battery_fill(bar);
 }
 

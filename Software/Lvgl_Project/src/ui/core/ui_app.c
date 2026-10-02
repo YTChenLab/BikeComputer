@@ -4,6 +4,7 @@
 #include "ui_app_state.h"
 #include "ui_auto_pause.h"
 #include "ui_background.h"
+#include "ui_version.h"
 #include "ui_bottom_surface.h"
 #include "ui_control_feedback_ownership.h"
 #include "ui_dock.h"
@@ -12,6 +13,7 @@
 #include "ui_event_bus.h"
 #include "ui_input_queue.h"
 #include "ui_motion.h"
+#include "ui_memory.h"
 #include "ui_ride_controller.h"
 #include "ui_router.h"
 #include "ui_sizes.h"
@@ -24,6 +26,8 @@
 #include "../../services/ui_state_adapter.h"
 #include "../../services/ui_navigation_service.h"
 #include "../../services/ui_ride_history_repository.h"
+#include "../../services/ui_preferences.h"
+#include "../../services/ui_device_info.h"
 #include "../components/ui_status_bar.h"
 #include "../components/ui_dynamic_card_manager.h"
 #include "../components/dock/ui_dock_view.h"
@@ -39,6 +43,8 @@
 #include "../pages/ui_page_common.h"
 #include "../pages/ui_power_page.h"
 #include "../pages/ui_profile_page.h"
+#include "../pages/ui_devices_page.h"
+#include "../pages/ui_saved_routes_page.h"
 #include "../pages/ui_settings_page.h"
 #include "../pages/ui_summary_page.h"
 #include "../pages/ui_system_page.h"
@@ -48,11 +54,14 @@
 #include "../models/ui_ride_history_model.h"
 #include "../models/ui_weather_model.h"
 #include "../overlays/ui_control_center.h"
+#include "../overlays/ui_zone_editor.h"
+#include "../overlays/ui_dashboard_editor.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 typedef ui_route_id_t ui_page_t;
 #define UI_PAGE_BOOT        UI_ROUTE_BOOT
@@ -66,6 +75,8 @@ typedef ui_route_id_t ui_page_t;
 #define UI_PAGE_ACHIEVEMENTS UI_ROUTE_ACHIEVEMENTS
 #define UI_PAGE_SETTINGS    UI_ROUTE_SETTINGS
 #define UI_PAGE_SYSTEM      UI_ROUTE_SYSTEM
+#define UI_PAGE_DEVICES     UI_ROUTE_DEVICES
+#define UI_PAGE_SAVED_ROUTES UI_ROUTE_SAVED_ROUTES
 #define UI_PAGE_POWER       UI_ROUTE_POWER
 #define UI_PAGE_COUNT       UI_ROUTE_COUNT
 typedef enum { UI_ACTION_NONE, UI_ACTION_HOME, UI_ACTION_NAVIGATION, UI_ACTION_SUMMARY,
@@ -74,7 +85,7 @@ typedef enum { UI_ACTION_NONE, UI_ACTION_HOME, UI_ACTION_NAVIGATION, UI_ACTION_S
                UI_ACTION_PAUSE_RIDE, UI_ACTION_END_RIDE, UI_ACTION_WIFI, UI_ACTION_BT,
                UI_ACTION_GPS, UI_ACTION_POWER_SAVE, UI_ACTION_TOUCH_LOCK,
                UI_ACTION_BRIGHTNESS, UI_ACTION_SOUND, UI_ACTION_HISTORY,
-               UI_ACTION_ACHIEVEMENT, UI_ACTION_POWER_OFF, UI_ACTION_POWER_RESTART,
+               UI_ACTION_ACHIEVEMENT, UI_ACTION_DEVICES, UI_ACTION_POWER_OFF, UI_ACTION_POWER_RESTART,
                UI_ACTION_POWER_CANCEL } ui_action_t;
 typedef struct {
     lv_obj_t *screen;
@@ -85,6 +96,14 @@ typedef struct {
 
 static ui_page_view_t s_pages[UI_PAGE_COUNT];
 static lv_timer_t *s_boot_timer;
+typedef enum {
+    APP_BOOT_FADE_IDLE,
+    APP_BOOT_FADE_OUT,
+    APP_BOOT_FADE_WAIT,
+    APP_BOOT_FADE_IN
+} app_boot_fade_state_t;
+static app_boot_fade_state_t s_boot_fade_state;
+static lv_obj_t *s_boot_fade_overlay;
 static lv_timer_t *s_event_timer;
 static bool s_powered_off;
 static bool s_pointer_dragging, s_slider_dragging, s_slider_candidate;
@@ -100,6 +119,17 @@ static int32_t s_overlay_start_y;
 static int32_t s_panel_start_height;
 static uint32_t s_pointer_start_tick;
 static lv_obj_t *s_off_screen;
+static lv_obj_t *s_blank_overlay;
+static bool s_display_blank;
+static ui_action_t s_pending_power_action;
+static bool s_start_command_pending, s_system_command_pending;
+static uint32_t s_last_event_tick;
+static uint32_t s_last_interaction_tick;
+static ui_preferences_t s_preferences;
+static uint32_t s_seen_storage_commits;
+static ui_ride_data_t s_latest_ride_data;
+static lv_obj_t *s_ride_badge;
+static uint32_t s_display_valid_flags;
 static lv_obj_t *s_control_surface;
 typedef enum {
     APP_SHADE_DRAG_NONE = 0,
@@ -155,6 +185,8 @@ static void app_ride_state_changed(ui_ride_state_t previous,
 static void app_command_changed(const ui_command_result_t *result,
                                 void *user_data);
 static void app_handle_key(uint32_t key);
+/* Detail scratch lives off the MCU task stack and is only used by LVGL. */
+static UI_LARGE_RAM ui_ride_record_t s_detail_record;
 static bool app_submit_command(ui_command_type_t type, int32_t value,
                                uint32_t timeout_ms);
 static void app_publish_command_feedback(const ui_command_result_t *result);
@@ -168,6 +200,114 @@ static void app_show_power_confirmation(bool restart);
 static void app_refresh_history_models(void);
 static bool app_prepare_ride_save(void);
 static void app_dismiss_settings_control(void);
+static void app_continue_power(void);
+static bool app_publish_event(ui_event_type_t type, ui_event_priority_t priority);
+static void app_boot_timer_cb(lv_timer_t *timer);
+static void app_boot_fade_reset(void);
+static void app_boot_fade_in(void);
+
+static void app_apply_preferences(const ui_preferences_t *preferences)
+{
+    s_preferences = *preferences;
+    ui_motion_set_reduced(preferences->reduced_motion);
+    (void)ui_ride_summary_model_set_zones(preferences->heart_zone_bounds, preferences->power_zone_bounds);
+    ui_home_data_t home;
+    if(ui_home_data_model_get(&home)) {
+        snprintf(home.user_name,sizeof(home.user_name),"%s",preferences->user_name);
+        snprintf(home.tagline,sizeof(home.tagline),"%s",preferences->tagline);
+        (void)ui_home_data_model_update(&home);
+    }
+    ui_settings_page_set_preferences(preferences->auto_pause, preferences->reduced_motion, preferences->idle_sleep_ms);
+    (void)ui_dashboard_set_layout(preferences->dashboard_preset, preferences->dashboard_fields);
+    ui_settings_page_set_dashboard_preset(preferences->dashboard_preset);
+    ui_profile_page_set_preset(preferences->dashboard_preset);
+}
+
+static void app_set_display_blank(bool blank)
+{
+    if(!app_submit_command(UI_COMMAND_DISPLAY_SET_ENABLED, !blank, 1500U)) return;
+    s_display_blank = blank;
+    if(blank) {
+        lv_obj_remove_flag(s_blank_overlay, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(s_blank_overlay);
+    }
+    else lv_obj_add_flag(s_blank_overlay, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void app_continue_power(void)
+{
+    if(s_pending_power_action == UI_ACTION_HOME || s_start_command_pending ||
+       s_system_command_pending || ui_ride_history_repository_busy()) return;
+    ui_ride_state_t state = ui_state_machine_state();
+    if(state == UI_RIDE_STATE_STOPPING || state == UI_RIDE_STATE_SAVING) return;
+    if(ui_ride_history_repository_has_pending()) {
+        (void)app_publish_event(UI_EVENT_STORAGE_RETRY, UI_EVENT_PRIORITY_P0_CRITICAL);
+        return;
+    }
+    if(ui_ride_summary_model_active()) {
+        if(state != UI_RIDE_STATE_FINISHING)
+            (void)app_publish_event(UI_EVENT_RIDE_FINISH_REQUESTED, UI_EVENT_PRIORITY_P2_RIDE_STATE);
+        (void)app_publish_event(UI_EVENT_RIDE_FINISH_CONFIRMED, UI_EVENT_PRIORITY_P2_RIDE_STATE);
+        return;
+    }
+    s_system_command_pending = app_submit_command(
+        s_pending_power_action == UI_ACTION_POWER_RESTART ? UI_COMMAND_SYSTEM_RESTART :
+        UI_COMMAND_SYSTEM_SHUTDOWN, 0, 3000U);
+    if(!s_system_command_pending) s_pending_power_action = UI_ACTION_HOME;
+}
+
+
+static void app_update_ride_badge(void)
+{
+    if(s_ride_badge == NULL) return;
+    ui_ride_state_t state = ui_state_machine_state();
+    const char *text = NULL;
+    if(state == UI_RIDE_STATE_STOPPING) text = "正在结束";
+    else if(state == UI_RIDE_STATE_SAVING) text = "正在保存";
+    else if(ui_ride_history_repository_has_pending()) text = "骑行待保存";
+    else if(state == UI_RIDE_STATE_PAUSED) text = "骑行已暂停";
+    else if(state == UI_RIDE_STATE_RIDING || state == UI_RIDE_STATE_FINISHING) text = "骑行记录中";
+    if(text != NULL && !s_powered_off) {
+        if(strcmp(lv_label_get_text(s_ride_badge), text) != 0) lv_label_set_text(s_ride_badge, text);
+        lv_color_t color = UI_TOKEN_COLOR_ACCENT;
+        if(state == UI_RIDE_STATE_PAUSED) color = lv_color_hex(0xFFB85A);
+        if(state == UI_RIDE_STATE_STOPPING || state == UI_RIDE_STATE_SAVING)
+            color = lv_color_hex(0x59C8E8);
+        if(ui_ride_history_repository_has_pending()) color = lv_color_hex(0xFF6B70);
+        if(ui_ride_history_repository_has_pending())
+            lv_obj_add_flag(s_ride_badge, LV_OBJ_FLAG_CLICKABLE);
+        else lv_obj_clear_flag(s_ride_badge, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_style_bg_color(s_ride_badge, color, 0);
+        lv_obj_clear_flag(s_ride_badge, LV_OBJ_FLAG_HIDDEN);
+    }
+    else lv_obj_add_flag(s_ride_badge, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void app_ride_badge_clicked(lv_event_t *event)
+{
+    if(lv_event_get_code(event) != LV_EVENT_CLICKED || s_display_blank) return;
+    if(ui_ride_history_repository_has_pending()) app_action(UI_ACTION_SUMMARY);
+    else if(ui_state_machine_is_riding()) app_show(UI_PAGE_DASHBOARD);
+}
+
+static void app_restore_pending_summary(void)
+{
+    ui_ride_record_t record;
+    if(!ui_ride_history_repository_get_pending(&record)) return;
+    ui_ride_summary_t summary = { .saved = false, .version = 1,
+        .started_at_utc = record.started_at_utc,
+        .finished_at_utc = record.finished_at_utc };
+#define RESTORE(member) summary.member = record.member
+    RESTORE(distance_km); RESTORE(duration_seconds); RESTORE(moving_time_seconds);
+    RESTORE(average_speed_kmh); RESTORE(maximum_speed_kmh); RESTORE(ascent_m);
+    RESTORE(descent_m); RESTORE(maximum_elevation_m); RESTORE(calories_kcal);
+    RESTORE(has_heart_rate); RESTORE(average_heart_rate); RESTORE(maximum_heart_rate); RESTORE(minimum_heart_rate);
+    RESTORE(has_power); RESTORE(average_power); RESTORE(maximum_power);
+    RESTORE(has_cadence); RESTORE(average_cadence); RESTORE(maximum_cadence);
+    RESTORE(has_temperature); RESTORE(average_temperature_tenths_c); RESTORE(metric_flags); RESTORE(trace);
+#undef RESTORE
+    (void)ui_ride_summary_model_restore(&summary);
+}
 static void app_handoff_control_feedback_to_bottom(void);
 static void app_reclaim_control_feedback_to_top(void);
 static void app_surface_page_enter(ui_route_id_t route, lv_obj_t *screen,
@@ -178,6 +318,14 @@ static void app_profile_enter(ui_route_id_t route, lv_obj_t *screen,
                               void *user_data);
 static void app_profile_leave(ui_route_id_t route, lv_obj_t *screen,
                               void *user_data);
+static void app_devices_enter(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data);
+static void app_devices_leave(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data);
+static void app_system_enter(ui_route_id_t route, lv_obj_t *screen,
+                             void *user_data);
+static void app_system_leave(ui_route_id_t route, lv_obj_t *screen,
+                             void *user_data);
 static void app_achievements_enter(ui_route_id_t route, lv_obj_t *screen,
                                    void *user_data);
 static void app_achievements_leave(ui_route_id_t route, lv_obj_t *screen,
@@ -234,7 +382,8 @@ static bool app_ride_domain_active(void)
            state == UI_RIDE_STATE_GPS_READY ||
            state == UI_RIDE_STATE_RIDING ||
            state == UI_RIDE_STATE_PAUSED ||
-           state == UI_RIDE_STATE_FINISHING;
+           state == UI_RIDE_STATE_FINISHING || state == UI_RIDE_STATE_STOPPING ||
+           state == UI_RIDE_STATE_SAVING;
 }
 
 static void app_event_overflow(const ui_event_t *incoming,
@@ -263,7 +412,11 @@ static void app_event_received(const ui_event_t *event, void *user_data)
                                         UI_EVENT_PRIORITY_P1_RIDING_SAFETY);
             break;
         case UI_EVENT_RIDE_GO_REQUESTED:
-            if(!app_submit_command(UI_COMMAND_RIDE_START, 0, 2000U)) {
+            if(s_start_command_pending || s_pending_power_action != UI_ACTION_HOME) break;
+            s_start_command_pending = true;
+            if(!app_submit_command(UI_COMMAND_RIDE_START,
+                                   (int32_t)ui_ride_summary_model_reserve_session(), 2000U)) {
+                s_start_command_pending = false;
                 ui_event_t failed = {0};
                 failed.type = UI_EVENT_COMMAND_FAILED;
                 failed.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
@@ -278,12 +431,12 @@ static void app_event_received(const ui_event_t *event, void *user_data)
             break;
         case UI_EVENT_RIDE_FINISH_CONFIRMED:
             if(!app_submit_command(UI_COMMAND_RIDE_FINISH, 0, 2000U)) {
-                (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
+                (void)app_publish_event(UI_EVENT_RIDE_FINISH_CANCELLED,
                                         UI_EVENT_PRIORITY_P0_CRITICAL);
             }
             break;
         case UI_EVENT_STORAGE_RETRY:
-            if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING &&
+            if(ui_ride_history_repository_has_pending() &&
                !app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U)) {
                 (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
                                         UI_EVENT_PRIORITY_P0_CRITICAL);
@@ -350,17 +503,64 @@ static void app_event_received(const ui_event_t *event, void *user_data)
 static void app_event_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
-    ui_system_services_tick(20);
-    ui_command_service_process(20);
+    uint32_t now = lv_tick_get();
+    uint32_t elapsed = now - s_last_event_tick;
+    s_last_event_tick = now;
+    (void)ui_ride_history_repository_process_page();
+    ui_history_page_tick();
+    ui_system_services_tick(elapsed);
+    ui_command_service_process(elapsed);
+    uint32_t commits = ui_ride_history_repository_commits();
+    if(commits != s_seen_storage_commits) {
+        s_seen_storage_commits = commits;
+        ui_ride_summary_model_finish(true);
+        ui_summary_page_set_saved(true);
+        app_refresh_history_models();
+        if(ui_state_machine_state() == UI_RIDE_STATE_UNSAVED)
+            (void)app_publish_event(UI_EVENT_RIDE_SAVE_SUCCESS, UI_EVENT_PRIORITY_P2_RIDE_STATE);
+        app_continue_power();
+    }
     (void)ui_state_adapter_process();
     (void)ui_ride_data_model_process();
-    app_auto_pause_tick(20U);
+    (void)ui_weather_model_process(now);
+    ui_preferences_t preferences;
+    if(ui_preferences_process(now, &preferences)) app_apply_preferences(&preferences);
+    ui_settings_page_set_storage_state(ui_preferences_storage_state());
+    ui_device_info_t device;
+    if(ui_device_info_process(&device)) {
+        char storage[40], lvgl_version[24];
+        snprintf(storage,sizeof(storage),device.storage_ready ? "%llu MiB FREE" : "UNAVAILABLE",
+            (unsigned long long)(device.storage_free_bytes / (1024U*1024U)));
+        snprintf(lvgl_version,sizeof(lvgl_version),"%u.%u.%u",LVGL_VERSION_MAJOR,LVGL_VERSION_MINOR,LVGL_VERSION_PATCH);
+        ui_system_info_t info={.device_model=device.device_model,.ui_version=UI_SOFTWARE_VERSION,
+            .lvgl_version=lvgl_version,.storage_status=storage,.hardware_target=device.hardware_target,
+            .system_health=device.health,.firmware_version=device.firmware_version};
+        ui_system_page_set_info(&info);
+    }
+    if(!s_display_blank && !s_powered_off && ui_router_current() != UI_PAGE_BOOT &&
+       s_boot_fade_state == APP_BOOT_FADE_IDLE && s_preferences.idle_sleep_ms &&
+       (uint32_t)(now - s_last_interaction_tick) >= s_preferences.idle_sleep_ms &&
+       !s_pointer_dragging && !s_slider_dragging) app_set_display_blank(true);
+    s_auto_pause.speed_valid = ui_ride_data_field_valid(
+        &s_latest_ride_data, UI_RIDE_FIELD_SPEED, now);
+    app_auto_pause_tick(elapsed);
     (void)ui_navigation_service_process();
+    (void)ui_navigation_service_expire(now);
     (void)ui_input_queue_drain(UI_INPUT_QUEUE_MAX,
                                app_input_received, NULL);
     (void)ui_event_bridge_drain(UI_EVENT_BRIDGE_QUEUE_MAX);
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
-    ui_dock_controller_tick(20);
+    ui_dock_controller_tick(elapsed);
+    uint32_t valid = 0;
+    for(unsigned i = 0; i < UI_RIDE_FIELD_COUNT; ++i)
+        if(ui_ride_data_field_valid(&s_latest_ride_data, (ui_ride_field_t)i, now))
+            valid |= UI_RIDE_FIELD_BIT(i);
+    if(valid != s_display_valid_flags) {
+        s_display_valid_flags = valid;
+        ui_dashboard_set_data(&s_latest_ride_data);
+        ui_dynamic_card_manager_refresh_data(&s_latest_ride_data);
+    }
+    app_update_ride_badge();
 }
 
 #define QUICK_DRAG_THRESHOLD          5
@@ -384,11 +584,9 @@ static void app_ride_data_changed(const ui_ride_data_t *data,
     (void)version;
     (void)user_data;
     if(data == NULL) return;
+    s_latest_ride_data = *data;
     ui_auto_pause_set_speed(&s_auto_pause, data->speed);
     ui_dashboard_set_data(data);
-    if(ui_state_machine_state() == UI_RIDE_STATE_RIDING &&
-       ui_ride_summary_model_active())
-        ui_ride_summary_model_update(data);
 }
 
 static bool app_request_pause_toggle(ui_ride_pause_reason_t reason)
@@ -420,6 +618,7 @@ static bool app_request_pause_toggle(ui_ride_pause_reason_t reason)
 
 static void app_auto_pause_tick(uint32_t elapsed_ms)
 {
+    if(!s_preferences.auto_pause) return;
     if(s_pause_command_pending) return;
     ui_auto_pause_action_t action = ui_auto_pause_tick(
         &s_auto_pause, ui_state_machine_state(), elapsed_ms);
@@ -433,6 +632,7 @@ static void app_auto_pause_tick(uint32_t elapsed_ms)
 static void app_format_history_date(int64_t timestamp,
                                     char *text, size_t capacity)
 {
+    if(timestamp <= 0) { snprintf(text,capacity,"DATE UNAVAILABLE"); return; }
     time_t value = (time_t)timestamp;
     struct tm local_time;
 #if defined(_WIN32)
@@ -464,6 +664,11 @@ static void app_refresh_history_models(void)
 
     ui_ride_record_t latest;
     if(ui_ride_history_model_get_newest(0U, &latest)) {
+        home.last_ride_available = true;
+        home.last_distance_available = !(latest.metric_flags & UI_REPORT_METRICS_KNOWN) ||
+            (latest.metric_flags & UI_REPORT_HAS_DISTANCE);
+        home.last_ascent_available = !(latest.metric_flags & UI_REPORT_METRICS_KNOWN) ||
+            (latest.metric_flags & UI_REPORT_HAS_ASCENT);
         app_format_history_date(latest.finished_at_utc,
                                 home.last_ride_date,
                                 sizeof(home.last_ride_date));
@@ -476,6 +681,7 @@ static void app_refresh_history_models(void)
                  "RIDE COMPLETE · SAVED");
     }
     else {
+        home.last_ride_available = home.last_distance_available = home.last_ascent_available = false;
         snprintf(home.last_ride_date, sizeof(home.last_ride_date),
                  "NO RIDES YET");
         home.last_distance_tenths_km = 0U;
@@ -493,10 +699,17 @@ static bool app_prepare_ride_save(void)
     if(ui_ride_history_repository_has_pending()) return true;
     ui_ride_summary_t summary;
     if(!ui_ride_summary_model_get(&summary)) return false;
+    if(summary.saved) return false;
     ui_ride_summary_model_finish(false);
     if(!ui_ride_summary_model_get(&summary)) return false;
-    return ui_ride_history_repository_prepare(&summary) ==
-           UI_RIDE_HISTORY_OK;
+    if(ui_ride_history_repository_stage(&summary) != UI_RIDE_HISTORY_OK) return false;
+    ui_ride_record_t staged;
+    if(ui_ride_history_repository_get_pending(&staged)) {
+        summary.started_at_utc = staged.started_at_utc;
+        summary.finished_at_utc = staged.finished_at_utc;
+        (void)ui_ride_summary_model_restore(&summary);
+    }
+    return true;
 }
 
 static void app_state_changed(const ui_app_state_t *state,
@@ -506,6 +719,13 @@ static void app_state_changed(const ui_app_state_t *state,
     (void)user_data;
     if(state == NULL) return;
     if((changed & UI_APP_STATE_CHANGE_CONTROL) != 0U) {
+        ui_preferences_t preferences;
+        if(ui_preferences_get(&preferences) &&
+           (preferences.sound != state->sound_level || preferences.brightness != state->brightness_level)) {
+            preferences.sound = state->sound_level;
+            preferences.brightness = state->brightness_level == 0 ? 1 : state->brightness_level;
+            (void)ui_preferences_submit(&preferences);
+        }
         ui_sound_set_volume(state->sound_level);
         ui_background_set_opacity(
             (lv_opa_t)(70 + (185 * state->brightness_level / 100)));
@@ -527,8 +747,25 @@ static void app_state_changed(const ui_app_state_t *state,
 static void app_route_changed(ui_route_id_t previous,
                               ui_route_id_t current, void *user_data)
 {
-    (void)previous;
     (void)user_data;
+    if(s_boot_fade_state != APP_BOOT_FADE_IDLE &&
+       !(previous == UI_PAGE_BOOT && current == UI_PAGE_HOME &&
+         s_boot_fade_state == APP_BOOT_FADE_WAIT)) app_boot_fade_reset();
+    if(previous == UI_PAGE_BOOT) {
+        ui_boot_page_set_active(false);
+        if(s_boot_timer != NULL) lv_timer_delete(s_boot_timer);
+        s_boot_timer = NULL;
+        s_last_interaction_tick = lv_tick_get();
+    }
+    if(current == UI_PAGE_BOOT) {
+        app_boot_fade_reset();
+        ui_boot_page_set_active(true);
+        s_last_interaction_tick = lv_tick_get();
+        s_boot_timer = lv_timer_create(app_boot_timer_cb, 20, NULL);
+        lv_timer_ready(s_boot_timer);
+    }
+    else if(previous == UI_PAGE_BOOT && current == UI_PAGE_HOME &&
+            s_boot_fade_state == APP_BOOT_FADE_WAIT) app_boot_fade_in();
     ui_app_state_set_route((uint8_t)current);
 }
 
@@ -538,14 +775,19 @@ static void app_ride_state_changed(ui_ride_state_t previous,
 {
     (void)user_data;
     ui_app_state_set_ride_state(current);
+    app_update_ride_badge();
+    ui_motion_set_riding(current == UI_RIDE_STATE_RIDING);
+    ui_ride_summary_model_set_paused(current == UI_RIDE_STATE_PAUSED);
     if(event == UI_RIDE_EVENT_GO && current == UI_RIDE_STATE_RIDING) {
         ui_ride_data_t data;
         if(ui_ride_data_model_get(&data, NULL))
             ui_ride_summary_model_begin(&data);
     }
     else if(current == UI_RIDE_STATE_SUMMARY &&
-            previous == UI_RIDE_STATE_FINISHING)
+            previous == UI_RIDE_STATE_SAVING) {
         ui_ride_summary_model_finish(true);
+        ui_summary_page_set_saved(true);
+    }
     if(current != UI_RIDE_STATE_RIDING &&
        current != UI_RIDE_STATE_PAUSED &&
        current != UI_RIDE_STATE_FINISHING) {
@@ -575,6 +817,9 @@ static const char *app_command_label(ui_command_type_t type)
         case UI_COMMAND_TOUCH_LOCK_SET_ENABLED: return "TOUCH LOCK";
         case UI_COMMAND_SOUND_SET_LEVEL: return "VOLUME";
         case UI_COMMAND_BRIGHTNESS_SET_LEVEL: return "BRIGHTNESS";
+        case UI_COMMAND_DISPLAY_SET_ENABLED: return "DISPLAY";
+        case UI_COMMAND_SYSTEM_SHUTDOWN: return "POWER OFF";
+        case UI_COMMAND_SYSTEM_RESTART: return "RESTART";
         case UI_COMMAND_RIDE_START: return "START RIDE";
         case UI_COMMAND_RIDE_PAUSE: return "PAUSE RIDE";
         case UI_COMMAND_RIDE_RESUME: return "RESUME RIDE";
@@ -595,6 +840,10 @@ static bool app_command_feedback_needed(const ui_command_result_t *result)
 {
     if(result == NULL) return false;
     switch(result->type) {
+        case UI_COMMAND_DISPLAY_SET_ENABLED:
+        case UI_COMMAND_SYSTEM_SHUTDOWN:
+        case UI_COMMAND_SYSTEM_RESTART:
+            return result->status != UI_COMMAND_STATUS_PENDING && result->status != UI_COMMAND_STATUS_SUCCESS;
         case UI_COMMAND_WIFI_SET_ENABLED:
         case UI_COMMAND_BLUETOOTH_SET_ENABLED:
         case UI_COMMAND_GNSS_SET_ENABLED:
@@ -776,6 +1025,36 @@ static void app_command_changed(const ui_command_result_t *result,
          s_settings_control == APP_SETTINGS_CONTROL_BRIGHTNESS)))
         app_refresh_settings_control(true);
     if(result->status == UI_COMMAND_STATUS_PENDING) return;
+    if(result->type == UI_COMMAND_RIDE_START) s_start_command_pending = false;
+    if(result->type == UI_COMMAND_DISPLAY_SET_ENABLED && result->status != UI_COMMAND_STATUS_SUCCESS &&
+       (result->value == 0) == s_display_blank) {
+        s_display_blank = !s_display_blank;
+        if(s_display_blank) {
+            lv_obj_remove_flag(s_blank_overlay, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(s_blank_overlay);
+        }
+        else lv_obj_add_flag(s_blank_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+    if(result->type == UI_COMMAND_SYSTEM_SHUTDOWN || result->type == UI_COMMAND_SYSTEM_RESTART) {
+        s_system_command_pending = false;
+        s_pending_power_action = UI_ACTION_HOME;
+        if(result->status == UI_COMMAND_STATUS_SUCCESS) {
+            app_hide_quick_immediate();
+            ui_dock_clear();
+            ui_control_feedback_ownership_init();
+            ui_event_bus_clear();
+            ui_router_clear_history();
+            (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RESET);
+            if(result->type == UI_COMMAND_SYSTEM_SHUTDOWN) {
+                s_powered_off = true;
+                (void)ui_router_replace(UI_ROUTE_POWER_OFF, UI_MOTION_PAGE_NONE);
+            }
+            else {
+                (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
+            }
+        }
+        return;
+    }
 
     if(result->type == UI_COMMAND_RIDE_PAUSE ||
        result->type == UI_COMMAND_RIDE_RESUME) {
@@ -794,9 +1073,12 @@ static void app_command_changed(const ui_command_result_t *result,
                                         UI_EVENT_PRIORITY_P2_RIDE_STATE);
                 break;
             case UI_COMMAND_RIDE_START:
+                (void)ui_ride_data_model_process();
+                (void)ui_ride_summary_model_set_zones(s_preferences.heart_zone_bounds, s_preferences.power_zone_bounds);
                 app_hide_quick_immediate();
                 (void)app_publish_event(UI_EVENT_RIDE_GO,
                                         UI_EVENT_PRIORITY_P2_RIDE_STATE);
+                app_continue_power();
                 break;
             case UI_COMMAND_RIDE_PAUSE:
                 app_hide_quick_immediate();
@@ -823,15 +1105,22 @@ static void app_command_changed(const ui_command_result_t *result,
                                             UI_EVENT_PRIORITY_P0_CRITICAL);
                 break;
             case UI_COMMAND_RIDE_SAVE:
+                if(ui_ride_history_repository_has_pending()) {
+                    (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED, UI_EVENT_PRIORITY_P0_CRITICAL);
+                    break;
+                }
                 ui_ride_summary_model_finish(true);
+                ui_summary_page_set_saved(true);
                 app_refresh_history_models();
-                if(ui_state_machine_state() == UI_RIDE_STATE_FINISHING) {
+                if(ui_state_machine_state() == UI_RIDE_STATE_SAVING ||
+                   ui_state_machine_state() == UI_RIDE_STATE_UNSAVED) {
                     (void)app_publish_event(UI_EVENT_RIDE_SAVE_SUCCESS,
                                             UI_EVENT_PRIORITY_P2_RIDE_STATE);
                 }
                 else {
                     ui_sound_play(UI_SFX_SUCCESS);
                 }
+                app_continue_power();
                 break;
             case UI_COMMAND_RIDE_UPLOAD:
                 ui_sound_play(UI_SFX_SUCCESS);
@@ -845,6 +1134,7 @@ static void app_command_changed(const ui_command_result_t *result,
     LV_LOG_WARN("UI command failed: id=%lu type=%d status=%d error=%ld",
                 (unsigned long)result->id, (int)result->type,
                 (int)result->status, (long)result->error_code);
+    if(result->type == UI_COMMAND_RIDE_START) app_continue_power();
     if(result->type == UI_COMMAND_GNSS_ACQUIRE_FIX) {
         (void)app_publish_event(UI_EVENT_GPS_FAILED,
                                 UI_EVENT_PRIORITY_P1_RIDING_SAFETY);
@@ -854,6 +1144,7 @@ static void app_command_changed(const ui_command_result_t *result,
                                 UI_EVENT_PRIORITY_P0_CRITICAL);
     }
     else if(result->type == UI_COMMAND_RIDE_FINISH) {
+        s_pending_power_action = UI_ACTION_HOME;
         (void)app_publish_event(UI_EVENT_RIDE_FINISH_CANCELLED,
                                 UI_EVENT_PRIORITY_P2_RIDE_STATE);
     }
@@ -978,6 +1269,7 @@ static void app_profile_enter(ui_route_id_t route, lv_obj_t *screen,
                               void *user_data)
 {
     app_surface_page_enter(route, screen, user_data);
+    ui_profile_page_set_activity_time(ui_ride_history_repository_now_utc());
     ui_profile_page_set_active(true);
 }
 
@@ -986,6 +1278,47 @@ static void app_profile_leave(ui_route_id_t route, lv_obj_t *screen,
 {
     ui_profile_page_set_active(false);
     app_surface_page_leave(route, screen, user_data);
+}
+
+static void app_devices_enter(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    /* The device page intentionally owns the full 480x854 surface.  A
+     * bottom dock would hide the final pairing row and make the page look
+     * like it had an empty, unowned region. */
+    ui_devices_page_set_active(true);
+}
+
+static void app_devices_leave(ui_route_id_t route, lv_obj_t *screen,
+                              void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_devices_page_set_active(false);
+    ui_bottom_surface_unmount();
+}
+
+static void app_system_enter(ui_route_id_t route, lv_obj_t *screen,
+                             void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    /* System diagnostics need the complete viewport so the scroll list and
+     * its scrollbar remain visible down to the last row. */
+}
+
+static void app_system_leave(ui_route_id_t route, lv_obj_t *screen,
+                             void *user_data)
+{
+    (void)route;
+    (void)screen;
+    (void)user_data;
+    ui_bottom_surface_unmount();
 }
 
 static void app_achievements_enter(ui_route_id_t route, lv_obj_t *screen,
@@ -1167,6 +1500,7 @@ static void app_control_close_done(lv_anim_t *animation)
     (void)animation;
     if(s_control_surface != NULL)
         lv_obj_add_flag(s_control_surface, LV_OBJ_FLAG_HIDDEN);
+    ui_motion_cancel(s_control_surface, app_set_panel_height);
     ui_control_center_set_mode(UI_CONTROL_CENTER_MODE_COMPACT);
     s_control_interaction = APP_CONTROL_SURFACE_IDLE;
 }
@@ -1174,10 +1508,8 @@ static void app_control_close_done(lv_anim_t *animation)
 static void app_animate_panel_height(int32_t target)
 {
     if(s_control_surface == NULL) return;
-    ui_motion_value(s_control_surface, app_set_panel_height,
-                    ui_control_center_panel_height(), target,
-                    UI_TOKEN_MOTION_CONTROL_EXPAND_MS,
-                    lv_anim_path_ease_out,
+    ui_motion_spring(s_control_surface, app_set_panel_height,
+                    ui_control_center_panel_height(), target, true,
                     target == UI_CONTROL_CENTER_PANEL_HEIGHT ?
                     app_control_expanded_done : app_control_compact_done,
                     NULL);
@@ -1224,13 +1556,10 @@ static void app_close_quick(void) {
     app_handoff_control_feedback_to_bottom();
     (void)ui_system_control_shade_close();
     ui_motion_cancel_y(s_control_surface);
-    ui_motion_cancel(s_control_surface, app_set_panel_height);
     s_control_interaction = APP_CONTROL_SURFACE_SETTLING;
-    ui_motion_value(s_control_surface, app_set_panel_height,
+    ui_motion_spring(s_control_surface, app_set_panel_height,
                     ui_control_center_panel_height(),
-                    UI_CONTROL_CENTER_COMPACT_HEIGHT,
-                    UI_TOKEN_MOTION_CONTROL_EXPAND_MS,
-                    lv_anim_path_ease_in, NULL, NULL);
+                    UI_CONTROL_CENTER_COMPACT_HEIGHT, false, NULL, NULL);
     ui_motion_move_y(s_control_surface, -UI_CONTROL_CENTER_COMPACT_HEIGHT,
                      UI_TOKEN_MOTION_CONTROL_EXPAND_MS,
                      lv_anim_path_ease_in, app_control_close_done, NULL);
@@ -1268,8 +1597,7 @@ static void app_show_slide(ui_page_t page, bool move_left) {
 static void app_back(void) {
     if(s_powered_off) {
         s_powered_off = false;
-        (void)ui_state_machine_dispatch(UI_RIDE_EVENT_BOOT_COMPLETE);
-        (void)ui_router_replace(UI_PAGE_HOME, UI_MOTION_PAGE_NONE);
+        (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
         return;
     }
     if(app_control_shade_visible()) {
@@ -1312,10 +1640,17 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
         case UI_PAGE_ACTION_SAVE_RIDE: app_action(UI_ACTION_SAVE_RIDE); break;
         case UI_PAGE_ACTION_UPLOAD_RIDE: app_action(UI_ACTION_UPLOAD_RIDE); break;
         case UI_PAGE_ACTION_HISTORY: app_action(UI_ACTION_HISTORY); break;
+        case UI_PAGE_ACTION_SAVED_ROUTES: app_show(UI_PAGE_SAVED_ROUTES); break;
+        case UI_PAGE_ACTION_RECENT_RIDE_DETAIL: {
+            if(ui_ride_history_model_get_newest(0U, &s_detail_record)) {
+                ui_ride_detail_page_set_record(&s_detail_record);
+                app_show(UI_PAGE_RIDE_DETAIL);
+            } else app_show_feature_info("最近一次骑行", "暂无可读取的骑行详情");
+            break;
+        }
         case UI_PAGE_ACTION_RIDE_DETAIL: {
-            ui_ride_record_t record;
-            if(ui_history_page_selected_record(&record)) {
-                ui_ride_detail_page_set_record(&record);
+            if(ui_history_page_selected_record(&s_detail_record)) {
+                ui_ride_detail_page_set_record(&s_detail_record);
                 app_show(UI_PAGE_RIDE_DETAIL);
             }
             break;
@@ -1324,6 +1659,21 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
         case UI_PAGE_ACTION_ACHIEVEMENT: app_action(UI_ACTION_ACHIEVEMENT); break;
         case UI_PAGE_ACTION_SETTINGS: app_action(UI_ACTION_SETTINGS); break;
         case UI_PAGE_ACTION_SYSTEM: app_action(UI_ACTION_SYSTEM); break;
+        case UI_PAGE_ACTION_DEVICES: app_action(UI_ACTION_DEVICES); break;
+        case UI_PAGE_ACTION_PROFILE_REFRESH:
+            app_refresh_history_models();
+            ui_profile_page_set_activity_time(ui_ride_history_repository_now_utc());
+            ui_profile_page_refresh();
+            break;
+        case UI_PAGE_ACTION_DEVICE_SCAN: {
+            ui_app_state_t state;
+            bool enabled = ui_app_state_get(&state) && state.bluetooth_enabled;
+            /* Full-height devices has no mounted dock. Put unavailable
+             * feedback inside the page so taps never appear to do nothing. */
+            ui_devices_page_set_feedback(enabled ?
+                "暂无法扫描，蓝牙服务待接入" : "请先在系统设置中开启蓝牙");
+            break;
+        }
         case UI_PAGE_ACTION_POWER_MENU: app_show(UI_PAGE_POWER); break;
         case UI_PAGE_ACTION_WIFI_TOGGLE: app_action(UI_ACTION_WIFI); break;
         case UI_PAGE_ACTION_BLUETOOTH_TOGGLE: app_action(UI_ACTION_BT); break;
@@ -1341,6 +1691,24 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
         case UI_PAGE_ACTION_POWER_RESTART:
             app_show_power_confirmation(true); break;
         case UI_PAGE_ACTION_POWER_CANCEL: app_action(UI_ACTION_POWER_CANCEL); break;
+        case UI_PAGE_ACTION_ZONE_EDITOR: app_hide_quick_immediate(); ui_zone_editor_open(); break;
+        case UI_PAGE_ACTION_DASHBOARD_LAYOUT: app_hide_quick_immediate(); ui_dashboard_editor_open(); break;
+        case UI_PAGE_ACTION_AUTO_PAUSE_TOGGLE:
+        case UI_PAGE_ACTION_REDUCED_MOTION_TOGGLE:
+        case UI_PAGE_ACTION_IDLE_SLEEP_CYCLE: {
+            ui_preferences_t preferences;
+            if(!ui_preferences_get(&preferences)) break;
+            if(action == UI_PAGE_ACTION_AUTO_PAUSE_TOGGLE) {
+                preferences.auto_pause = !preferences.auto_pause;
+                ui_auto_pause_manual_override(&s_auto_pause);
+            }
+            else if(action == UI_PAGE_ACTION_REDUCED_MOTION_TOGGLE)
+                preferences.reduced_motion = !preferences.reduced_motion;
+            else preferences.idle_sleep_ms = preferences.idle_sleep_ms == 0 ? 30000 :
+                preferences.idle_sleep_ms == 30000 ? 60000 : preferences.idle_sleep_ms == 60000 ? 120000 : 0;
+            (void)ui_preferences_submit(&preferences);
+            break;
+        }
         default: break;
     }
 }
@@ -1424,8 +1792,11 @@ static void app_create_screens(void) {
     s_pages[UI_PAGE_SETTINGS].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SETTINGS].screen);
     s_pages[UI_PAGE_SYSTEM].screen = ui_system_page_create(app_page_action, NULL);
-    s_pages[UI_PAGE_SYSTEM].bottom_surface_slot =
-        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SYSTEM].screen);
+    s_pages[UI_PAGE_DEVICES].screen = ui_devices_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_SAVED_ROUTES].screen =
+        ui_saved_routes_page_create(app_page_action, NULL);
+    s_pages[UI_PAGE_SAVED_ROUTES].bottom_surface_slot =
+        ui_page_bottom_surface_slot_create(s_pages[UI_PAGE_SAVED_ROUTES].screen);
     ui_control_center_create(app_control_center_action, NULL);
     s_control_surface = ui_control_center_root();
     s_pages[UI_PAGE_POWER].screen = ui_power_page_create(app_page_action, NULL);
@@ -1485,6 +1856,16 @@ static void app_register_routes(void) {
     };
     const ui_router_page_t system = {
         .screen = s_pages[UI_PAGE_SYSTEM].screen,
+        .on_enter = app_system_enter,
+        .on_leave = app_system_leave
+    };
+    const ui_router_page_t devices = {
+        .screen = s_pages[UI_PAGE_DEVICES].screen,
+        .on_enter = app_devices_enter,
+        .on_leave = app_devices_leave
+    };
+    const ui_router_page_t saved_routes = {
+        .screen = s_pages[UI_PAGE_SAVED_ROUTES].screen,
         .on_enter = app_surface_page_enter,
         .on_leave = app_surface_page_leave
     };
@@ -1503,15 +1884,73 @@ static void app_register_routes(void) {
     (void)ui_router_register_page(UI_ROUTE_ACHIEVEMENTS, &achievements);
     (void)ui_router_register_page(UI_ROUTE_SETTINGS, &settings);
     (void)ui_router_register_page(UI_ROUTE_SYSTEM, &system);
+    (void)ui_router_register_page(UI_ROUTE_DEVICES, &devices);
+    (void)ui_router_register_page(UI_ROUTE_SAVED_ROUTES, &saved_routes);
     (void)ui_router_register_page(UI_ROUTE_POWER, &power);
     (void)ui_router_register(UI_ROUTE_POWER_OFF, s_off_screen);
 }
+static void app_boot_fade_opacity(void *target, int32_t opacity)
+{
+    /* Blend one black rectangle instead of allocating a screen-sized
+     * offscreen layer for every fading component. */
+    lv_obj_set_style_bg_opa((lv_obj_t *)target, (lv_opa_t)opacity, 0);
+}
+
+static void app_boot_fade_reset(void)
+{
+    ui_home_page_cancel_enter();
+    if(s_boot_fade_overlay != NULL) {
+        ui_motion_cancel(s_boot_fade_overlay, app_boot_fade_opacity);
+        lv_obj_add_flag(s_boot_fade_overlay, LV_OBJ_FLAG_HIDDEN);
+        app_boot_fade_opacity(s_boot_fade_overlay, LV_OPA_TRANSP);
+    }
+    s_boot_fade_state = APP_BOOT_FADE_IDLE;
+    s_last_interaction_tick = lv_tick_get();
+}
+
+static void app_boot_fade_out_done(lv_anim_t *animation)
+{
+    (void)animation;
+    if(s_boot_fade_state == APP_BOOT_FADE_OUT)
+        s_boot_fade_state = APP_BOOT_FADE_WAIT;
+}
+
+static void app_boot_fade_in_done(lv_anim_t *animation)
+{
+    (void)animation;
+    if(s_boot_fade_state == APP_BOOT_FADE_IN) app_boot_fade_reset();
+}
+
+static void app_boot_fade_in(void)
+{
+    s_boot_fade_state = APP_BOOT_FADE_IN;
+    lv_obj_move_foreground(s_boot_fade_overlay);
+    /* Prepare every group while the screen is black, then retain the
+     * transparent overlay as a touch shield until the last group settles. */
+    ui_home_page_animate_enter(s_preferences.reduced_motion,
+                               app_boot_fade_in_done, NULL);
+    app_boot_fade_opacity(s_boot_fade_overlay, LV_OPA_TRANSP);
+}
+
 static void app_boot_timer_cb(lv_timer_t *timer) {
-    (void)app_publish_event(UI_EVENT_BOOT_COMPLETE,
-                            UI_EVENT_PRIORITY_P2_RIDE_STATE);
+    (void)timer;
+    if(ui_router_current() != UI_PAGE_BOOT || !ui_boot_page_is_complete()) return;
+    if(s_boot_fade_state == APP_BOOT_FADE_IDLE && !s_preferences.reduced_motion) {
+        s_boot_fade_state = APP_BOOT_FADE_OUT;
+        lv_obj_remove_flag(s_boot_fade_overlay, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(s_boot_fade_overlay);
+        ui_motion_value(s_boot_fade_overlay, app_boot_fade_opacity,
+                        LV_OPA_TRANSP, LV_OPA_COVER, 280,
+                        lv_anim_path_ease_in_out, app_boot_fade_out_done, NULL);
+        return;
+    }
+    if(s_boot_fade_state == APP_BOOT_FADE_OUT) return;
+    /* Initialization is completed before entering this route. Retry a full
+     * event queue instead of leaving the UI and ride state out of sync. */
+    if(!app_publish_event(UI_EVENT_BOOT_COMPLETE,
+                          UI_EVENT_PRIORITY_P2_RIDE_STATE)) return;
+    /* Route leave pauses the animation and deletes the completion timer. */
     (void)ui_router_replace(UI_PAGE_HOME, UI_MOTION_PAGE_NONE);
-    s_boot_timer = NULL;
-    lv_timer_delete(timer);
 }
 static void app_update_quick_states(void) {
     if(s_control_surface == NULL) return;
@@ -1529,6 +1968,7 @@ static void app_update_quick_states(void) {
         .satellites = app_state.satellites,
         .sound_level = app_state.sound_level,
         .brightness_level = app_state.brightness_level,
+        .battery_valid = app_state.battery_valid,
         .battery_percent = app_state.battery_percent
     };
     ui_control_center_state_t named_state = center_state;
@@ -1633,13 +2073,27 @@ static void app_show_power_confirmation(bool restart)
     else (void)ui_dock_show(&card);
 }
 
+static void app_show_feature_info(const char *title, const char *message)
+{
+    ui_dock_card_t card = {0};
+    card.id = 0x2102U;
+    card.type = UI_DOCK_TYPE_INFO;
+    card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
+    card.dismissible = true;
+    snprintf(card.title, sizeof(card.title), "%s", title != NULL ? title : "提示");
+    snprintf(card.message, sizeof(card.message), "%s", message != NULL ? message : "");
+    if(ui_dock_is_visible()) (void)ui_dock_replace(&card);
+    else (void)ui_dock_show(&card);
+}
+
 static void app_action(ui_action_t action) {
     ui_app_state_t state;
     if(!ui_app_state_get(&state)) return;
     switch(action) {
         case UI_ACTION_HOME:
             ui_router_clear_history();
-            if(ui_state_machine_state() == UI_RIDE_STATE_SUMMARY) {
+            if(ui_state_machine_state() == UI_RIDE_STATE_SUMMARY ||
+               ui_state_machine_state() == UI_RIDE_STATE_UNSAVED) {
                 (void)app_publish_event(UI_EVENT_RIDE_SUMMARY_DISMISSED,
                                         UI_EVENT_PRIORITY_P2_RIDE_STATE);
             }
@@ -1652,10 +2106,14 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_PROFILE: app_show(UI_PAGE_PROFILE); break;
         case UI_ACTION_SETTINGS: app_show(UI_PAGE_SETTINGS); break;
         case UI_ACTION_SYSTEM: app_show(UI_PAGE_SYSTEM); break;
+        case UI_ACTION_DEVICES: app_show(UI_PAGE_DEVICES); break;
         case UI_ACTION_QUICK: app_open_quick(); break;
         case UI_ACTION_SAVE_RIDE:
-            if((ui_ride_history_repository_has_pending() ||
-                app_prepare_ride_save()) &&
+            if(ui_ride_history_repository_has_pending()) {
+                (void)app_publish_event(UI_EVENT_STORAGE_RETRY, UI_EVENT_PRIORITY_P0_CRITICAL);
+                break;
+            }
+            if(!app_prepare_ride_save() ||
                !app_submit_command(UI_COMMAND_RIDE_SAVE, 0, 5000U)) {
                 (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
                                         UI_EVENT_PRIORITY_P0_CRITICAL);
@@ -1665,6 +2123,12 @@ static void app_action(ui_action_t action) {
             (void)app_submit_command(UI_COMMAND_RIDE_UPLOAD, 0, 5000U);
             break;
         case UI_ACTION_START_RIDE:
+            if(s_pending_power_action != UI_ACTION_HOME) break;
+            if(ui_ride_history_repository_has_pending()) {
+                (void)app_publish_event(UI_EVENT_RIDE_SAVE_FAILED,
+                                        UI_EVENT_PRIORITY_P0_CRITICAL);
+                break;
+            }
             if(ui_state_machine_state() == UI_RIDE_STATE_HOME) {
                 app_hide_quick_immediate();
                 ui_router_clear_history();
@@ -1727,26 +2191,10 @@ static void app_action(ui_action_t action) {
         case UI_ACTION_HISTORY: app_show(UI_PAGE_HISTORY); break;
         case UI_ACTION_ACHIEVEMENT: app_show(UI_PAGE_ACHIEVEMENTS); break;
         case UI_ACTION_POWER_OFF:
-            app_hide_quick_immediate();
-            ui_dock_clear();
-            ui_control_feedback_ownership_init();
-            ui_event_bus_clear();
-            s_powered_off = true;
-            (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RESET);
-            (void)ui_router_replace(UI_ROUTE_POWER_OFF, UI_MOTION_PAGE_NONE);
-            break;
         case UI_ACTION_POWER_RESTART:
-            app_hide_quick_immediate();
-            ui_dock_clear();
-            ui_control_feedback_ownership_init();
-            ui_event_bus_clear();
-            ui_router_clear_history();
-            (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RESET);
-            (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
-            if(!s_boot_timer) {
-                s_boot_timer = lv_timer_create(app_boot_timer_cb, 1300, NULL);
-                lv_timer_set_repeat_count(s_boot_timer, 1);
-            }
+            if(s_pending_power_action != UI_ACTION_HOME) break;
+            s_pending_power_action = action;
+            app_continue_power();
             break;
         case UI_ACTION_POWER_CANCEL: app_back(); break;
         default: break;
@@ -1754,7 +2202,13 @@ static void app_action(ui_action_t action) {
     app_update_quick_states();
 }
 void ui_app_init(void) {
+    s_pending_power_action = UI_ACTION_HOME;
+    s_start_command_pending = s_system_command_pending = false;
+    s_display_blank = false;
+    s_last_event_tick = lv_tick_get();
+    s_last_interaction_tick = s_last_event_tick;
     ui_motion_init();
+    ui_background_init();
     ui_sound_init();
     ui_system_control_shade_init();
     ui_control_feedback_ownership_init();
@@ -1774,21 +2228,60 @@ void ui_app_init(void) {
     ui_state_machine_init();
     ui_state_machine_set_changed_callback(app_ride_state_changed, NULL);
     ui_home_data_model_init();
+    ui_preferences_init();
     ui_weather_model_init();
     ui_ride_history_repository_init();
     ui_ride_history_result_t history_result =
         ui_ride_history_repository_load();
+    s_seen_storage_commits = ui_ride_history_repository_commits();
     if(history_result != UI_RIDE_HISTORY_OK)
         LV_LOG_WARN("Ride history load failed result=%d",
                     (int)history_result);
     ui_ride_data_model_init();
+    (void)ui_ride_data_model_get(&s_latest_ride_data, NULL);
+    s_display_valid_flags = UINT32_MAX;
     ui_ride_summary_model_init();
+    app_restore_pending_summary();
     ui_router_init(UI_ROUTE_HOME);
     ui_router_set_changed_callback(app_route_changed, NULL);
     app_create_screens();
+    (void)ui_preferences_get(&s_preferences);
+    app_apply_preferences(&s_preferences);
+    (void)app_submit_command(UI_COMMAND_SOUND_SET_LEVEL, s_preferences.sound, 1500U);
+    (void)app_submit_command(UI_COMMAND_BRIGHTNESS_SET_LEVEL, s_preferences.brightness, 1500U);
+    s_blank_overlay = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(s_blank_overlay);
+    lv_obj_set_size(s_blank_overlay, UI_SCREEN_W, UI_SCREEN_H);
+    lv_obj_set_style_bg_color(s_blank_overlay, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(s_blank_overlay, LV_OPA_COVER, 0);
+    lv_obj_add_flag(s_blank_overlay, LV_OBJ_FLAG_HIDDEN);
+    s_ride_badge = lv_label_create(s_pages[UI_PAGE_DASHBOARD].screen);
+    lv_label_set_text(s_ride_badge, "");
+    lv_obj_set_pos(s_ride_badge, 152, 78);
+    lv_obj_set_size(s_ride_badge, 176, 32);
+    lv_label_set_long_mode(s_ride_badge, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_align(s_ride_badge, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_pad_top(s_ride_badge, 3, 0);
+    lv_obj_set_ext_click_area(s_ride_badge, 8);
+    lv_obj_set_style_text_font(s_ride_badge, UI_FONT_PAGE_TEXT, 0);
+    lv_obj_set_style_text_color(s_ride_badge, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(s_ride_badge, UI_TOKEN_COLOR_ACCENT, 0);
+    lv_obj_set_style_bg_opa(s_ride_badge, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(s_ride_badge, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_pad_hor(s_ride_badge, 8, 0);
+    lv_obj_add_flag(s_ride_badge, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(s_ride_badge, app_ride_badge_clicked, LV_EVENT_CLICKED, NULL);
     app_refresh_history_models();
     app_register_routes();
     ui_dock_view_init();
+    s_boot_fade_overlay = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(s_boot_fade_overlay);
+    lv_obj_set_pos(s_boot_fade_overlay, 0, 0);
+    lv_obj_set_size(s_boot_fade_overlay, UI_SCREEN_W, UI_SCREEN_H);
+    lv_obj_set_style_bg_color(s_boot_fade_overlay, lv_color_black(), 0);
+    lv_obj_remove_flag(s_boot_fade_overlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(s_boot_fade_overlay, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_HIDDEN);
+    app_boot_fade_reset();
     ui_event_bus_set_overflow_callback(app_event_overflow, NULL);
     (void)ui_event_bus_subscribe(UI_EVENT_MASK_ALL,
                                  app_event_received, NULL);
@@ -1800,11 +2293,28 @@ void ui_app_init(void) {
     (void)ui_ride_data_model_subscribe(app_ride_data_changed, NULL);
     app_update_slider_visuals();
     (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
-    s_boot_timer = lv_timer_create(app_boot_timer_cb, 1600, NULL);
-    lv_timer_set_repeat_count(s_boot_timer, 1);
     s_event_timer = lv_timer_create(app_event_timer_cb, 20, NULL);
 }
 void ui_app_handle_back(void) {
+    s_last_interaction_tick = lv_tick_get();
+    if(ui_router_current() == UI_PAGE_BOOT || s_boot_fade_state != APP_BOOT_FADE_IDLE) return;
+    if(ui_dashboard_editor_handle_input(UI_INPUT_BACK)) return;
+    if(ui_zone_editor_visible()) { ui_zone_editor_close(); return; }
+    if(ui_router_current() == UI_PAGE_ACHIEVEMENTS &&
+       ui_achievements_page_detail_visible()) {
+        ui_achievements_page_close_detail();
+        return;
+    }
+    if(s_display_blank) {
+        app_set_display_blank(false);
+        return;
+    }
+    if(ui_state_machine_state() == UI_RIDE_STATE_STOPPING ||
+       ui_state_machine_state() == UI_RIDE_STATE_SAVING) return;
+    if(ui_state_machine_state() == UI_RIDE_STATE_UNSAVED) {
+        app_show(UI_PAGE_SUMMARY);
+        return;
+    }
     /* A visible finish confirmation owns BACK before any hidden page/card
      * focus state. One click must always cancel the confirmation and restore
      * the previous Bottom Interaction Surface content. */
@@ -1838,6 +2348,14 @@ void ui_app_handle_back(void) {
 }
 
 void ui_app_handle_input(ui_input_event_t input) {
+    s_last_interaction_tick = lv_tick_get();
+    if(ui_router_current() == UI_PAGE_BOOT || s_boot_fade_state != APP_BOOT_FADE_IDLE) return;
+    if(s_display_blank) {
+        app_set_display_blank(false);
+        return;
+    }
+    if(ui_dashboard_editor_handle_input(input)) return;
+    if(ui_zone_editor_handle_input(input)) return;
     if(input == UI_INPUT_BACK_DOUBLE) {
         if(ui_state_machine_state() == UI_RIDE_STATE_RIDING ||
            ui_state_machine_state() == UI_RIDE_STATE_PAUSED)
@@ -1902,6 +2420,16 @@ void ui_app_handle_input(ui_input_event_t input) {
         app_handle_key('p');
         return;
     }
+    if(input == UI_INPUT_RIDE_TOGGLE) {
+        if(s_powered_off || app_safety_interaction_active()) return;
+        if(ui_ride_history_repository_has_pending()) app_action(UI_ACTION_SUMMARY);
+        else if(ui_state_machine_state() == UI_RIDE_STATE_HOME) app_action(UI_ACTION_START_RIDE);
+        else if(ui_state_machine_state() == UI_RIDE_STATE_GPS_READY)
+            (void)app_publish_event(UI_EVENT_RIDE_GO_REQUESTED, UI_EVENT_PRIORITY_P2_RIDE_STATE);
+        else if(ui_state_machine_state() == UI_RIDE_STATE_RIDING ||
+                ui_state_machine_state() == UI_RIDE_STATE_PAUSED) app_action(UI_ACTION_PAUSE_RIDE);
+        return;
+    }
     if(input == UI_INPUT_OPEN_PROFILE) {
         if(!s_powered_off && !app_ride_domain_active()) app_show(UI_PAGE_PROFILE);
         return;
@@ -1941,6 +2469,16 @@ void ui_app_handle_input(ui_input_event_t input) {
        ui_router_current() == UI_PAGE_SYSTEM &&
        ui_system_page_handle_input(input)) return;
     if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_DEVICES &&
+       ui_devices_page_handle_input(input)) return;
+    if(!s_powered_off && !app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_SAVED_ROUTES &&
+       (input == UI_INPUT_ENCODER_PRESS || input == UI_INPUT_ENCODER_CW ||
+        input == UI_INPUT_ENCODER_CCW)) {
+        if(input == UI_INPUT_ENCODER_PRESS) app_back();
+        return;
+    }
+    if(!s_powered_off && !app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_POWER &&
        ui_power_page_handle_input(input)) return;
     if(!s_powered_off && !app_control_shade_visible() &&
@@ -1956,23 +2494,32 @@ void ui_app_handle_input(ui_input_event_t input) {
 }
 
 static void app_handle_key(uint32_t key) {
+    if(ui_router_current() == UI_PAGE_BOOT || s_boot_fade_state != APP_BOOT_FADE_IDLE) return;
+    if(s_display_blank) {
+        app_set_display_blank(false);
+        return;
+    }
     if(s_powered_off) {
         if(key == 'p' || key == 'P' || key == LV_KEY_ENTER) {
             s_powered_off = false;
-            (void)app_publish_event(UI_EVENT_BOOT_COMPLETE,
-                                    UI_EVENT_PRIORITY_P2_RIDE_STATE);
-            (void)ui_router_replace(UI_PAGE_HOME, UI_MOTION_PAGE_NONE);
+            (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
         }
         return;
     }
+    if(ui_dashboard_editor_visible()) {
+        if(key == LV_KEY_UP) ui_app_handle_input(UI_INPUT_ENCODER_CCW);
+        else if(key == LV_KEY_DOWN) ui_app_handle_input(UI_INPUT_ENCODER_CW);
+        else if(key == LV_KEY_ENTER) ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+        else if(key == LV_KEY_ESC || key == 8) ui_app_handle_back();
+        else if(key == 'p' || key == 'P' || key == 'o' || key == 'O' || key == 'm' || key == 'M')
+            ui_dashboard_editor_close();
+        else return;
+        if(ui_dashboard_editor_visible() || key == LV_KEY_UP || key == LV_KEY_DOWN ||
+           key == LV_KEY_ENTER || key == LV_KEY_ESC || key == 8) return;
+    }
     if(key == 'p' || key == 'P') {
         app_hide_quick_immediate();
-        ui_dock_clear();
-        ui_control_feedback_ownership_init();
-        ui_event_bus_clear();
-        s_powered_off = true;
-        (void)ui_state_machine_dispatch(UI_RIDE_EVENT_RESET);
-        (void)ui_router_replace(UI_ROUTE_POWER_OFF, UI_MOTION_PAGE_NONE);
+        app_set_display_blank(true);
         return;
     }
     if(key == 'o' || key == 'O') { app_show(UI_PAGE_POWER); return; }
@@ -2036,7 +2583,29 @@ static void app_commit_active_slider(int32_t screen_x) {
 
 void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
     if(event == NULL) return;
+    s_last_interaction_tick = lv_tick_get();
+    if(ui_router_current() == UI_PAGE_BOOT || s_boot_fade_state != APP_BOOT_FADE_IDLE) return;
+    if(s_display_blank) {
+        if(event->type == UI_INPUT_TOUCH_BEGIN) {
+            app_set_display_blank(false);
+            s_touch_sequence_blocked = true;
+        }
+        return;
+    }
     if(s_control_surface == NULL || s_powered_off) return;
+    if(ui_dashboard_editor_visible()) {
+        s_touch_sequence_blocked = true;
+        return;
+    }
+    if(ui_zone_editor_visible()) return;
+    if(!app_control_shade_visible() &&
+       ui_router_current() == UI_PAGE_ACHIEVEMENTS &&
+       ui_achievements_page_detail_visible()) {
+        /* If BACK closes the modal before finger release, consume the rest
+         * of that touch sequence instead of starting an underlying swipe. */
+        s_touch_sequence_blocked = true;
+        return;
+    }
 
     lv_point_t point = { .x = event->x, .y = event->y };
 
@@ -2084,6 +2653,8 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
               ui_settings_page_contains_scroll_point(point.x, point.y)) ||
              (route == UI_PAGE_SYSTEM &&
               ui_system_page_contains_scroll_point(point.x, point.y)) ||
+             (route == UI_PAGE_DEVICES &&
+              ui_devices_page_contains_scroll_point(point.x, point.y)) ||
              (route == UI_PAGE_SUMMARY &&
               ui_summary_page_contains_scroll_point(point.x, point.y)) ||
              (route == UI_PAGE_RIDE_DETAIL &&
@@ -2210,8 +2781,35 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
         return;
     }
 
-    if(event->type == UI_INPUT_TOUCH_END ||
-       event->type == UI_INPUT_TOUCH_CANCEL) {
+    if(event->type == UI_INPUT_TOUCH_CANCEL) {
+        if(s_navigation_map_gesture_owned) ui_navigation_cancel_pointer();
+        ui_control_center_exit_adjustment(false);
+        app_update_quick_states();
+        for(lv_indev_t *indev = lv_indev_get_next(NULL); indev != NULL;
+            indev = lv_indev_get_next(indev)) {
+            if(lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
+                lv_indev_reset(indev, NULL);
+                lv_indev_wait_release(indev);
+            }
+        }
+        s_touch_sequence_blocked = false;
+        s_dynamic_card_gesture_owned = false;
+        s_navigation_map_gesture_owned = false;
+        s_bottom_surface_gesture_owned = false;
+        s_page_scroll_gesture_owned = false;
+        s_pointer_dragging = s_page_swiping = s_home_swiping = false;
+        s_slider_dragging = s_slider_candidate = false;
+        s_active_slider = UI_CONTROL_CENTER_SLIDER_NONE;
+        s_shade_drag = APP_SHADE_DRAG_NONE;
+        if(app_control_shade_visible()) {
+            lv_obj_set_y(s_control_surface, 0);
+            ui_control_center_set_panel_height(
+                ui_system_control_shade_state() == UI_SYSTEM_CONTROL_SHADE_EXPANDED ?
+                UI_CONTROL_CENTER_PANEL_HEIGHT : UI_CONTROL_CENTER_COMPACT_HEIGHT);
+        }
+        return;
+    }
+    if(event->type == UI_INPUT_TOUCH_END) {
         if(s_touch_sequence_blocked) {
             s_touch_sequence_blocked = false;
             return;

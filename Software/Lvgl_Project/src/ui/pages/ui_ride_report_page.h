@@ -14,6 +14,8 @@ lv_obj_t *ui_ride_report_page_create(ui_ride_report_mode_t mode,
                                      void *user_data);
 bool ui_ride_report_page_set_model(ui_ride_report_mode_t mode,
                                    const ui_ride_report_model_t *model);
+/* UI-thread update after storage confirmation; preserves scroll and content. */
+void ui_ride_report_page_set_saved(ui_ride_report_mode_t mode, bool saved);
 void ui_ride_report_page_set_active(ui_ride_report_mode_t mode, bool active);
 bool ui_ride_report_page_handle_input(ui_ride_report_mode_t mode,
                                       ui_input_event_t input);

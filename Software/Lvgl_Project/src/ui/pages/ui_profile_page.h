@@ -11,6 +11,9 @@ lv_obj_t *ui_profile_page_create(ui_page_action_cb_t callback,
                                  void *user_data);
 void ui_profile_page_set_active(bool active);
 void ui_profile_page_refresh(void);
+/* UI-thread only; use RTC/GNSS UTC, zero marks an unknown clock. */
+void ui_profile_page_set_activity_time(int64_t now_utc);
+void ui_profile_page_set_preset(unsigned preset);
 bool ui_profile_page_handle_input(ui_input_event_t input);
 int32_t ui_profile_page_selected_index(void);
 

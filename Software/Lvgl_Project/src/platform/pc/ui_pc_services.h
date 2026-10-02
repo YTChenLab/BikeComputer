@@ -16,6 +16,8 @@ void ui_pc_services_register(void);
 void ui_pc_services_set_next_gnss_result(bool success);
 void ui_pc_services_set_next_storage_result(bool success);
 void ui_pc_services_set_next_command_result(bool success);
+/* UI-task only, before the first backend tick; repeatable visual captures. */
+void ui_pc_services_set_demo_seed(uint32_t seed);
 bool ui_pc_services_gnss_busy(void);
 bool ui_pc_services_storage_busy(void);
 

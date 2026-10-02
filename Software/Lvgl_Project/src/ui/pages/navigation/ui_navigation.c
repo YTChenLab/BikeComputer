@@ -28,6 +28,12 @@ typedef struct
 
 static ui_navigation_context_t s_navigation;
 
+void ui_navigation_cancel_pointer(void)
+{
+    if(s_navigation.created && s_navigation.map.root)
+        lv_obj_send_event(s_navigation.map.root, LV_EVENT_PRESS_LOST, NULL);
+}
+
 static const char *direction_name(nav_direction_t direction)
 {
     switch(direction) {
@@ -108,6 +114,7 @@ void ui_navigation_create(lv_obj_t *screen)
     ui_nav_command_dock_create(&s_navigation.command_dock, screen);
 
     s_navigation.model = (nav_model_t){
+        .demo = true,
         .speed = 28.6f,
         .distance = 12.6f,
         .remaining_ascent_m = 156U,
@@ -122,6 +129,10 @@ void ui_navigation_create(lv_obj_t *screen)
         .ui_state = NAV_UI_CRUISE,
         .road_name = "科技二路"
     };
+    if(!ui_navigation_service_demo_enabled()) {
+        s_navigation.model = (nav_model_t){ .zoom = 14, .ui_state = NAV_UI_GPS_WEAK };
+        snprintf(s_navigation.model.road_name, sizeof(s_navigation.model.road_name), "等待定位");
+    }
     apply_model(&s_navigation.model);
     s_navigation.created = true;
 }
@@ -163,7 +174,7 @@ bool ui_navigation_handle_input(ui_input_event_t input)
 
 void ui_navigation_demo_next_state(void)
 {
-    if(!s_navigation.created) return;
+    if(!s_navigation.created || !ui_navigation_service_demo_enabled()) return;
     nav_model_t model = s_navigation.model;
     static const struct
     {

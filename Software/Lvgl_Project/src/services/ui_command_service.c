@@ -16,6 +16,8 @@ typedef struct
 {
     ui_command_t queued[UI_COMMAND_QUEUE_MAX];
     ui_command_result_t results[UI_COMMAND_RESULT_MAX];
+    ui_state_adapter_snapshot_t result_states[UI_COMMAND_RESULT_MAX];
+    ui_state_adapter_mask_t result_fields[UI_COMMAND_RESULT_MAX];
     ui_command_observer_t observers[UI_COMMAND_OBSERVER_MAX];
     ui_command_backend_t backend;
     ui_command_t active;
@@ -31,6 +33,7 @@ typedef struct
 } ui_command_service_context_t;
 
 static ui_command_service_context_t s_commands;
+static uint32_t s_next_id = 1;
 
 static bool final_status(ui_command_status_t status)
 {
@@ -72,8 +75,11 @@ static void remove_command(uint8_t index)
 
 static void remove_result(uint8_t index)
 {
-    for(uint8_t next = index + 1U; next < s_commands.result_count; next++)
+    for(uint8_t next = index + 1U; next < s_commands.result_count; next++) {
         s_commands.results[next - 1U] = s_commands.results[next];
+        s_commands.result_states[next - 1U] = s_commands.result_states[next];
+        s_commands.result_fields[next - 1U] = s_commands.result_fields[next];
+    }
     s_commands.result_count--;
 }
 
@@ -95,7 +101,7 @@ void ui_command_service_init(void)
 {
     ui_concurrency_lock();
     memset(&s_commands, 0, sizeof(s_commands));
-    s_commands.next_command_id = 1U;
+    s_commands.next_command_id = s_next_id;
     s_commands.next_observer_id = 1;
     ui_concurrency_unlock();
 }
@@ -155,6 +161,7 @@ uint32_t ui_command_service_submit(ui_command_type_t type, int32_t value,
 
     uint32_t id = s_commands.next_command_id++;
     if(s_commands.next_command_id == 0U) s_commands.next_command_id = 1U;
+    s_next_id = s_commands.next_command_id;
     s_commands.queued[s_commands.queued_count++] = (ui_command_t) {
         .id = id,
         .type = type,
@@ -169,14 +176,25 @@ bool ui_command_service_complete(uint32_t command_id,
                                  ui_command_status_t status,
                                  int32_t error_code)
 {
+    return ui_command_service_complete_with_state(command_id, status, error_code, NULL, 0);
+}
+
+bool ui_command_service_complete_with_state(uint32_t command_id,
+    ui_command_status_t status, int32_t error_code,
+    const ui_state_adapter_snapshot_t *state, ui_state_adapter_mask_t fields)
+{
     if(command_id == 0U || !final_status(status)) return false;
+    if((fields != 0 && state == NULL) || (fields & ~UI_STATE_ADAPTER_ALL)) return false;
     ui_concurrency_lock();
     if(s_commands.result_count >= UI_COMMAND_RESULT_MAX) {
         s_commands.dropped++;
         ui_concurrency_unlock();
         return false;
     }
-    s_commands.results[s_commands.result_count++] = (ui_command_result_t) {
+    uint8_t index = s_commands.result_count++;
+    s_commands.result_fields[index] = fields;
+    if(state != NULL) s_commands.result_states[index] = *state;
+    s_commands.results[index] = (ui_command_result_t) {
         .id = command_id,
         .status = status,
         .error_code = error_code
@@ -198,9 +216,16 @@ static bool finish_active_from_result(ui_command_result_t *result)
         if(s_commands.results[index].id != s_commands.active.id) continue;
         *result = s_commands.results[index];
         result->type = s_commands.active.type;
+        result->value = s_commands.active.value;
+        ui_state_adapter_snapshot_t state = s_commands.result_states[index];
+        ui_state_adapter_mask_t fields = s_commands.result_fields[index];
         remove_result(index);
         s_commands.active_valid = false;
         ui_concurrency_unlock();
+        if(result->status == UI_COMMAND_STATUS_SUCCESS && fields != 0) {
+            (void)ui_state_adapter_submit(&state, fields);
+            (void)ui_state_adapter_process();
+        }
         return true;
     }
     for(uint8_t index = 0; index < s_commands.result_count;) {
@@ -283,6 +308,7 @@ void ui_command_service_process(uint32_t elapsed_ms)
             .id = command.id,
             .type = command.type,
             .status = UI_COMMAND_STATUS_REJECTED,
+            .value = command.value,
             .error_code = 0
         };
     }
@@ -291,6 +317,7 @@ void ui_command_service_process(uint32_t elapsed_ms)
             .id = command.id,
             .type = command.type,
             .status = UI_COMMAND_STATUS_PENDING,
+            .value = command.value,
             .error_code = 0
         };
     }

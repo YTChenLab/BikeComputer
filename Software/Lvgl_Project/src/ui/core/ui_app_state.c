@@ -67,19 +67,9 @@ void ui_app_state_init(void)
     s_app_state.next_observer_id = 1;
     s_app_state.state.current_route = UI_APP_ROUTE_UNKNOWN;
     s_app_state.state.ride_state = UI_RIDE_STATE_IDLE;
-    s_app_state.state.clock_hour = 10;
-    s_app_state.state.clock_minute = 24;
-    s_app_state.state.battery_percent = 82;
-    s_app_state.state.satellites = 12;
-    s_app_state.state.wifi_enabled = true;
-    s_app_state.state.wifi_connected = true;
-    s_app_state.state.bluetooth_enabled = true;
-    s_app_state.state.bluetooth_connected = true;
     s_app_state.state.gps_enabled = true;
     s_app_state.state.sound_level = 62;
     s_app_state.state.brightness_level = 75;
-    copy_name(s_app_state.state.wifi_name, "Bike-SpeedView");
-    copy_name(s_app_state.state.bluetooth_name, "Riding Sensors");
     ui_concurrency_unlock();
 }
 
@@ -148,6 +138,16 @@ void ui_app_state_set_ride_state(ui_ride_state_t ride_state)
     if(changed) notify(UI_APP_STATE_CHANGE_RIDE);
 }
 
+void ui_app_state_set_status_validity(bool clock_valid, bool battery_valid)
+{
+    ui_concurrency_lock();
+    bool changed = s_app_state.state.clock_valid != clock_valid || s_app_state.state.battery_valid != battery_valid;
+    s_app_state.state.clock_valid = clock_valid;
+    s_app_state.state.battery_valid = battery_valid;
+    ui_concurrency_unlock();
+    if(changed) notify(UI_APP_STATE_CHANGE_STATUS);
+}
+
 void ui_app_state_set_status(uint8_t hour, uint8_t minute,
                              uint8_t battery_percent, bool charging,
                              bool gps_enabled, uint8_t satellites)
@@ -156,7 +156,7 @@ void ui_app_state_set_status(uint8_t hour, uint8_t minute,
     minute = (uint8_t)(minute % 60U);
     battery_percent = clamp_percent(battery_percent);
     ui_concurrency_lock();
-    bool changed = s_app_state.state.clock_hour != hour ||
+    bool changed = !s_app_state.state.clock_valid || s_app_state.state.clock_hour != hour ||
                    s_app_state.state.clock_minute != minute ||
                    s_app_state.state.battery_percent != battery_percent ||
                    s_app_state.state.battery_charging != charging ||
@@ -168,6 +168,7 @@ void ui_app_state_set_status(uint8_t hour, uint8_t minute,
     s_app_state.state.battery_charging = charging;
     s_app_state.state.gps_enabled = gps_enabled;
     s_app_state.state.satellites = satellites;
+    s_app_state.state.clock_valid = s_app_state.state.battery_valid = true;
     ui_concurrency_unlock();
     if(changed) notify(UI_APP_STATE_CHANGE_STATUS |
                        UI_APP_STATE_CHANGE_CONNECTIVITY);
@@ -181,7 +182,7 @@ void ui_app_state_set_telemetry(uint8_t hour, uint8_t minute,
     minute = (uint8_t)(minute % 60U);
     battery_percent = clamp_percent(battery_percent);
     ui_concurrency_lock();
-    bool changed = s_app_state.state.clock_hour != hour ||
+    bool changed = !s_app_state.state.clock_valid || s_app_state.state.clock_hour != hour ||
                    s_app_state.state.clock_minute != minute ||
                    s_app_state.state.battery_percent != battery_percent ||
                    s_app_state.state.battery_charging != charging ||
@@ -191,6 +192,7 @@ void ui_app_state_set_telemetry(uint8_t hour, uint8_t minute,
     s_app_state.state.battery_percent = battery_percent;
     s_app_state.state.battery_charging = charging;
     s_app_state.state.satellites = satellites;
+    s_app_state.state.clock_valid = s_app_state.state.battery_valid = true;
     ui_concurrency_unlock();
     if(changed) notify(UI_APP_STATE_CHANGE_STATUS);
 }
@@ -200,10 +202,11 @@ void ui_app_state_set_clock(uint8_t hour, uint8_t minute)
     hour = (uint8_t)(hour % 24U);
     minute = (uint8_t)(minute % 60U);
     ui_concurrency_lock();
-    bool changed = s_app_state.state.clock_hour != hour ||
+    bool changed = !s_app_state.state.clock_valid || s_app_state.state.clock_hour != hour ||
                    s_app_state.state.clock_minute != minute;
     s_app_state.state.clock_hour = hour;
     s_app_state.state.clock_minute = minute;
+    s_app_state.state.clock_valid = true;
     ui_concurrency_unlock();
     if(changed) notify(UI_APP_STATE_CHANGE_STATUS);
 }
@@ -212,10 +215,11 @@ void ui_app_state_set_battery(uint8_t percent, bool charging)
 {
     percent = clamp_percent(percent);
     ui_concurrency_lock();
-    bool changed = s_app_state.state.battery_percent != percent ||
+    bool changed = !s_app_state.state.battery_valid || s_app_state.state.battery_percent != percent ||
                    s_app_state.state.battery_charging != charging;
     s_app_state.state.battery_percent = percent;
     s_app_state.state.battery_charging = charging;
+    s_app_state.state.battery_valid = true;
     ui_concurrency_unlock();
     if(changed) notify(UI_APP_STATE_CHANGE_STATUS);
 }

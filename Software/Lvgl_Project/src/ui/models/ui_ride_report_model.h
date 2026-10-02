@@ -31,6 +31,7 @@ typedef struct
     int64_t finished_at_utc;
     uint32_t duration_seconds;
     uint32_t moving_time_seconds;
+    uint8_t metric_flags; /* UI_REPORT_HAS_* and UI_REPORT_METRICS_KNOWN. */
     float distance_km;
     float average_speed_kmh;
     float maximum_speed_kmh;

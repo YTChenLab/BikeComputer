@@ -23,6 +23,11 @@ void ui_summary_page_set_active(bool active)
     ui_ride_report_page_set_active(UI_RIDE_REPORT_SUMMARY_MODE, active);
 }
 
+void ui_summary_page_set_saved(bool saved)
+{
+    ui_ride_report_page_set_saved(UI_RIDE_REPORT_SUMMARY_MODE,saved);
+}
+
 bool ui_summary_page_handle_input(ui_input_event_t input)
 {
     return ui_ride_report_page_handle_input(UI_RIDE_REPORT_SUMMARY_MODE,

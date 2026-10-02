@@ -23,6 +23,8 @@ typedef struct
     uint16_t air_quality_index;
     ui_weather_condition_t condition;
     uint32_t version;
+    bool quality_known, valid;
+    uint32_t sampled_at_ms, stale_after_ms;
 } ui_weather_data_t;
 
 typedef void (*ui_weather_observer_cb_t)(const ui_weather_data_t *weather,
@@ -31,6 +33,8 @@ typedef void (*ui_weather_observer_cb_t)(const ui_weather_data_t *weather,
 void ui_weather_model_init(void);
 bool ui_weather_model_get(ui_weather_data_t *weather);
 bool ui_weather_model_submit(const ui_weather_data_t *weather);
+/* UI-thread drain; producer submit never invokes a UI observer. */
+bool ui_weather_model_process(uint32_t now_ms);
 int32_t ui_weather_model_subscribe(ui_weather_observer_cb_t callback,
                                    void *user_data);
 bool ui_weather_model_unsubscribe(int32_t subscription_id);

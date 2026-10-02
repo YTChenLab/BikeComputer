@@ -6,19 +6,22 @@
 #define UI_TOKEN_SCREEN_WIDTH   480
 #define UI_TOKEN_SCREEN_HEIGHT  854
 
-/* Color roles. Values preserve the confirmed v1.0.0 visual baseline. */
+/* Black canvas, neutral surfaces and one yellow product accent. */
 #define UI_TOKEN_COLOR_CANVAS            lv_color_hex(0x000000)
-#define UI_TOKEN_COLOR_SURFACE           lv_color_hex(0x030706)
+#define UI_TOKEN_COLOR_SURFACE           lv_color_hex(0x181818)
 #define UI_TOKEN_COLOR_TEXT_PRIMARY      lv_color_hex(0xFFFFFF)
-#define UI_TOKEN_COLOR_TEXT_SECONDARY    lv_color_hex(0xA8ACAD)
-#define UI_TOKEN_COLOR_TEXT_TERTIARY     lv_color_hex(0x8F9495)
-#define UI_TOKEN_COLOR_ACCENT            lv_color_hex(0xFFD900)
+#define UI_TOKEN_COLOR_TEXT_SECONDARY    lv_color_hex(0xAAAAAA)
+#define UI_TOKEN_COLOR_TEXT_TERTIARY     lv_color_hex(0x888888)
+#define UI_TOKEN_ACCENT_HEX              0xFFD900
+#define UI_TOKEN_COLOR_ACCENT            lv_color_hex(UI_TOKEN_ACCENT_HEX)
 #define UI_TOKEN_COLOR_CRITICAL          lv_color_hex(0xFF4D4F)
-#define UI_TOKEN_COLOR_LINE              lv_color_hex(0xA7D8EF)
-#define UI_TOKEN_COLOR_SURFACE_BORDER    lv_color_hex(0xD6D8D8)
-#define UI_TOKEN_COLOR_SEGMENT_INACTIVE  lv_color_hex(0x30424F)
-#define UI_TOKEN_COLOR_DECORATION        lv_color_hex(0x47677A)
-#define UI_TOKEN_COLOR_INDICATOR         lv_color_hex(0x909596)
+#define UI_TOKEN_COLOR_LINE              lv_color_hex(0xAAAAAA)
+#define UI_TOKEN_COLOR_SURFACE_BORDER    lv_color_hex(0xD6D6D6)
+#define UI_TOKEN_COLOR_SURFACE_OUTLINE   lv_color_hex(0x303030)
+#define UI_TOKEN_COLOR_DIVIDER           lv_color_hex(0x303030)
+#define UI_TOKEN_COLOR_SEGMENT_INACTIVE  lv_color_hex(0x303030)
+#define UI_TOKEN_COLOR_DECORATION        lv_color_hex(0x484848)
+#define UI_TOKEN_COLOR_INDICATOR         lv_color_hex(0x909090)
 
 /* Opacity roles. */
 #define UI_TOKEN_OPA_PRIMARY    LV_OPA_COVER
@@ -43,14 +46,23 @@
 #define UI_TOKEN_BORDER_THIN        1
 #define UI_TOKEN_BORDER_FOCUS       2
 
+/* Product layout; the diagnostic overlay never reserves page height. */
+#define UI_PAGE_BOTTOM_MARGIN              16
+#define UI_PAGE_CONTENT_BOTTOM             (UI_TOKEN_SCREEN_HEIGHT - UI_PAGE_BOTTOM_MARGIN)
+#define UI_PAGE_ACTION_HEIGHT              72
+#define UI_PAGE_ACTION_Y                   (UI_PAGE_CONTENT_BOTTOM - UI_PAGE_ACTION_HEIGHT)
+#define UI_PAGE_FOOTNOTE_HEIGHT             28
+#define UI_PAGE_FOOTNOTE_Y                  (UI_PAGE_CONTENT_BOTTOM - UI_PAGE_FOOTNOTE_HEIGHT)
+#define UI_PAGE_LIST_WITH_FOOTNOTE_BOTTOM   (UI_PAGE_FOOTNOTE_Y - UI_TOKEN_SPACE_12)
+
 /* Shared Bottom Interaction Surface geometry. */
 #define UI_BOTTOM_SURFACE_X                 8
-#define UI_BOTTOM_SURFACE_BOTTOM_MARGIN    14
+#define UI_BOTTOM_SURFACE_BOTTOM_MARGIN    UI_PAGE_BOTTOM_MARGIN
 #define UI_BOTTOM_SURFACE_WIDTH           464
 #define UI_BOTTOM_SURFACE_MINI_HEIGHT     156
 #define UI_BOTTOM_SURFACE_NORMAL_HEIGHT   226
 #define UI_BOTTOM_SURFACE_EXPANDED_HEIGHT 442
-#define UI_BOTTOM_SURFACE_NORMAL_Y        614
+#define UI_BOTTOM_SURFACE_NORMAL_Y        (UI_PAGE_CONTENT_BOTTOM - UI_BOTTOM_SURFACE_NORMAL_HEIGHT)
 
 /* Motion roles. */
 #define UI_TOKEN_MOTION_FAST_MS      120U

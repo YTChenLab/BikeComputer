@@ -96,6 +96,7 @@ typedef struct
      * 骑行时间没有单位，因此可以传入空字符串。
      */
     lv_obj_t *unit;
+    const lv_font_t *preferred_value_font;
 
 } ui_metric_card_t;
 
@@ -154,6 +155,7 @@ void ui_metric_card_set_unit(
     ui_metric_card_t *card,
     const char *unit
 );
+void ui_metric_card_set_value_font(ui_metric_card_t *card, const lv_font_t *font);
 
 
 #endif /* UI_METRIC_CARD_H */

@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-01",
+  "render_source": "LVGL 9.3.0-dev native RGB565 test framebuffer",
+  "resolution": [
+    480,
+    854
+  ],
+  "full_partial_compared": 215,
+  "full_partial_missing": [],
+  "full_partial_mismatches": [],
+  "profile_fixture": "10 synthetic saved rides: each 55 km, 5 h, 250 m; not user history",
+  "home_fixture": "Synthetic view snapshot: lifetime 1234 km, 73 h 24 m, 18460 m; latest 52.7 km, 2 h 07 m, 836 m; not user history",
+  "hardware_frame_rate_measured": false,
+  "preview_sha256": {
+    "home": "70dff90a885f17afc9e0fdc9018795ded1a2fe216c999c70f861963536f1e831",
+    "home_populated": "a65c7c8bbf5579fc75f0c79820c1d67d9695d46092cd7efae827770e597f366e",
+    "home_unavailable": "d23525bc2c7d39aeb2b5acb017e220395cddadd22b041a0464c8542aaed8c7c8",
+    "home_long_values": "97b80626957fd722566b349f528ea2621c3b54d17e207143cadfb4c653be81e6",
+    "profile_empty": "918999508c2c74e3f839cbf6a669fb178ccff59c2537d50321dd45209e85a2f3",
+    "profile_populated": "7108f599ea7310b3aac20ee149e91e8646f93f7e148c192c1cd82d4dfafb1436",
+    "profile_complete": "9467456f514e4a7e2f5fe57df7a536e37ac786dfce981c4d7190739508e1dbc7",
+    "settings_top": "8f899341eb94137931820372e7fd62b84e32da8015fced3e44c5ae1e93d1b839",
+    "settings_middle": "a71cc9ade227f9e62df8fde0ff939e8e289f2fc97802f9858cfcf14469130b52",
+    "settings_bottom": "d4547c1f25f75541deae4466594fbaded2a62e2ae40a28a167bcc09ab974fbec",
+    "boot_30": "e06ad529e9abf498b0aa8e424141398dc10284cee115b6e90619ca767d69ab19",
+    "handoff_48": "08eb63504f5264cfbda4a59a35d30a30b25dd68bd018e2b6390707235913a841",
+    "handoff_72": "70dff90a885f17afc9e0fdc9018795ded1a2fe216c999c70f861963536f1e831"
+  }
+}

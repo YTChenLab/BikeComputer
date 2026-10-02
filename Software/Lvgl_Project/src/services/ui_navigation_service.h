@@ -62,6 +62,16 @@ typedef struct
     uint32_t direction_distance;
     nav_ui_state_t ui_state;
     char road_name[64];
+    bool demo;
+    bool position_valid;
+    uint32_t sampled_at_ms, stale_after_ms;
+    /* Local geographic window supplied by route/GNSS software. No road
+     * network or route-planning engine is inferred from position alone. */
+    bool map_geometry_valid;
+    double map_origin_latitude, map_origin_longitude;
+    float meters_per_pixel;
+    uint8_t route_point_count;
+    double route_latitude[16], route_longitude[16];
 } nav_model_t;
 
 typedef void (*ui_navigation_observer_cb_t)(const nav_model_t *model,
@@ -69,6 +79,8 @@ typedef void (*ui_navigation_observer_cb_t)(const nav_model_t *model,
                                              void *user_data);
 
 void ui_navigation_service_init(void);
+void ui_navigation_service_set_demo_enabled(bool enabled);
+bool ui_navigation_service_demo_enabled(void);
 int32_t ui_navigation_service_subscribe(ui_navigation_observer_cb_t callback,
                                         void *user_data);
 bool ui_navigation_service_unsubscribe(int32_t subscription_id);
@@ -78,6 +90,7 @@ void ui_navigation_service_submit(const nav_model_t *model);
 
 /* UI-thread only. */
 bool ui_navigation_service_process(void);
+bool ui_navigation_service_expire(uint32_t now_ms);
 bool ui_navigation_service_get(nav_model_t *model, uint32_t *version);
 
 #endif /* UI_NAVIGATION_SERVICE_H */

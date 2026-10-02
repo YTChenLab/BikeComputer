@@ -7,6 +7,8 @@
 #include "ui/core/ui_sound.h"
 #include "ui/models/ui_home_data_model.h"
 #include "ui/models/ui_ride_history_model.h"
+#include "ui/models/ui_achievement_model.h"
+#include "ui/models/ui_dashboard_layout.h"
 #include "lvgl.h"
 
 #include <assert.h>
@@ -90,6 +92,14 @@ static void finish_animations(void)
         (void)lv_timer_handler();
     }
 }
+static lv_obj_t *find_label(lv_obj_t *root,const char *text)
+{
+    if(lv_obj_check_type(root,&lv_label_class) && strcmp(lv_label_get_text(root),text)==0) return root;
+    for(unsigned i=0;i<lv_obj_get_child_count(root);++i) {
+        lv_obj_t *label=find_label(lv_obj_get_child(root,i),text); if(label) return label;
+    }
+    return NULL;
+}
 
 int main(void)
 {
@@ -102,10 +112,38 @@ int main(void)
                            sizeof(s_draw_buffer),
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(display, flush);
+    lv_sysmon_hide_performance(display);
     ui_motion_init();
     ui_sound_init();
     ui_app_state_init();
     ui_home_data_model_init();
+    ui_ride_history_model_init();
+    /* Catalog boundaries and lifetime progress must be independent of the
+     * number of detailed records retained in RAM. */
+    ui_ride_history_totals_t totals = {0};
+    for(size_t i = 0; i < UI_ACHIEVEMENT_COUNT; ++i) {
+        ui_achievement_progress_t progress;
+        assert(ui_achievement_evaluate(i, &totals, &progress));
+        assert(!progress.unlocked && progress.progress_permille == 0U);
+    }
+    ui_achievement_progress_t progress;
+    totals.total_distance_km = 99.999;
+    assert(ui_achievement_evaluate(4, &totals, &progress));
+    assert(!progress.unlocked && progress.progress_permille < 1000U);
+    totals.total_distance_km = 100;
+    assert(ui_achievement_evaluate(4, &totals, &progress));
+    assert(progress.unlocked && progress.remaining == 0 && progress.progress_permille == 1000U);
+    totals = (ui_ride_history_totals_t){.ride_count = 100, .total_distance_km = 5000,
+        .total_ascent_m = 50000, .total_duration_seconds = 500U * 3600U};
+    assert(ui_ride_history_model_set_totals(&totals));
+    assert(ui_ride_history_model_count() == 0);
+    ui_ride_history_totals_t persisted;
+    ui_ride_history_model_totals(&persisted);
+    for(size_t i = 0; i < UI_ACHIEVEMENT_COUNT; ++i) {
+        assert(ui_achievement_evaluate(i, &persisted, &progress));
+        assert(progress.unlocked && progress.progress_permille == 1000U);
+    }
+    assert(!ui_achievement_evaluate(UI_ACHIEVEMENT_COUNT, &totals, &progress));
     ui_ride_history_model_init();
     ui_background_init();
     ui_page_status_registry_init();
@@ -117,17 +155,22 @@ int main(void)
     lv_obj_update_layout(profile);
     lv_refr_now(display);
     assert(!s_render_failed);
+    assert(!find_label(profile,"LV 12") && !find_label(profile,"ACTIVE"));
+    assert(find_label(profile,"0 / 16"));
+    assert(find_label(profile,"首骑完成"));
+    assert(find_label(profile,"暂无记录"));
+    assert(find_label(profile,"日期未校准"));
     assert(ui_profile_page_selected_index() == 0);
     assert(ui_profile_page_handle_input(UI_INPUT_ENCODER_PRESS));
-    assert(s_action == UI_PAGE_ACTION_ACHIEVEMENT);
+    assert(s_action == UI_PAGE_ACTION_PROFILE_REFRESH);
     assert(ui_profile_page_handle_input(UI_INPUT_ENCODER_CW));
     assert(ui_profile_page_selected_index() == 1);
     assert(ui_profile_page_handle_input(UI_INPUT_ENCODER_PRESS));
-    assert(s_action == UI_PAGE_ACTION_HISTORY);
+    assert(s_action == UI_PAGE_ACTION_ACHIEVEMENT);
     assert(ui_profile_page_handle_input(UI_INPUT_ENCODER_CW));
     assert(ui_profile_page_selected_index() == 2);
     assert(ui_profile_page_handle_input(UI_INPUT_ENCODER_PRESS));
-    assert(s_action == UI_PAGE_ACTION_SETTINGS);
+    assert(s_action == UI_PAGE_ACTION_HISTORY);
     save_snapshot_if_requested(profile, "UI_PROFILE_SNAPSHOT_PATH");
     ui_profile_page_set_active(false);
 
@@ -141,17 +184,22 @@ int main(void)
     assert(ui_achievements_page_contains_scroll_point(16, 260));
     assert(ui_achievements_page_contains_scroll_point(463, 825));
     assert(!ui_achievements_page_contains_scroll_point(15, 260));
-    assert(!ui_achievements_page_contains_scroll_point(16, 826));
-    assert(ui_achievements_page_count() == 6U);
+    assert(ui_achievements_page_contains_scroll_point(16, UI_PAGE_CONTENT_BOTTOM - 1));
+    assert(!ui_achievements_page_contains_scroll_point(16, UI_PAGE_CONTENT_BOTTOM));
+    assert(ui_achievements_page_count() == UI_ACHIEVEMENT_COUNT);
     assert(ui_achievements_page_selected_index() == 0);
-    for(int32_t index = 1; index < 6; index++) {
+    for(int32_t index = 1; index < (int32_t)UI_ACHIEVEMENT_COUNT; index++) {
         assert(ui_achievements_page_handle_input(UI_INPUT_ENCODER_CW));
         assert(ui_achievements_page_selected_index() == index);
     }
     assert(ui_achievements_page_handle_input(UI_INPUT_ENCODER_CW));
-    assert(ui_achievements_page_selected_index() == 5);
+    assert(ui_achievements_page_selected_index() == UI_ACHIEVEMENT_COUNT - 1);
     assert(ui_achievements_page_handle_input(UI_INPUT_ENCODER_PRESS));
     finish_animations();
+    assert(ui_achievements_page_detail_visible());
+    assert(!ui_achievements_page_contains_scroll_point(16, 260));
+    assert(ui_achievements_page_handle_input(UI_INPUT_BACK));
+    assert(!ui_achievements_page_detail_visible());
 
     ui_ride_record_t records[10] = {0};
     for(uint32_t index = 0U; index < 10U; index++) {
@@ -159,14 +207,83 @@ int main(void)
         records[index].distance_km = 55.0f;
         records[index].duration_seconds = 5U * 3600U;
         records[index].ascent_m = 250U;
+        records[index].average_speed_kmh=11.0f;
     }
     assert(ui_ride_history_model_replace(records, 10U));
+    const int64_t activity_now = 1750000000;
+    ui_profile_page_set_activity_time(activity_now);
     ui_achievements_page_refresh();
     ui_profile_page_refresh();
+    assert(find_label(profile,"8 / 16"));
+    assert(find_label(profile,"千里骑士"));
+    assert(find_label(profile,"还需 450.0 km"));
+    assert(find_label(profile,"记录日期缺失"));
+    /* Calendar activity is independent from lifetime totals: exclude old,
+     * future and undated records, and preserve missing distance quality. */
+    records[0].started_at_utc = activity_now - 86400;
+    records[1].started_at_utc = activity_now - 30LL * 86400;
+    records[2].started_at_utc = activity_now + 86400;
+    for(unsigned i=0U;i<3U;++i)
+        records[i].finished_at_utc=records[i].started_at_utc+records[i].duration_seconds;
+    assert(ui_ride_history_model_replace(records, 10U));
+    ui_profile_page_refresh();
+    assert(find_label(profile,"1 次 · 55 km"));
+    records[0].metric_flags = UI_REPORT_METRICS_KNOWN;
+    assert(ui_ride_history_model_replace(records, 10U));
+    ui_profile_page_refresh();
+    assert(find_label(profile,"1 次 · -- km"));
+    records[0].metric_flags = 0;
+    for(unsigned i=0U;i<10U;++i) {
+        records[i].started_at_utc=activity_now-(int64_t)i*86400;
+        records[i].finished_at_utc=records[i].started_at_utc+records[i].duration_seconds;
+    }
+    assert(ui_ride_history_model_replace(records, 10U));
+    ui_profile_page_refresh();
+    assert(find_label(profile,"10 次 · 550 km"));
+    /* No invisible legacy captions are created merely to satisfy tests. */
+    assert(!find_label(profile,"上次平均速度  11.0 km/h"));
+    assert(!find_label(profile,"个人主页"));
+    ui_profile_page_set_preset(UI_DASHBOARD_CLIMB);
+    assert(find_label(profile,"爬坡"));
+    for(size_t i = 1; i < UI_ACHIEVEMENT_COUNT; ++i)
+        assert(ui_achievements_page_handle_input(UI_INPUT_ENCODER_CCW));
+    finish_animations();
     lv_refr_now(display);
     assert(!s_render_failed);
     save_snapshot_if_requested(achievements,
                                "UI_ACHIEVEMENTS_SNAPSHOT_PATH");
+    assert(ui_achievements_page_handle_input(UI_INPUT_ENCODER_PRESS));
+    finish_animations();
+    save_snapshot_if_requested(achievements, "UI_ACHIEVEMENT_DETAIL_SNAPSHOT_PATH");
+    ui_achievements_page_set_active(false);
+    assert(!ui_achievements_page_detail_visible());
+    lv_screen_load(profile); ui_profile_page_set_active(true); finish_animations();
+    save_snapshot_if_requested(profile,"UI_PROFILE_POPULATED_SNAPSHOT_PATH");
+    assert(!s_render_failed);
+    totals=(ui_ride_history_totals_t){.ride_count=100,.total_distance_km=5000,
+        .total_ascent_m=50000,.total_duration_seconds=500U*3600U};
+    assert(ui_ride_history_model_set_totals(&totals)); ui_profile_page_refresh();
+    assert(find_label(profile,"16 / 16"));
+    assert(find_label(profile,"全部成就已达成"));
+    save_snapshot_if_requested(profile,"UI_PROFILE_COMPLETE_SNAPSHOT_PATH");
+    ui_ride_history_model_init();
+    totals=(ui_ride_history_totals_t){.ride_count=20000,.total_distance_km=400000,
+        .total_duration_seconds=20000U*12U*60U};
+    assert(ui_ride_history_model_set_totals(&totals)); ui_profile_page_refresh();
+    assert(ui_ride_history_model_count()==0);
+    assert(find_label(profile,"20000"));
+    assert(find_label(profile,"暂无可读活动"));
+    totals.ride_count=UINT32_MAX;
+    assert(ui_ride_history_model_set_totals(&totals)); ui_profile_page_refresh();
+    lv_obj_update_layout(profile);
+    lv_obj_t *count_label=find_label(profile,"4294967295");
+    assert(count_label);
+    lv_point_t text_size;
+    lv_text_get_size(&text_size,lv_label_get_text(count_label),
+        lv_obj_get_style_text_font(count_label,0),0,0,LV_COORD_MAX,LV_TEXT_FLAG_EXPAND);
+    assert(text_size.x<=lv_obj_get_width(count_label));
+    lv_refr_now(display); assert(!s_render_failed);
+    ui_profile_page_set_active(false);
 
     /* The application currently owns more than ten status-bearing pages.
      * Keep a regression check here so adding routes cannot silently leave

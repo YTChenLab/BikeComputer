@@ -12,6 +12,7 @@
 
 #include "../core/ui_colors.h"
 #include "../core/ui_theme.h"
+#include "lvgl/src/misc/lv_text_private.h"
 
 #include <string.h>
 
@@ -27,6 +28,17 @@
  * 数字宽度会随内容变化；每次更新后都重新计算组宽，保证每张卡片
  * 的读数在自身 237 px 区域内居中，同时使单位的底部与数字底部对齐。
  */
+static bool font_supports_value(const lv_font_t *font, const char *text)
+{
+    uint32_t offset=0;
+    while(text[offset]) {
+        uint32_t letter=lv_text_encoded_next(text,&offset);
+        lv_font_glyph_dsc_t glyph;
+        if(!lv_font_get_glyph_dsc(font,&glyph,letter,0) || glyph.is_placeholder) return false;
+    }
+    return true;
+}
+
 static void ui_metric_card_layout(ui_metric_card_t *card)
 {
     if(card == NULL || card->root == NULL || card->title == NULL ||
@@ -42,6 +54,17 @@ static void ui_metric_card_layout(ui_metric_card_t *card)
     const char *unit_text = lv_label_get_text(card->unit);
     const bool has_unit = unit_text != NULL && unit_text[0] != '\0';
     const int32_t unit_gap = has_unit ? 7 : 0;
+    const int32_t available = card_width - unit_gap -
+        (has_unit ? lv_obj_get_width(card->unit) : 0) - (has_unit ? 16 : 8);
+    const lv_font_t *fonts[] = {card->preferred_value_font,
+        UI_FONT_METRIC_VALUE_SMALL, &lv_font_montserrat_48, &lv_font_montserrat_32,
+        &lv_font_montserrat_24, &lv_font_montserrat_16};
+    for(unsigned i = 0; i < sizeof(fonts) / sizeof(fonts[0]); ++i) {
+        if(fonts[i] == NULL || !font_supports_value(fonts[i],lv_label_get_text(card->value))) continue;
+        lv_obj_set_style_text_font(card->value, fonts[i], 0);
+        lv_obj_update_layout(card->root);
+        if(lv_obj_get_width(card->value) <= available) break;
+    }
     const int32_t value_width = lv_obj_get_width(card->value);
     const int32_t value_height = lv_obj_get_height(card->value);
     const int32_t unit_width = has_unit ? lv_obj_get_width(card->unit) : 0;
@@ -49,16 +72,16 @@ static void ui_metric_card_layout(ui_metric_card_t *card)
     const int32_t group_width = value_width + unit_gap + unit_width;
     const int32_t value_x = (card_width - group_width) / 2;
     /*
-     * 读数紧跟标题，而不是压在卡片底部。
-     * 常规 68 px 数字保留 22 px 底部呼吸空间；较短的 48 px 读数
-     * 额外上移，使三行卡片的标题/数值节奏一致。
+     * 标题和读数组合在可用区域内垂直居中。
+     * 紧凑卡片底部的 12 px 用于训练区间色条，不属于性能浮层。
      */
     const bool compact_card = card_height <= 105;
-    const int32_t value_y = compact_card
-        ? card_height - value_height - 7
-        : card_height - value_height - (value_height > 56 ? 22 : 35);
+    const int32_t title_height = lv_obj_get_height(card->title);
+    const int32_t usable_height = card_height - (compact_card ? 12 : 0);
+    const int32_t group_top = LV_MAX(0, (usable_height - title_height - 6 - value_height) / 2);
+    const int32_t value_y = group_top + title_height + 6;
 
-    lv_obj_set_pos(card->title, 0, compact_card ? 3 : 10);
+    lv_obj_set_pos(card->title, 0, group_top);
     lv_obj_set_width(card->title, card_width);
     lv_obj_set_style_text_align(card->title, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -127,6 +150,7 @@ void ui_metric_card_create(
     {
         return;
     }
+    card->preferred_value_font = value_font != NULL ? value_font : UI_FONT_METRIC_VALUE;
 
 
     /*
@@ -347,6 +371,13 @@ void ui_metric_card_create(
     );
 
 
+    ui_metric_card_layout(card);
+}
+
+void ui_metric_card_set_value_font(ui_metric_card_t *card, const lv_font_t *font)
+{
+    if(card == NULL || card->value == NULL || font == NULL) return;
+    card->preferred_value_font = font;
     ui_metric_card_layout(card);
 }
 

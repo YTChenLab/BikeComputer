@@ -27,6 +27,7 @@ typedef struct
     uint8_t clock_minute;
     uint8_t battery_percent;
     bool battery_charging;
+    bool status_quality_known, clock_valid, battery_valid;
     uint8_t satellites;
     bool gps_enabled;
 

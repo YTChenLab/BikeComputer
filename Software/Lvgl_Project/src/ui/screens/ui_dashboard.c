@@ -75,6 +75,9 @@
 #include "../core/ui_bottom_surface.h"
 #include "../core/ui_sizes.h"
 #include "../core/ui_theme.h"
+#include "../models/ui_ride_summary_model.h"
+#include "../models/ui_dashboard_layout.h"
+#include "lvgl/src/draw/lv_draw_rect.h"
 #include "../design/ui_design_tokens.h"
 
 #include "lvgl/src/draw/lv_draw_triangle.h"
@@ -233,6 +236,15 @@ static ui_status_bar_t s_status_bar;
  * 32.8
  */
 static lv_obj_t *s_speed_label = NULL;
+static lv_obj_t *s_zone_segments[UI_DASHBOARD_SLOT_COUNT][5];
+static lv_obj_t *s_zone_labels[UI_DASHBOARD_SLOT_COUNT];
+static uint8_t s_slot_fields[UI_DASHBOARD_SLOT_COUNT] = {
+    UI_RIDE_FIELD_HEART_RATE, UI_RIDE_FIELD_POWER, UI_RIDE_FIELD_CADENCE,
+    UI_RIDE_FIELD_GRADE, UI_RIDE_FIELD_DISTANCE, UI_RIDE_FIELD_TIME};
+static ui_dashboard_data_t s_layout_data;
+static uint32_t s_speed_fill_color = UINT32_MAX;
+static const uint32_t s_zone_colors[5] = {0x8CA2B1, 0x56B7E0, 0x70C68B, 0xFFBE59, 0xF06D75};
+
 
 
 /**
@@ -301,6 +313,7 @@ static float s_display_speed = 32.8f;
  */
 static lv_timer_t *s_speed_anim_timer = NULL;
 static bool s_dashboard_active = false;
+static bool s_speed_valid = false;
 
 
 /* 已绘制的速度分段数量；-1 表示尚未绘制。 */
@@ -476,42 +489,7 @@ static lv_obj_t *dashboard_create_rect(
 }
 
 
-static void dashboard_segment_draw_cb(lv_event_t *event)
-{
-    if(lv_event_get_code(event) != LV_EVENT_DRAW_MAIN)
-        return;
 
-    lv_obj_t *obj = lv_event_get_target(event);
-    lv_layer_t *layer = lv_event_get_layer(event);
-    lv_area_t area;
-
-    lv_obj_get_coords(obj, &area);
-
-    const int32_t slant = 7;
-    const lv_color_t color = lv_obj_get_style_bg_color(obj, 0);
-
-    lv_point_precise_t points[4] = {
-        { area.x1 + slant, area.y1 },
-        { area.x2, area.y1 },
-        { area.x2 - slant, area.y2 },
-        { area.x1, area.y2 }
-    };
-
-    lv_draw_triangle_dsc_t triangle;
-    lv_draw_triangle_dsc_init(&triangle);
-    triangle.bg_color = color;
-    triangle.bg_opa = LV_OPA_COVER;
-
-    triangle.p[0] = points[0];
-    triangle.p[1] = points[1];
-    triangle.p[2] = points[2];
-    lv_draw_triangle(layer, &triangle);
-
-    triangle.p[0] = points[0];
-    triangle.p[1] = points[2];
-    triangle.p[2] = points[3];
-    lv_draw_triangle(layer, &triangle);
-}
 
 
 /**
@@ -636,67 +614,78 @@ static void dashboard_create_status_bar(void)
 /**
  * @brief 创建实时速度主区域
  */
+static ui_metric_card_t *dashboard_card(unsigned slot)
+{
+    ui_metric_card_t *cards[] = {&s_hr_card, &s_power_card, &s_cadence_card,
+                                &s_grade_card, &s_distance_card, &s_time_card};
+    return slot < UI_DASHBOARD_SLOT_COUNT ? cards[slot] : NULL;
+}
+static void dashboard_segment_draw(lv_event_t *event)
+{
+    lv_obj_t *object=lv_event_get_target(event);
+    lv_layer_t *layer=lv_event_get_layer(event);
+    lv_area_t area;
+    lv_obj_get_coords(object,&area);
+    int32_t height=lv_area_get_height(&area);
+    lv_draw_rect_dsc_t rectangle;
+    lv_draw_rect_dsc_init(&rectangle);
+    rectangle.bg_color=lv_obj_get_style_bg_color(object,0);
+    rectangle.bg_opa=LV_OPA_COVER;
+    /* Integer scanlines fill one solid parallelogram, without a shared
+     * antialiased triangle edge that can leave a diagonal seam. */
+    for(int32_t row=0;row<height;++row) {
+        int32_t shift=height>1 ? 7*(height-1-row)/(height-1) : 0;
+        lv_area_t line={area.x1+shift,area.y1+row,area.x2-(7-shift),area.y1+row};
+        lv_draw_rect(layer,&rectangle,&line);
+    }
+}
+static void dashboard_create_zone_strip(unsigned slot, ui_metric_card_t *card)
+{
+    s_zone_labels[slot] = lv_label_create(card->root);
+    lv_obj_set_pos(s_zone_labels[slot], 179, 1);
+    lv_obj_set_width(s_zone_labels[slot], 48);
+    lv_obj_set_style_text_align(s_zone_labels[slot],LV_TEXT_ALIGN_RIGHT,0);
+    lv_obj_set_style_text_font(s_zone_labels[slot], &ui_font_misans_zone_24, 0);
+    lv_label_set_text(s_zone_labels[slot], "--");
+    for(unsigned i = 0; i < 5; ++i) {
+        s_zone_segments[slot][i] = dashboard_create_rect(card->root,
+            20 + (int32_t)i * 40, 87, 35, 10, lv_color_hex(0x27323C));
+        lv_obj_set_style_radius(s_zone_segments[slot][i], 3, 0);
+    }
+}
+static void dashboard_update_zone_strip(unsigned slot, bool show, bool valid,
+                                         uint16_t value, const uint16_t boundaries[4])
+{
+    ui_metric_card_t *card=dashboard_card(slot);
+    if(!show) {
+        lv_obj_add_flag(s_zone_labels[slot],LV_OBJ_FLAG_HIDDEN);
+        for(unsigned i=0;i<5;++i) lv_obj_add_flag(s_zone_segments[slot][i],LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_bg_opa(card->root,LV_OPA_TRANSP,0);
+        return;
+    }
+    lv_obj_clear_flag(s_zone_labels[slot],LV_OBJ_FLAG_HIDDEN);
+    unsigned zone = 0;
+    while(zone < 4 && value >= boundaries[zone]) ++zone;
+    char text[8];
+    if(valid) snprintf(text, sizeof(text), "Z%u", zone + 1);
+    else snprintf(text, sizeof(text), "--");
+    lv_label_set_text(s_zone_labels[slot], text);
+    lv_obj_set_style_text_color(s_zone_labels[slot], valid ?
+        lv_color_hex(s_zone_colors[zone]) : UI_TOKEN_COLOR_TEXT_TERTIARY, 0);
+    /* The root paints below its title/value/unit children. */
+    lv_obj_set_style_bg_color(card->root,lv_color_hex(s_zone_colors[zone]),0);
+    lv_obj_set_style_bg_opa(card->root,valid ? (lv_opa_t)32 : LV_OPA_TRANSP,0);
+    for(unsigned i = 0; i < 5; ++i) {
+        lv_obj_clear_flag(s_zone_segments[slot][i],LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_bg_color(s_zone_segments[slot][i], valid && i == zone ?
+            lv_color_hex(s_zone_colors[i]) : lv_color_hex(0x27323C), 0);
+    }
+}
+
 static void dashboard_create_speed_area(void)
 {
-    /*
-     * ========================================================
-     * “实时速度”
-     * ========================================================
-     */
-
-    dashboard_create_label(
-        s_screen,
-
-        28,
-        73,
-
-        "实时速度",
-
-        UI_FONT_SPEED_TITLE,
-
-        UI_COLOR_WHITE
-    );
-
-
-    /*
-     * ========================================================
-     * CURRENT SPEED
-     * ========================================================
-     */
-
-    lv_obj_t *subtitle =
-        dashboard_create_label(
-            s_screen,
-
-            28,
-            101,
-
-            "CURRENT SPEED",
-
-            UI_FONT_SPEED_SUBTITLE,
-
-            UI_COLOR_WHITE
-        );
-
-
-    /*
-     * 增加英文字符间距。
-     */
-    lv_obj_set_style_text_letter_space(
-        subtitle,
-        1,
-        0
-    );
-
-
-    /*
-     * ========================================================
-     * 主速度数字
-     * ========================================================
-     *
-     * 使用 140 px Heavy 数字字体，给标题和速度条留出明确的
-     * 上下边界，避免数字压住进度条。
-     */
+    dashboard_create_label(s_screen, 24, 82, "实时速度",
+                           UI_FONT_PAGE_TEXT, UI_TOKEN_COLOR_TEXT_SECONDARY);
 
     s_speed_label =
         dashboard_create_label(
@@ -741,7 +730,7 @@ static void dashboard_create_speed_area(void)
      * 七段速度条
      * ========================================================
      *
-     * 每一格由两个三角形组成斜切平行四边形，
+     * 每一格按整块扫描行绘制斜切平行四边形，避免三角拼接的接缝；
      * 点亮和未点亮状态使用同一套几何形状。
      */
 
@@ -783,19 +772,8 @@ static void dashboard_create_speed_area(void)
                 color
             );
 
-        /* 用两个三角形绘制真正的平行四边形，避免旋转矩形造成间隙和重叠。 */
-        lv_obj_set_style_bg_opa(
-            s_speed_segments[i],
-            LV_OPA_TRANSP,
-            0
-        );
-
-        lv_obj_add_event_cb(
-            s_speed_segments[i],
-            dashboard_segment_draw_cb,
-            LV_EVENT_DRAW_MAIN,
-            NULL
-        );
+        lv_obj_set_style_bg_opa(s_speed_segments[i],LV_OPA_TRANSP,0);
+        lv_obj_add_event_cb(s_speed_segments[i],dashboard_segment_draw,LV_EVENT_DRAW_MAIN,NULL);
     }
 }
 
@@ -1101,6 +1079,15 @@ static void dashboard_create_metrics(void)
 
         UI_FONT_METRIC_VALUE_SMALL
     );
+
+    ui_metric_card_t *cards[] = {&s_hr_card, &s_power_card, &s_cadence_card,
+                                &s_grade_card, &s_distance_card, &s_time_card};
+    for(unsigned i = 0; i < 6; ++i) {
+        lv_obj_set_style_text_color(cards[i]->title, UI_TOKEN_COLOR_TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_font(cards[i]->title, UI_FONT_PAGE_TEXT, 0);
+        lv_obj_set_style_text_color(cards[i]->unit, UI_TOKEN_COLOR_TEXT_SECONDARY, 0);
+    }
+    for(unsigned i=0;i<UI_DASHBOARD_SLOT_COUNT;++i) dashboard_create_zone_strip(i,dashboard_card(i));
 }
 
 
@@ -1117,113 +1104,17 @@ static void dashboard_create_metrics(void)
  *
  * @param speed 当前速度
  */
-static void dashboard_update_speed_segments(
-    float speed)
+static void dashboard_update_speed_segments(float speed)
 {
-    /*
-     * ========================================================
-     * 输入限幅
-     * ========================================================
-     */
-
-    if(speed < 0.0f)
-    {
-        speed = 0.0f;
-    }
-
-
-    if(speed > 60.0f)
-    {
-        speed = 60.0f;
-    }
-
-
-    /*
-     * ========================================================
-     * 计算点亮格数
-     * ========================================================
-     *
-     * 例如：
-     *
-     * 32.8 / 60 × 7
-     *
-     * ≈ 3.83
-     *
-     * 加 0.5 后转整数：
-     *
-     * = 4
-     */
-
-    int32_t active_count =
-        (int32_t)(
-            speed
-            / 60.0f
-            * 7.0f
-            + 0.5f
-        );
-
-
-    /*
-     * 防御性限幅。
-     */
-
-    if(active_count < 0)
-    {
-        active_count = 0;
-    }
-
-
-    if(active_count > 7)
-    {
-        active_count = 7;
-    }
-
-    if(active_count == s_speed_active_segments)
-    {
-        return;
-    }
-
-    s_speed_active_segments = active_count;
-
-
-    /*
-     * ========================================================
-     * 更新七个 Segment
-     * ========================================================
-     */
-
-    for(int32_t i = 0; i < 7; i++)
-    {
-        /*
-         * 防止对象尚未创建。
-         */
-        if(s_speed_segments[i] == NULL)
-        {
-            continue;
-        }
-
-
-        /*
-         * 已激活：
-         *
-         * 黄色
-         *
-         * 未激活：
-         *
-         * 深蓝灰
-         */
-        lv_color_t color =
-            (i < active_count)
-            ? UI_COLOR_YELLOW
-            : UI_COLOR_SEGMENT_OFF;
-
-
-        lv_obj_set_style_bg_color(
-            s_speed_segments[i],
-            color,
-            0
-        );
-    }
+    if(!isfinite(speed) || speed<0) speed=0;
+    int32_t count=speed>=60 ? 7 : (int32_t)(speed/60.0f*7.0f+0.5f);
+    uint32_t color=ui_dashboard_speed_color(speed);
+    if(count==s_speed_active_segments && color==s_speed_fill_color) return;
+    s_speed_active_segments=count;
+    s_speed_fill_color=color;
+    for(int32_t i=0;i<7;++i) if(s_speed_segments[i]!=NULL)
+        lv_obj_set_style_bg_color(s_speed_segments[i],
+            i<count ? lv_color_hex(color) : UI_COLOR_SEGMENT_OFF,0);
 }
 
 
@@ -1242,6 +1133,9 @@ static void dashboard_update_speed_visual(
     {
         return;
     }
+
+    if(lv_obj_get_style_text_font(s_speed_label,0)!=UI_FONT_SPEED_VALUE)
+        lv_obj_set_style_text_font(s_speed_label,UI_FONT_SPEED_VALUE,0);
 
 
     /*
@@ -1296,7 +1190,7 @@ static void dashboard_layout_speed_readout(void)
     const int32_t unit_width = lv_obj_get_width(s_speed_unit);
     const int32_t unit_height = lv_obj_get_height(s_speed_unit);
     const int32_t unit_gap = 8;
-    const int32_t value_y = 122;
+    const int32_t value_y = 133;
     int32_t value_x = UI_LEFT + (UI_CONTENT_W - value_width) / 2;
     int32_t unit_x = value_x + value_width + unit_gap;
 
@@ -1448,7 +1342,9 @@ void ui_dashboard_create(void)
 
 
     /* 每个页面根节点直接绘制同一份共享背景数据，避免局部刷新残留旧页面。 */
-    ui_background_apply(s_screen);
+    /* Stable readings on an opaque canvas, without grain under the digits. */
+    lv_obj_set_style_bg_color(s_screen, UI_TOKEN_COLOR_CANVAS, 0);
+    lv_obj_set_style_bg_opa(s_screen, LV_OPA_COVER, 0);
 
 
     /*
@@ -1543,6 +1439,7 @@ lv_obj_t *ui_dashboard_get_bottom_surface_slot(void)
 void ui_dashboard_set_speed(
     float speed)
 {
+    if(!isfinite(speed)) return;
     /*
      * 禁止负数速度。
      */
@@ -1577,7 +1474,7 @@ void ui_dashboard_set_active(bool active)
 {
     s_dashboard_active = active;
     if(s_speed_anim_timer == NULL) return;
-    if(active) lv_timer_resume(s_speed_anim_timer);
+    if(active && s_speed_valid) lv_timer_resume(s_speed_anim_timer);
     else lv_timer_pause(s_speed_anim_timer);
 }
 
@@ -1587,191 +1484,53 @@ void ui_dashboard_set_active(bool active)
  *
  * @param data Dashboard 数据
  */
-void ui_dashboard_set_data(
-    const ui_dashboard_data_t *data)
+void ui_dashboard_set_data(const ui_dashboard_data_t *data)
 {
-    /*
-     * ========================================================
-     * 空指针保护
-     * ========================================================
-     */
-
-    if(data == NULL || s_screen == NULL)
-    {
-        return;
+    if(data==NULL || s_screen==NULL) return;
+    s_layout_data=*data;
+    uint32_t now=lv_tick_get();
+    bool valid_speed=ui_ride_data_field_valid(data,UI_RIDE_FIELD_SPEED,now);
+    if(valid_speed) {
+        if(!s_speed_valid) { s_display_speed=data->speed; dashboard_update_speed_visual(data->speed); }
+        ui_dashboard_set_speed(data->speed);
+    } else {
+        lv_timer_pause(s_speed_anim_timer);
+        /* The large digit atlas has no hyphen; use the real metric glyph. */
+        lv_obj_set_style_text_font(s_speed_label,UI_FONT_METRIC_VALUE,0);
+        lv_label_set_text(s_speed_label,"--");
+        dashboard_layout_speed_readout();
+        dashboard_update_speed_segments(0);
     }
-
-
-    /*
-     * ========================================================
-     * 1. 实时速度
-     * ========================================================
-     */
-
-    ui_dashboard_set_speed(
-        data->speed
-    );
-
-
-    /* 顶部状态栏由 ui_app_state 统一驱动，不再从骑行数据重复写入。 */
-
-
-    /*
-     * ========================================================
-     * 数据格式化缓冲区
-     * ========================================================
-     */
-
-    char buffer[32];
-
-
-    /*
-     * ========================================================
-     * 3. 心率
-     * ========================================================
-     */
-
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%u",
-        (unsigned int)data->heart_rate
-    );
-
-
-    ui_metric_card_set_value(
-        &s_hr_card,
-        buffer
-    );
-
-
-    /*
-     * ========================================================
-     * 4. 功率
-     * ========================================================
-     */
-
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%u",
-        (unsigned int)data->power
-    );
-
-
-    ui_metric_card_set_value(
-        &s_power_card,
-        buffer
-    );
-
-
-    /*
-     * ========================================================
-     * 5. 踏频
-     * ========================================================
-     */
-
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%u",
-        (unsigned int)data->cadence
-    );
-
-
-    ui_metric_card_set_value(
-        &s_cadence_card,
-        buffer
-    );
-
-
-    /*
-     * ========================================================
-     * 6. 坡度
-     * ========================================================
-     */
-
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%.1f",
-        data->grade
-    );
-
-
-    ui_metric_card_set_value(
-        &s_grade_card,
-        buffer
-    );
-
-
-    /*
-     * ========================================================
-     * 7. 里程
-     * ========================================================
-     */
-
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%.2f",
-        data->distance
-    );
-
-
-    ui_metric_card_set_value(
-        &s_distance_card,
-        buffer
-    );
-
-
-    /*
-     * ========================================================
-     * 8. 骑行时间
-     * ========================================================
-     *
-     * ride_seconds：
-     *
-     *      总秒数
-     *
-     * 转换：
-     *
-     *      HH:MM:SS
-     */
-
-
-    uint32_t hours =
-        data->ride_seconds
-        / 3600U;
-
-
-    uint32_t minutes =
-        (
-            data->ride_seconds
-            % 3600U
-        )
-        / 60U;
-
-
-    uint32_t seconds =
-        data->ride_seconds
-        % 60U;
-
-
-    snprintf(
-        buffer,
-        sizeof(buffer),
-
-        "%02lu:%02lu:%02lu",
-
-        (unsigned long)hours,
-        (unsigned long)minutes,
-        (unsigned long)seconds
-    );
-
-
-    ui_metric_card_set_value(
-        &s_time_card,
-        buffer
-    );
+    s_speed_valid=valid_speed;
+    uint16_t heart[4],power[4];
+    ui_ride_summary_model_get_zones(heart,power);
+    for(unsigned i=0;i<UI_DASHBOARD_SLOT_COUNT;++i) {
+        ui_ride_field_t field=(ui_ride_field_t)s_slot_fields[i];
+        char text[48];
+        bool valid=ui_dashboard_format_field(field,data,now,text,sizeof(text));
+        ui_metric_card_set_value(dashboard_card(i),text);
+        bool hr=field==UI_RIDE_FIELD_HEART_RATE, pw=field==UI_RIDE_FIELD_POWER;
+        dashboard_update_zone_strip(i,hr||pw,valid,hr ? data->heart_rate : data->power,hr ? heart : power);
+    }
+}
+bool ui_dashboard_set_layout(unsigned preset, const uint8_t fields[UI_DASHBOARD_SLOT_COUNT])
+{
+    if(s_screen==NULL || !ui_dashboard_layout_valid(preset,fields)) return false;
+    memcpy(s_slot_fields,fields,sizeof(s_slot_fields));
+    for(unsigned i=0;i<UI_DASHBOARD_SLOT_COUNT;++i) {
+        ui_metric_card_t *card=dashboard_card(i);
+        const ui_dashboard_field_definition_t *definition=ui_dashboard_field_definition((ui_ride_field_t)fields[i]);
+        lv_obj_set_style_text_font(card->title,UI_FONT_PAGE_TEXT,0);
+        lv_label_set_text(card->title,definition->title);
+        lv_obj_set_style_text_font(card->unit,UI_FONT_PAGE_TEXT,0);
+        ui_metric_card_set_unit(card,definition->unit);
+        ui_metric_card_set_value_font(card,definition->compact_number ?
+                                     UI_FONT_METRIC_VALUE_SMALL : UI_FONT_METRIC_VALUE);
+    }
+    ui_dashboard_set_data(&s_layout_data);
+    return true;
+}
+ui_ride_field_t ui_dashboard_slot_field(unsigned slot)
+{
+    return slot<UI_DASHBOARD_SLOT_COUNT ? (ui_ride_field_t)s_slot_fields[slot] : UI_RIDE_FIELD_COUNT;
 }

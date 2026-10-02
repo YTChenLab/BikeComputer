@@ -25,10 +25,9 @@ int main(void)
     assert(ui_app_state_get(&state));
     assert(state.current_route == UI_APP_ROUTE_UNKNOWN);
     assert(state.ride_state == UI_RIDE_STATE_IDLE);
-    assert(state.clock_hour == 10 && state.clock_minute == 24);
-    assert(state.battery_percent == 82 && state.satellites == 12);
-    assert(state.wifi_enabled && state.wifi_connected);
-    assert(state.bluetooth_enabled && state.bluetooth_connected);
+    assert(!state.clock_valid && !state.battery_valid);
+    assert(state.battery_percent == 0 && state.satellites == 0);
+    assert(!state.wifi_connected && !state.bluetooth_connected);
     assert(state.gps_enabled);
     assert(state.sound_level == 62 && state.brightness_level == 75);
 

@@ -5,6 +5,7 @@
 #include "ui/components/navigation/ui_nav_map.h"
 #include "ui/core/ui_event_bus.h"
 #include "ui/core/ui_theme.h"
+#include "ui/core/ui_motion.h"
 #include "ui/pages/navigation/ui_navigation.h"
 #include "lvgl.h"
 
@@ -141,6 +142,18 @@ static void test_map_controls(lv_obj_t *screen)
     ui_nav_map_handle_input(&map, 0, true);
     assert(map.focused_control == UI_NAV_FOCUS_LOCATE);
     finish_animations();
+    nav_model_t live = {.position_valid = true, .latitude = 34.3416, .longitude = 108.9398,
+        .heading = 359, .zoom = 14, .map_geometry_valid = true,
+        .map_origin_latitude = 34.3416, .map_origin_longitude = 108.9398, .meters_per_pixel = 5};
+    ui_nav_map_apply_model(&map, &live);
+    nav_map_zoom(&map, 16, false);
+    live.heading = 1;
+    ui_nav_map_apply_model(&map, &live);
+    assert(map.zoom == 16); /* Live updates preserve the user's zoom. */
+    assert(map.origin_valid && map.meters_per_pixel == 5);
+    nav_map_update_position(&map, 34.3416f, 108.9398f, -721, false);
+    assert(map.heading >= 0 && map.heading < 360);
+    finish_animations();
     lv_obj_delete(map.root);
 }
 
@@ -209,6 +222,11 @@ static void test_command_dock_states(lv_obj_t *screen)
     assert(lv_obj_has_flag(dock.prefix, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(dock.road, LV_OBJ_FLAG_HIDDEN));
     assert(!lv_obj_has_flag(dock.distance_row, LV_OBJ_FLAG_HIDDEN));
+    ui_motion_set_reduced(true);
+    ui_nav_command_dock_update(&dock, &model, true);
+    assert(dock.icon_scale == 100);
+    assert(lv_anim_count_running() == 0U);
+    ui_motion_set_reduced(false);
 
     model.ui_state = NAV_UI_NOW;
     ui_nav_command_dock_update(&dock, &model, false);

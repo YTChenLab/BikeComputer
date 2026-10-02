@@ -50,6 +50,9 @@ typedef struct
     bool north_up;
     ui_nav_focus_t focused_control;
     bool focus_visible;
+    bool model_initialized, demo, origin_valid;
+    double origin_latitude, origin_longitude;
+    float meters_per_pixel;
 } ui_nav_map_t;
 
 void ui_nav_map_create(ui_nav_map_t *map, lv_obj_t *parent, int32_t x, int32_t y);

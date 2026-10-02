@@ -16,6 +16,7 @@ typedef struct
     const char *storage_status;
     const char *hardware_target;
     const char *system_health;
+    const char *firmware_version;
 } ui_system_info_t;
 
 lv_obj_t *ui_system_page_create(ui_page_action_cb_t callback,

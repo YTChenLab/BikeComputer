@@ -14,6 +14,7 @@ lv_obj_t *ui_history_page_create(ui_page_action_cb_t callback,
                                  void *user_data);
 void ui_history_page_set_active(bool active);
 void ui_history_page_refresh(void);
+void ui_history_page_tick(void);
 bool ui_history_page_handle_input(ui_input_event_t input);
 size_t ui_history_page_visible_count(void);
 int32_t ui_history_page_selected_index(void);

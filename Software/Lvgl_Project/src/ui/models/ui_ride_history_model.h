@@ -8,7 +8,7 @@
 #include "ui_ride_report_data.h"
 
 #define UI_RIDE_HISTORY_MAX_RECORDS 100U
-#define UI_RIDE_RECORD_FORMAT_VERSION 2U
+#define UI_RIDE_RECORD_FORMAT_VERSION 3U
 
 typedef struct
 {
@@ -18,6 +18,7 @@ typedef struct
     float distance_km;
     uint32_t duration_seconds;
     uint32_t moving_time_seconds;
+    uint8_t metric_flags; /* UI_REPORT_HAS_* and UI_REPORT_METRICS_KNOWN. */
     float average_speed_kmh;
     float maximum_speed_kmh;
     uint32_t ascent_m;
@@ -47,6 +48,7 @@ typedef struct
     uint32_t ride_count;
 } ui_ride_history_totals_t;
 
+bool ui_ride_record_is_valid(const ui_ride_record_t *record);
 void ui_ride_history_model_init(void);
 bool ui_ride_history_model_replace(const ui_ride_record_t *records,
                                    size_t count);
@@ -59,6 +61,7 @@ bool ui_ride_history_model_copy_oldest_first(ui_ride_record_t *records,
                                              size_t capacity,
                                              size_t *count);
 void ui_ride_history_model_totals(ui_ride_history_totals_t *totals);
+bool ui_ride_history_model_set_totals(const ui_ride_history_totals_t *totals);
 uint32_t ui_ride_history_model_version(void);
 
 #endif /* UI_RIDE_HISTORY_MODEL_H */

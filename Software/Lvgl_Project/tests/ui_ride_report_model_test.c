@@ -48,6 +48,8 @@ static void test_sources(void)
 {
     ui_ride_summary_t summary = {
         .distance_km = 42.5f,
+        .started_at_utc = 1750000000,
+        .finished_at_utc = 1750005400,
         .duration_seconds = 5400U,
         .moving_time_seconds = 5100U,
         .average_speed_kmh = 28.3f,
@@ -68,6 +70,7 @@ static void test_sources(void)
     ui_ride_report_model_t report;
     assert(ui_ride_report_model_from_summary(&report, &summary));
     assert(report.distance_km == summary.distance_km);
+    assert(report.started_at_utc == summary.started_at_utc && report.finished_at_utc == summary.finished_at_utc);
     assert(report.has_heart_rate);
     assert(report.trace.speed_tenths[1] == 320U);
 

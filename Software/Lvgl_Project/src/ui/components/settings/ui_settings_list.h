@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define UI_SETTINGS_LIST_MAX_ROWS 12U
+#define UI_SETTINGS_LIST_MAX_ROWS 16U
 
 typedef enum
 {
@@ -36,6 +36,9 @@ typedef struct
     lv_obj_t *value;
     lv_obj_t *toggle_track;
     lv_obj_t *toggle_knob;
+    lv_obj_t *icon_box;
+    lv_obj_t *icon;
+    uint32_t accent;
     uint16_t id;
     ui_settings_row_type_t type;
     bool enabled;
@@ -46,6 +49,7 @@ typedef void (*ui_settings_list_action_cb_t)(uint16_t id, void *user_data);
 typedef struct ui_settings_list
 {
     lv_obj_t *root;
+    lv_obj_t *scroll_hint;
     ui_settings_row_t rows[UI_SETTINGS_LIST_MAX_ROWS];
     uint8_t row_count;
     uint8_t selection;
@@ -64,6 +68,9 @@ bool ui_settings_list_add(ui_settings_list_t *list, uint16_t id,
                           const char *value);
 bool ui_settings_list_set_value(ui_settings_list_t *list, uint16_t id,
                                 const char *value);
+bool ui_settings_list_set_accent(ui_settings_list_t *list, uint16_t id,
+                                 uint32_t color, const char *symbol);
+void ui_settings_list_set_scroll_hint(ui_settings_list_t *list, lv_obj_t *label);
 bool ui_settings_list_set_toggle(ui_settings_list_t *list, uint16_t id,
                                  bool enabled);
 bool ui_settings_list_set_feedback(ui_settings_list_t *list, uint16_t id,

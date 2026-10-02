@@ -25,7 +25,7 @@
 #define UI_COLOR_LINE            UI_TOKEN_COLOR_LINE
 
 /* 下方指标区域边框，使用纯白提高商用仪表的层次和可读性 */
-#define UI_COLOR_GRID_LINE       UI_COLOR_WHITE
+#define UI_COLOR_GRID_LINE       UI_TOKEN_COLOR_DIVIDER
 
 /* 速度区域黄色强调 */
 #define UI_COLOR_YELLOW          UI_TOKEN_COLOR_ACCENT

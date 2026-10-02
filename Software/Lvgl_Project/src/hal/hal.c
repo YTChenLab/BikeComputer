@@ -1,4 +1,5 @@
 #include "hal.h"
+#include "simulator_view.h"
 #include "../platform/pc/ui_pc_services.h"
 #include "../ui/core/ui_back_key_gesture.h"
 #include "../ui/core/ui_input_queue.h"
@@ -20,6 +21,7 @@ static int SDLCALL simulator_event_watch(void *userdata, SDL_Event *event)
   }
   else if(event->type == SDL_KEYDOWN && event->key.repeat == 0) {
     SDL_Keycode key = event->key.keysym.sym;
+    if(simulator_view_handle_key(key)) return 1;
     if(key == SDLK_DOWN) post_input(UI_INPUT_ENCODER_CW);
     else if(key == SDLK_UP) post_input(UI_INPUT_ENCODER_CCW);
     else if(key == SDLK_RETURN || key == SDLK_KP_ENTER) {
@@ -46,16 +48,13 @@ static void mouse_button_timer_cb(lv_timer_t *timer)
   static ui_back_key_gesture_t back_gesture;
   int mouse_x = 0;
   int mouse_y = 0;
-  uint32_t buttons = SDL_GetMouseState(&mouse_x, &mouse_y);
-  lv_display_t *display = lv_display_get_default();
-  if(display) {
-    mouse_x = LV_CLAMP(0, mouse_x, lv_display_get_horizontal_resolution(display) - 1);
-    mouse_y = LV_CLAMP(0, mouse_y, lv_display_get_vertical_resolution(display) - 1);
-  }
+  simulator_view_tick();
+  uint32_t buttons = simulator_view_mouse_state(&mouse_x, &mouse_y);
   bool left_is_down = (buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
   const uint8_t *keyboard = SDL_GetKeyboardState(NULL);
   bool right_is_down = (buttons & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
   bool keyboard_back_is_down = keyboard != NULL &&
+    SDL_GetKeyboardFocus() != NULL &&
     (keyboard[SDL_SCANCODE_ESCAPE] || keyboard[SDL_SCANCODE_BACKSPACE]);
   bool back_is_down = right_is_down || keyboard_back_is_down;
 
@@ -100,13 +99,36 @@ lv_display_t * sdl_hal_init(int32_t w, int32_t h)
 
   lv_group_set_default(lv_group_create());
 
+  simulator_view_prepare();
   lv_display_t * disp = lv_sdl_window_create(w, h);
+  simulator_view_init(disp);
 
-  lv_indev_t * mouse = lv_sdl_mouse_create();
+  /* Poll the same scaled coordinates as the semantic gesture queue. The
+   * stock SDL pointer driver only supports integer zoom factors. */
+  lv_indev_t * mouse = lv_indev_create();
+  lv_indev_set_type(mouse, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_read_cb(mouse, simulator_view_pointer_read);
+  lv_timer_set_period(lv_indev_get_read_timer(mouse), 8);
   lv_indev_set_group(mouse, lv_group_get_default());
   lv_indev_set_display(mouse, disp);
   lv_timer_create(mouse_button_timer_cb, 8, NULL);
   lv_display_set_default(disp);
+  /* Diagnostics float over the product UI; they never affect its geometry. */
+#if LV_USE_SYSMON
+  lv_obj_t *system_layer = lv_display_get_layer_sys(disp);
+  for(uint32_t i = 0; i < lv_obj_get_child_count(system_layer); ++i) {
+    lv_obj_t *object = lv_obj_get_child(system_layer, i);
+    if(lv_obj_check_type(object, &lv_label_class))
+      lv_obj_set_style_bg_opa(object, LV_OPA_30, 0);
+  }
+#endif
+  /* 模拟器默认显示右下角性能信息；UI_SHOW_PERFORMANCE=0 可显式隐藏。 */
+#if LV_USE_SYSMON && LV_USE_PERF_MONITOR
+  const char *show_performance = SDL_getenv("UI_SHOW_PERFORMANCE");
+  if(show_performance != NULL && SDL_strcmp(show_performance, "0") == 0) {
+    lv_sysmon_hide_performance(disp);
+  }
+#endif
 
   /* 不再创建 LVGL 软件光标。Windows/SDL 原生指针负责显示，避免局部刷新产生拖影。 */
 

@@ -8,6 +8,7 @@
 #include "../../core/ui_theme.h"
 
 #include <stdio.h>
+#include <math.h>
 
 #define NAV_MAP_W             UI_NAV_MAP_WIDTH
 #define NAV_MAP_H             UI_NAV_MAP_HEIGHT
@@ -109,14 +110,25 @@ static void set_map_scale(void *target, int32_t value)
 {
     ui_nav_map_t *map = target;
     map->render_scale = value;
+    if(!map->demo && map->scale_label != NULL && value > 0)
+        lv_label_set_text_fmt(map->scale_label, "%lu m",
+            (unsigned long)lroundf(84.0f * map->meters_per_pixel * 256.0f / value));
     invalidate_map_geometry(map);
 }
 
 static void set_map_rotation(void *target, int32_t value)
 {
     ui_nav_map_t *map = target;
-    map->render_rotation = value;
+    map->render_rotation = value % 3600;
     invalidate_map_geometry(map);
+}
+
+static int32_t nearest_rotation(int32_t from, int32_t target)
+{
+    int32_t delta = (target - from) % 3600;
+    if(delta > 1800) delta -= 3600;
+    if(delta < -1800) delta += 3600;
+    return from + delta;
 }
 
 static void set_scale_opa(void *target, int32_t value)
@@ -201,6 +213,7 @@ static void compass_clicked(void *user_data)
     ui_nav_map_set_focus(map, UI_NAV_FOCUS_COMPASS, true);
     map->north_up = !map->north_up;
     int32_t rotation = map->north_up ? 0 : -(int32_t)(map->heading * 10.0f);
+    rotation = nearest_rotation(map->render_rotation, rotation);
     ui_nav_animation_value(map, set_map_rotation, map->render_rotation,
                            rotation, UI_ANIM_NORMAL, lv_anim_path_ease_in_out);
     ui_nav_control_set_active(&map->compass, !map->north_up);
@@ -243,7 +256,11 @@ static void map_pointer_cb(lv_event_t *event)
         lv_indev_get_vect(indev, &map->last_drag_vector);
         map_set_state(map, NAV_EXPLORE);
         nav_map_move(map, map->last_drag_vector.x, map->last_drag_vector.y, false);
-    } else if(code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+    } else if(code == LV_EVENT_PRESS_LOST || code == LV_EVENT_INDEV_RESET) {
+        map->last_drag_vector = (lv_point_t){0, 0};
+        ui_motion_cancel(map->map_content, set_content_x);
+        ui_motion_cancel(map->map_content, set_content_y);
+    } else if(code == LV_EVENT_RELEASED) {
         if(map->state == NAV_EXPLORE) {
             nav_map_move(map, map->last_drag_vector.x * NAV_DRAG_THROW_FACTOR,
                          map->last_drag_vector.y * NAV_DRAG_THROW_FACTOR, true);
@@ -363,6 +380,9 @@ void ui_nav_map_create(ui_nav_map_t *map, lv_obj_t *parent, int32_t x, int32_t y
     map->zoom = NAV_ZOOM_BASE;
     map->heading = 0.0f;
     map->north_up = true;
+    map->model_initialized = false;
+    map->origin_valid = false;
+    map->meters_per_pixel = 5;
     create_hud(map);
     map->focused_control = UI_NAV_FOCUS_LOCATE;
     map->focus_visible = false;
@@ -440,16 +460,31 @@ void nav_map_update_position(ui_nav_map_t *map, float latitude, float longitude,
                              float heading, bool animated)
 {
     if(map == NULL) return;
-    map->target_x = NAV_CONTENT_CENTER_X + (int32_t)((longitude - NAV_MOCK_ORIGIN_LON) * 15000.0f);
-    map->target_y = NAV_CONTENT_CENTER_Y - (int32_t)((latitude - NAV_MOCK_ORIGIN_LAT) * 15000.0f);
+    if(!isfinite(latitude) || !isfinite(longitude) || !isfinite(heading)) return;
+    if(map->demo) {
+        map->target_x = NAV_CONTENT_CENTER_X + (int32_t)((longitude - NAV_MOCK_ORIGIN_LON) * 15000.0f);
+        map->target_y = NAV_CONTENT_CENTER_Y - (int32_t)((latitude - NAV_MOCK_ORIGIN_LAT) * 15000.0f);
+    }
+    else {
+        if(!map->origin_valid) {
+            map->origin_latitude = latitude;
+            map->origin_longitude = longitude;
+            map->origin_valid = true;
+        }
+        double x = (longitude - map->origin_longitude) * 111319.490 *
+                   cos(map->origin_latitude * 0.0174532925199433) / map->meters_per_pixel;
+        double y = (latitude - map->origin_latitude) * 111319.490 / map->meters_per_pixel;
+        map->target_x = NAV_CONTENT_CENTER_X + (int32_t)LV_CLAMP(-100000, x, 100000);
+        map->target_y = NAV_CONTENT_CENTER_Y - (int32_t)LV_CLAMP(-100000, y, 100000);
+    }
     if(map->target_x < 30) map->target_x = 30;
     if(map->target_x > NAV_CONTENT_SIZE - 30) map->target_x = NAV_CONTENT_SIZE - 30;
     if(map->target_y < 30) map->target_y = 30;
     if(map->target_y > NAV_CONTENT_SIZE - 30) map->target_y = NAV_CONTENT_SIZE - 30;
-    map->heading = heading;
+    map->heading = fmodf(fmodf(heading, 360.0f) + 360.0f, 360.0f);
     if(!map->north_up) {
         ui_nav_animation_value(map, set_map_rotation, map->render_rotation,
-                               -(int32_t)(heading * 10.0f), UI_ANIM_NORMAL,
+                               nearest_rotation(map->render_rotation, -(int32_t)(map->heading * 10.0f)), UI_ANIM_NORMAL,
                                lv_anim_path_ease_in_out);
     }
     if(animated) {
@@ -467,9 +502,51 @@ void nav_map_update_position(ui_nav_map_t *map, float latitude, float longitude,
 void ui_nav_map_apply_model(ui_nav_map_t *map, const nav_model_t *model)
 {
     if(map == NULL || model == NULL) return;
-    if(model->zoom != map->zoom) nav_map_zoom(map, model->zoom, true);
-    nav_map_update_position(map, model->latitude, model->longitude,
-                            model->heading, true);
+    if(!map->model_initialized) nav_map_zoom(map, model->zoom == 0 ? NAV_ZOOM_BASE : model->zoom, false);
+    map->model_initialized = true;
+    map->demo = model->demo;
+    if(model->demo) lv_obj_clear_flag(map->road_layer, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(map->road_layer, LV_OBJ_FLAG_HIDDEN);
+    if(!model->demo && model->map_geometry_valid && isfinite(model->meters_per_pixel) &&
+       model->meters_per_pixel > 0.01f && isfinite(model->map_origin_latitude) &&
+       fabs(model->map_origin_latitude) <= 90 && isfinite(model->map_origin_longitude) &&
+       fabs(model->map_origin_longitude) <= 180) {
+        map->origin_latitude = model->map_origin_latitude;
+        map->origin_longitude = model->map_origin_longitude;
+        map->meters_per_pixel = model->meters_per_pixel;
+        map->origin_valid = true;
+    }
+    if(!model->demo) {
+        if(!map->origin_valid && model->position_valid && isfinite(model->latitude) &&
+           isfinite(model->longitude) && fabs(model->latitude) <= 90 && fabs(model->longitude) <= 180) {
+            map->origin_latitude = model->latitude;
+            map->origin_longitude = model->longitude;
+            map->origin_valid = true;
+        }
+        if(map->render_scale > 0)
+            lv_label_set_text_fmt(map->scale_label, "%lu m", (unsigned long)lroundf(
+                84.0f * map->meters_per_pixel * 256.0f / map->render_scale));
+        lv_point_precise_t points[UI_NAV_ROUTE_POINT_MAX];
+        uint8_t count = 0;
+        for(unsigned i = 0; map->origin_valid && i < model->route_point_count && i < UI_NAV_ROUTE_POINT_MAX; ++i) {
+            double lat = model->route_latitude[i], lon = model->route_longitude[i];
+            if(!isfinite(lat) || !isfinite(lon) || fabs(lat) > 90 || fabs(lon) > 180) break;
+            double x = (lon - map->origin_longitude) * 111319.490 *
+                       cos(map->origin_latitude * 0.0174532925199433) / map->meters_per_pixel;
+            double y = (lat - map->origin_latitude) * 111319.490 / map->meters_per_pixel;
+            points[count++] = (lv_point_precise_t){NAV_CONTENT_CENTER_X + (int32_t)LV_CLAMP(-10000, x, 10000),
+                NAV_CONTENT_CENTER_Y - (int32_t)LV_CLAMP(-10000, y, 10000)};
+        }
+        nav_map_update_route(map, points, count);
+    }
+    bool valid = model->demo || (model->position_valid &&
+        fabsf(model->latitude) <= 90 && fabsf(model->longitude) <= 180 &&
+        (model->stale_after_ms == 0 || (uint32_t)(lv_tick_get() - model->sampled_at_ms) <= model->stale_after_ms));
+    if(valid) {
+        lv_obj_clear_flag(map->position_marker, LV_OBJ_FLAG_HIDDEN);
+        nav_map_update_position(map, model->latitude, model->longitude, model->heading, true);
+    }
+    else lv_obj_add_flag(map->position_marker, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ui_nav_map_handle_input(ui_nav_map_t *map, int32_t zoom_delta, bool locate)

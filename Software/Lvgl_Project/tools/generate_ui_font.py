@@ -14,6 +14,7 @@ EMPHASIS_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_u
 MANIFEST_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_runtime_codepoints.h"
 METRIC_FONT_PATH = PROJECT_ROOT / "assets" / "fonts_src" / "MiSans-Heavy.ttf"
 METRIC_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_metric_60.c"
+ZONE_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_zone_24.c"
 NUMBER_68_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_num_68.c"
 NAV_METRIC_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_nav_metric_40.c"
 NAV_ACTION_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_nav_action_32.c"
@@ -42,6 +43,7 @@ NAV_ACTION_SYMBOLS = (
 NAV_UNIT_SYMBOLS = "km/h"
 ASCII_SYMBOLS = "".join(chr(codepoint) for codepoint in range(32, 127))
 UI_PUNCTUATION = "·℃—…，。！？：；（）【】《》“”‘’％"
+EXTRA_GLYPHS_PATH = PROJECT_ROOT / "tools" / "ui_extra_characters.txt"
 
 # Keep this list limited to runtime UI strings; English/numbers use existing MiSans fallback fonts.
 SYMBOLS = (
@@ -66,11 +68,15 @@ def collect_runtime_ui_symbols() -> str:
                 continue
             source = source_path.read_text(encoding="utf-8")
             literals.extend(re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"', source))
-    return "".join(
+    extra = EXTRA_GLYPHS_PATH.read_text(encoding="utf-8") if EXTRA_GLYPHS_PATH.exists() else ""
+    extra = "".join(character for character in extra if not character.isspace())
+    return extra + "".join(
         character
         for literal in literals
         for character in literal
-        if "\u4e00" <= character <= "\u9fff"
+        if ("\u4e00" <= character <= "\u9fff" or
+            "\u3001" <= character <= "\u303f" or
+            "\uff01" <= character <= "\uff60")
     )
 
 
@@ -255,6 +261,8 @@ def main() -> None:
     generate_runtime_manifest(runtime_symbols)
     generate_font(METRIC_FONT_PATH, METRIC_OUTPUT_PATH, METRIC_FONT_NAME,
                   METRIC_FONT_SIZE, METRIC_SYMBOLS, metric_ascii_cmaps=True)
+    generate_font(METRIC_FONT_PATH, ZONE_OUTPUT_PATH, "ui_font_misans_zone_24",
+                  24, "Z12345-")
     generate_font(METRIC_FONT_PATH, NUMBER_68_OUTPUT_PATH, NUMBER_68_FONT_NAME,
                   NUMBER_68_FONT_SIZE, METRIC_SYMBOLS, metric_ascii_cmaps=True)
     generate_font(METRIC_FONT_PATH, NAV_METRIC_OUTPUT_PATH,

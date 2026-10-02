@@ -24,6 +24,9 @@ typedef struct
 } ui_navigation_service_context_t;
 
 static ui_navigation_service_context_t s_navigation_service;
+static bool s_demo_enabled = true;
+void ui_navigation_service_set_demo_enabled(bool enabled) { s_demo_enabled = enabled; }
+bool ui_navigation_service_demo_enabled(void) { return s_demo_enabled; }
 
 void ui_navigation_service_init(void)
 {
@@ -75,8 +78,10 @@ bool ui_navigation_service_unsubscribe(int32_t subscription_id)
 void ui_navigation_service_submit(const nav_model_t *model)
 {
     if(model == NULL) return;
+    if(model->route_point_count > 16 || (model->demo && !s_demo_enabled)) return;
     ui_concurrency_lock();
     s_navigation_service.pending = *model;
+    s_navigation_service.pending.road_name[sizeof(model->road_name) - 1] = '\0';
     s_navigation_service.pending_valid = true;
     ui_concurrency_unlock();
 }
@@ -118,4 +123,20 @@ bool ui_navigation_service_get(nav_model_t *model, uint32_t *version)
     if(version != NULL) *version = s_navigation_service.version;
     ui_concurrency_unlock();
     return true;
+}
+
+bool ui_navigation_service_expire(uint32_t now_ms)
+{
+    ui_concurrency_lock();
+    nav_model_t model = s_navigation_service.current;
+    bool expired = !model.demo && model.position_valid && model.stale_after_ms &&
+        (uint32_t)(now_ms - model.sampled_at_ms) > model.stale_after_ms;
+    if(expired && !s_navigation_service.pending_valid) {
+        model.position_valid = false;
+        model.ui_state = NAV_UI_GPS_WEAK;
+        s_navigation_service.pending = model;
+        s_navigation_service.pending_valid = true;
+    }
+    ui_concurrency_unlock();
+    return expired && ui_navigation_service_process();
 }

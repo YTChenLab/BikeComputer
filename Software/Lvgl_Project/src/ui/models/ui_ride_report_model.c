@@ -6,8 +6,11 @@
 static void copy_summary(ui_ride_report_model_t *report,
                          const ui_ride_summary_t *summary)
 {
+    report->started_at_utc = summary->started_at_utc;
+    report->finished_at_utc = summary->finished_at_utc;
     report->duration_seconds = summary->duration_seconds;
     report->moving_time_seconds = summary->moving_time_seconds;
+    report->metric_flags = summary->metric_flags;
     report->distance_km = summary->distance_km;
     report->average_speed_kmh = summary->average_speed_kmh;
     report->maximum_speed_kmh = summary->maximum_speed_kmh;
@@ -50,6 +53,7 @@ bool ui_ride_report_model_from_record(ui_ride_report_model_t *report,
     report->finished_at_utc = record->finished_at_utc;
     report->duration_seconds = record->duration_seconds;
     report->moving_time_seconds = record->moving_time_seconds;
+    report->metric_flags = record->metric_flags;
     report->distance_km = record->distance_km;
     report->average_speed_kmh = record->average_speed_kmh;
     report->maximum_speed_kmh = record->maximum_speed_kmh;
@@ -143,8 +147,14 @@ void ui_ride_report_model_make_mock(ui_ride_report_model_t *report,
     report->has_temperature = true;
     report->average_temperature_tenths_c = 214;
     report->saved = true;
+    report->metric_flags = UI_REPORT_METRICS_KNOWN | 31U;
     report->trace.point_count = UI_RIDE_REPORT_POINT_MAX;
+    report->trace.time_is_estimated = true;
     for(uint16_t index = 0U; index < UI_RIDE_REPORT_POINT_MAX; index++) {
+        report->trace.time_seconds[index] = (uint64_t)report->duration_seconds * index /
+                                            (UI_RIDE_REPORT_POINT_MAX - 1);
+        report->trace.valid_fields[index] = (UINT32_C(1) << 0) | (UINT32_C(1) << 1) |
+            (UINT32_C(1) << 2) | (UINT32_C(1) << 3) | (UINT32_C(1) << 8);
         report->trace.speed_tenths[index] =
             mock_wave(index, 110U, 250U, 28U);
         report->trace.heart_rate[index] =

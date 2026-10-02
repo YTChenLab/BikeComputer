@@ -16,7 +16,7 @@ void ui_component_style_init(void)
     lv_style_set_bg_color(&s_bottom_surface_style, UI_TOKEN_COLOR_SURFACE);
     lv_style_set_bg_opa(&s_bottom_surface_style, UI_TOKEN_OPA_PRIMARY);
     lv_style_set_border_color(&s_bottom_surface_style,
-                              UI_TOKEN_COLOR_SURFACE_BORDER);
+                              UI_TOKEN_COLOR_SURFACE_OUTLINE);
     lv_style_set_border_opa(&s_bottom_surface_style, UI_TOKEN_OPA_PRIMARY);
     lv_style_set_border_width(&s_bottom_surface_style, UI_TOKEN_BORDER_THIN);
     lv_style_set_radius(&s_bottom_surface_style, UI_TOKEN_RADIUS_SURFACE);

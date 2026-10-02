@@ -64,6 +64,7 @@ LV_FONT_DECLARE(ui_font_misans_metric_60);
 LV_FONT_DECLARE(ui_font_misans_metric_small_46);
 LV_FONT_DECLARE(ui_font_misans_ui_20);
 LV_FONT_DECLARE(ui_font_misans_ui_24);
+LV_FONT_DECLARE(ui_font_misans_zone_24);
 LV_FONT_DECLARE(ui_font_misans_nav_metric_40);
 LV_FONT_DECLARE(ui_font_misans_nav_action_32);
 LV_FONT_DECLARE(ui_font_misans_nav_unit_16);
@@ -126,7 +127,7 @@ LV_FONT_DECLARE(ui_font_misans_nav_unit_16);
  * MiSans Heavy 140 px。
  */
 #define UI_FONT_SPEED_VALUE \
-    (&ui_font_misans_num_140)
+    (&ui_font_misans_speed_110)
 
 
 /*
@@ -177,7 +178,7 @@ LV_FONT_DECLARE(ui_font_misans_nav_unit_16);
  * 骑行时间有 8 个字符，保持较小一档以避免在 237 px 卡片中裁切。
  */
 #define UI_FONT_METRIC_VALUE \
-    (&ui_font_misans_num_68)
+    (&ui_font_misans_metric_60)
 
 #define UI_FONT_METRIC_VALUE_SMALL \
     (&ui_font_misans_num_48)

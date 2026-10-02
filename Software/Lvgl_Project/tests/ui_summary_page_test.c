@@ -8,6 +8,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define TEST_W 480
@@ -39,6 +40,17 @@ static void action(ui_page_action_t value, void *user_data)
 {
     (void)user_data;
     s_action = value;
+}
+
+static lv_obj_t *find_label(lv_obj_t *root, const char *text)
+{
+    if(lv_obj_check_type(root, &lv_label_class) &&
+       strcmp(lv_label_get_text(root), text) == 0) return root;
+    for(uint32_t i = 0; i < lv_obj_get_child_count(root); ++i) {
+        lv_obj_t *found = find_label(lv_obj_get_child(root, i), text);
+        if(found != NULL) return found;
+    }
+    return NULL;
 }
 
 int main(void)
@@ -103,7 +115,8 @@ int main(void)
     lv_refr_now(display);
     assert(!s_memory_failed);
     assert(ui_summary_page_contains_scroll_point(16, 150));
-    assert(ui_summary_page_contains_scroll_point(463, 833));
+    assert(ui_summary_page_contains_scroll_point(463, UI_PAGE_ACTION_Y - 13));
+    assert(!ui_summary_page_contains_scroll_point(463, UI_PAGE_ACTION_Y));
     assert(!ui_summary_page_contains_scroll_point(15, 150));
     assert(ui_ride_report_page_content_height(
                UI_RIDE_REPORT_SUMMARY_MODE) > 2500U);
@@ -112,6 +125,15 @@ int main(void)
     lv_anim_refr_now();
     assert(ui_ride_report_page_scroll_y(
                UI_RIDE_REPORT_SUMMARY_MODE) > 0);
+    int32_t before_fast_turn=ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE);
+    for(unsigned i=0U;i<3U;++i)
+        assert(ui_summary_page_handle_input(UI_INPUT_ENCODER_CW));
+    lv_tick_inc(400U); lv_anim_refr_now();
+    assert(ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE)==before_fast_turn+780);
+    for(unsigned i=0U;i<2U;++i)
+        assert(ui_summary_page_handle_input(UI_INPUT_ENCODER_CCW));
+    lv_tick_inc(400U); lv_anim_refr_now();
+    assert(ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE)==before_fast_turn+260);
     for(uint8_t index = 0U; index < 4U; index++) {
         assert(ui_summary_page_handle_input(UI_INPUT_ENCODER_CW));
         lv_tick_inc(400U);
@@ -124,7 +146,25 @@ int main(void)
     }
     assert(ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE) <=
            (int32_t)ui_ride_report_page_content_height(
-               UI_RIDE_REPORT_SUMMARY_MODE) - TEST_H + 170);
+               UI_RIDE_REPORT_SUMMARY_MODE) - (UI_PAGE_ACTION_Y - 12 - 150));
+    /* Completion stays accessible while the report is scrolled/rebuilt. */
+    lv_obj_t *done = find_label(screen, "完成");
+    assert(done != NULL);
+    lv_obj_t *done_button = lv_obj_get_parent(done);
+    assert(lv_obj_get_parent(done_button) == screen);
+    assert(lv_obj_get_y(done_button) == UI_PAGE_ACTION_Y);
+    assert(lv_obj_get_height(done_button) == UI_PAGE_ACTION_HEIGHT);
+    lv_area_t button_area, label_area;
+    lv_obj_get_coords(done_button, &button_area);
+    lv_obj_get_coords(done, &label_area);
+    assert(abs((button_area.y1 + button_area.y2) -
+               (label_area.y1 + label_area.y2)) <= 1);
+    for(unsigned i = 0; i < 20; ++i)
+        assert(ui_summary_page_handle_input(UI_INPUT_ENCODER_CW));
+    lv_tick_inc(400U); lv_anim_refr_now();
+    assert(ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE) ==
+        (int32_t)ui_ride_report_page_content_height(UI_RIDE_REPORT_SUMMARY_MODE) -
+        (UI_PAGE_ACTION_Y - 12 - 150));
 
     ui_ride_report_model_t complete;
     ui_ride_report_model_make_mock(&complete,
@@ -147,6 +187,44 @@ int main(void)
                                          &no_hr_cadence));
     assert(ui_ride_report_page_content_height(
                UI_RIDE_REPORT_SUMMARY_MODE) < complete_height);
+
+    /* A stationary recording has zero moving time, not its full duration.
+     * Missing metrics remain distinct from measured zeros after rendering. */
+    ui_ride_summary_t stationary = {.duration_seconds = 60U,
+        .metric_flags = UI_REPORT_METRICS_KNOWN | UI_REPORT_HAS_SPEED,
+        .saved = true};
+    ui_summary_page_set_data(&stationary);
+    lv_obj_update_layout(screen);
+    lv_obj_t *moving = find_label(screen, "MOVING TIME");
+    assert(moving != NULL);
+    assert(find_label(lv_obj_get_parent(moving), "00:00:00") != NULL);
+    assert(find_label(screen,"骑行已结束，记录已保存"));
+    lv_obj_t *calories = find_label(screen, "CALORIES");
+    assert(calories != NULL);
+    assert(find_label(lv_obj_get_parent(calories), "--") != NULL);
+    stationary.saved=false;
+    ui_summary_page_set_data(&stationary); lv_obj_update_layout(screen);
+    assert(find_label(screen,"骑行已结束，记录尚未保存"));
+    int32_t saved_scroll=ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE);
+    ui_summary_page_set_saved(true); lv_obj_update_layout(screen);
+    assert(find_label(screen,"骑行已结束，记录已保存"));
+    assert(ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE)==saved_scroll);
+    ui_summary_page_set_active(false);
+    ui_summary_page_set_active(true);
+    lv_tick_inc(1000U);
+    lv_anim_refr_now();
+    lv_refr_now(display);
+    assert(!s_memory_failed);
+    assert(find_label(screen, "--") != NULL);
+    /* A valid large backend value must never overflow the count-up target. */
+    ui_ride_report_model_t large;
+    ui_ride_report_model_make_mock(&large,UI_RIDE_REPORT_CASE_COMPLETE);
+    large.distance_km=500000000.0f;
+    assert(ui_ride_report_page_set_model(UI_RIDE_REPORT_SUMMARY_MODE,&large));
+    ui_summary_page_set_active(true);
+    lv_obj_update_layout(screen);
+    assert(find_label(screen,"500000000.0") != NULL);
+    lv_refr_now(display); assert(!s_memory_failed);
 
     assert(ui_summary_page_handle_input(UI_INPUT_ENCODER_PRESS));
     assert(s_action == UI_PAGE_ACTION_HOME);

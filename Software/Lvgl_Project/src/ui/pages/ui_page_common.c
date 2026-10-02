@@ -22,6 +22,10 @@ static void apply_status(ui_status_bar_t *status,
                                  state->gps_enabled ? state->satellites : 0);
     ui_status_bar_set_time(status, state->clock_hour, state->clock_minute);
     ui_status_bar_set_battery(status, state->battery_percent);
+    lv_obj_set_style_text_font(status->time_label, state->clock_valid ? UI_FONT_STATUS_EMPHASIS : &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(status->battery_label, state->battery_valid ? UI_FONT_STATUS_EMPHASIS : &lv_font_montserrat_20, 0);
+    if(!state->clock_valid) lv_label_set_text(status->time_label, "--:--");
+    if(!state->battery_valid) { lv_label_set_text(status->battery_label, "--%"); lv_obj_set_width(status->battery_fill, 0); }
     ui_status_bar_set_wifi(status,
                            state->wifi_enabled && state->wifi_connected);
     ui_status_bar_set_bluetooth(
@@ -131,7 +135,9 @@ lv_obj_t *ui_page_card(lv_obj_t *parent, int32_t x, int32_t y,
 {
     lv_obj_t *card = ui_page_box(parent, x, y, width, height,
                                  UI_COLOR_WHITE, 1);
-    lv_obj_set_style_bg_opa(card, LV_OPA_90, 0);
+    lv_obj_set_style_bg_color(card, UI_TOKEN_COLOR_SURFACE, 0);
+    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(card, UI_TOKEN_COLOR_SURFACE_OUTLINE, 0);
     lv_obj_set_style_radius(card, 14, 0);
     return card;
 }
@@ -166,10 +172,11 @@ void ui_page_line(lv_obj_t *parent, int32_t x, int32_t y,
 void ui_page_title(lv_obj_t *screen, const char *title, const char *subtitle)
 {
     ui_page_label(screen, UI_LEFT + 18, 85, UI_CONTENT_W - 36,
-                  title, UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_LEFT);
-    ui_page_label(screen, UI_LEFT + 18, 112, UI_CONTENT_W - 36,
-                  subtitle, UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_LEFT);
-    ui_page_line(screen, UI_LEFT, 143, UI_CONTENT_W, 1, UI_COLOR_WHITE);
+                  title, &ui_font_misans_ui_24, LV_TEXT_ALIGN_LEFT);
+    lv_obj_t *secondary = ui_page_label(screen, UI_LEFT + 18, 119, UI_CONTENT_W - 36,
+                  subtitle, &lv_font_montserrat_12, LV_TEXT_ALIGN_LEFT);
+    lv_obj_set_style_text_color(secondary, UI_TOKEN_COLOR_TEXT_SECONDARY, 0);
+    ui_page_line(screen, UI_LEFT, 143, UI_CONTENT_W, 1, UI_COLOR_GRID_LINE);
 }
 
 lv_obj_t *ui_page_button(lv_obj_t *parent, int32_t x, int32_t y,
@@ -180,8 +187,9 @@ lv_obj_t *ui_page_button(lv_obj_t *parent, int32_t x, int32_t y,
                                    UI_COLOR_WHITE, 1);
     lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(button, event_cb, LV_EVENT_CLICKED, user_data);
-    ui_page_label(button, 6, (height - 20) / 2, width - 12, text,
-                  UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_CENTER);
+    lv_obj_t *label = ui_page_label(button, 0, 0, width, text,
+                                    UI_FONT_PAGE_TEXT, LV_TEXT_ALIGN_CENTER);
+    ui_align_label_center(label);
     return button;
 }
 

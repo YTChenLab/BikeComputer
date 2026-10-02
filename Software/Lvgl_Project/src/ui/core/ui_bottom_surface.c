@@ -1,4 +1,5 @@
 #include "ui_bottom_surface.h"
+#include "ui_motion.h"
 
 #include "../design/ui_component_style.h"
 #include "../design/ui_design_tokens.h"
@@ -69,15 +70,8 @@ static void height_animation(void *object, int32_t value)
 
 static void animate_height(lv_obj_t *object, int32_t target)
 {
-    lv_anim_delete(object, height_animation);
-    lv_anim_t animation;
-    lv_anim_init(&animation);
-    lv_anim_set_var(&animation, object);
-    lv_anim_set_exec_cb(&animation, height_animation);
-    lv_anim_set_values(&animation, lv_obj_get_height(object), target);
-    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_SURFACE_MS);
-    lv_anim_set_path_cb(&animation, lv_anim_path_ease_out);
-    lv_anim_start(&animation);
+    ui_motion_spring(object, height_animation, lv_obj_get_height(object),
+                     target, should_be_visible(), NULL, NULL);
 }
 
 static void y_animation(void *object, int32_t value)
@@ -87,15 +81,8 @@ static void y_animation(void *object, int32_t value)
 
 static void animate_y(lv_obj_t *object, int32_t target)
 {
-    lv_anim_delete(object, y_animation);
-    lv_anim_t animation;
-    lv_anim_init(&animation);
-    lv_anim_set_var(&animation, object);
-    lv_anim_set_exec_cb(&animation, y_animation);
-    lv_anim_set_values(&animation, lv_obj_get_y(object), target);
-    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_SURFACE_MS);
-    lv_anim_set_path_cb(&animation, lv_anim_path_ease_out);
-    lv_anim_start(&animation);
+    ui_motion_spring(object, y_animation, lv_obj_get_y(object),
+                     target, should_be_visible(), NULL, NULL);
 }
 
 static void x_animation(void *object, int32_t value)
@@ -105,15 +92,8 @@ static void x_animation(void *object, int32_t value)
 
 static void animate_x(lv_obj_t *object, int32_t target)
 {
-    lv_anim_delete(object, x_animation);
-    lv_anim_t animation;
-    lv_anim_init(&animation);
-    lv_anim_set_var(&animation, object);
-    lv_anim_set_exec_cb(&animation, x_animation);
-    lv_anim_set_values(&animation, lv_obj_get_x(object), target);
-    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_SURFACE_MS);
-    lv_anim_set_path_cb(&animation, lv_anim_path_ease_out);
-    lv_anim_start(&animation);
+    ui_motion_spring(object, x_animation, lv_obj_get_x(object),
+                     target, should_be_visible(), NULL, NULL);
 }
 
 static void width_animation(void *object, int32_t value)
@@ -124,16 +104,8 @@ static void width_animation(void *object, int32_t value)
 static void animate_width(lv_obj_t *object, int32_t target,
                           lv_anim_completed_cb_t completed)
 {
-    lv_anim_delete(object, width_animation);
-    lv_anim_t animation;
-    lv_anim_init(&animation);
-    lv_anim_set_var(&animation, object);
-    lv_anim_set_exec_cb(&animation, width_animation);
-    lv_anim_set_values(&animation, lv_obj_get_width(object), target);
-    lv_anim_set_duration(&animation, UI_TOKEN_MOTION_SURFACE_MS);
-    lv_anim_set_path_cb(&animation, lv_anim_path_ease_out);
-    if(completed != NULL) lv_anim_set_completed_cb(&animation, completed);
-    lv_anim_start(&animation);
+    ui_motion_spring(object, width_animation, lv_obj_get_width(object),
+                     target, should_be_visible(), completed, NULL);
 }
 
 static void root_hide_completed(lv_anim_t *animation)
@@ -188,7 +160,7 @@ static void apply_dynamic_focus(void)
                        UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE;
     bool interaction = s_surface.current.mode ==
                        UI_BOTTOM_SURFACE_INTERACTION_MODE;
-    lv_color_t border = UI_TOKEN_COLOR_SURFACE_BORDER;
+    lv_color_t border = UI_TOKEN_COLOR_SURFACE_OUTLINE;
     int32_t width = UI_TOKEN_BORDER_THIN;
     if(interaction &&
        s_surface.current.priority == UI_BOTTOM_SURFACE_PRIORITY_P0_CRITICAL) {
@@ -238,10 +210,10 @@ static void apply_geometry(bool animated)
                           root_hide_completed);
         }
         else {
-            lv_anim_delete(s_surface.root, x_animation);
-            lv_anim_delete(s_surface.root, y_animation);
-            lv_anim_delete(s_surface.root, width_animation);
-            lv_anim_delete(s_surface.root, height_animation);
+            ui_motion_cancel(s_surface.root, x_animation);
+            ui_motion_cancel(s_surface.root, y_animation);
+            ui_motion_cancel(s_surface.root, width_animation);
+            ui_motion_cancel(s_surface.root, height_animation);
             lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_pos(s_surface.root, 0, y);
             lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH, height);
@@ -251,7 +223,6 @@ static void apply_geometry(bool animated)
     }
 
     bool was_hidden = lv_obj_has_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
-    lv_anim_delete(s_surface.root, width_animation);
     lv_obj_clear_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(s_surface.root);
     if(animated && was_hidden) {
@@ -266,22 +237,16 @@ static void apply_geometry(bool animated)
         animate_height(s_surface.root, height);
     }
     else if(animated) {
-        lv_obj_set_x(s_surface.root, UI_TOKEN_SPACE_4);
-        lv_obj_set_y(s_surface.root, y + UI_TOKEN_SPACE_4);
-        lv_obj_set_width(s_surface.root,
-                         UI_BOTTOM_SURFACE_WIDTH - UI_TOKEN_SPACE_8);
-        lv_obj_set_height(s_surface.root,
-                          LV_MAX(height - UI_TOKEN_SPACE_4, 1));
         animate_x(s_surface.root, 0);
         animate_y(s_surface.root, y);
         animate_width(s_surface.root, UI_BOTTOM_SURFACE_WIDTH, NULL);
         animate_height(s_surface.root, height);
     }
     else {
-        lv_anim_delete(s_surface.root, x_animation);
-        lv_anim_delete(s_surface.root, y_animation);
-        lv_anim_delete(s_surface.root, width_animation);
-        lv_anim_delete(s_surface.root, height_animation);
+        ui_motion_cancel(s_surface.root, x_animation);
+        ui_motion_cancel(s_surface.root, y_animation);
+        ui_motion_cancel(s_surface.root, width_animation);
+        ui_motion_cancel(s_surface.root, height_animation);
         lv_obj_set_pos(s_surface.root, 0, y);
         lv_obj_set_size(s_surface.root, UI_BOTTOM_SURFACE_WIDTH, height);
         lv_obj_update_layout(s_surface.root);
@@ -391,10 +356,10 @@ void ui_bottom_surface_unmount(void)
     if(!s_surface.created || !s_surface.mounted) return;
     s_surface.mounted = false;
     s_surface.dynamic_content_visible = false;
-    lv_anim_delete(s_surface.root, x_animation);
-    lv_anim_delete(s_surface.root, y_animation);
-    lv_anim_delete(s_surface.root, width_animation);
-    lv_anim_delete(s_surface.root, height_animation);
+    ui_motion_cancel(s_surface.root, x_animation);
+    ui_motion_cancel(s_surface.root, y_animation);
+    ui_motion_cancel(s_surface.root, width_animation);
+    ui_motion_cancel(s_surface.root, height_animation);
     lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
     emit_state();
 }

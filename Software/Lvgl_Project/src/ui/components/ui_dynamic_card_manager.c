@@ -1,4 +1,7 @@
 #include "ui_dynamic_card_manager.h"
+#include "../core/ui_text.h"
+#include "ui_metric_card.h"
+#include "../models/ui_dashboard_layout.h"
 
 #include "../core/ui_colors.h"
 #include "../core/ui_app_state.h"
@@ -6,10 +9,12 @@
 #include "../core/ui_motion.h"
 #include "../core/ui_theme.h"
 #include "../design/ui_design_tokens.h"
+#include "../design/ui_alignment.h"
 #include "../../services/ui_command_service.h"
 #include "../../services/ui_navigation_service.h"
 #include "../models/ui_weather_model.h"
 #include "../models/ui_ride_data_model.h"
+#include "../models/ui_ride_summary_model.h"
 
 #include "lvgl/src/draw/lv_draw_line.h"
 #include "lvgl/src/draw/lv_draw_triangle.h"
@@ -41,7 +46,10 @@ typedef struct
     lv_obj_t *indicator_overlay;
     lv_obj_t *indicator_dots[UI_DYNAMIC_CARD_COUNT];
     lv_obj_t *music_controls[MUSIC_CONTROL_COUNT];
-    lv_obj_t *extended_values[8];
+    ui_metric_card_t extended_metrics[4];
+    lv_obj_t *extended_page_label, *extended_hint;
+    ui_ride_data_t latest_ride_data;
+    unsigned extended_page;
     lv_obj_t *music_play_icon;
     lv_obj_t *music_track_label;
     lv_obj_t *music_artist_label;
@@ -126,6 +134,15 @@ static void music_state_changed(const ui_app_state_t *state,
 static void apply_weather(const ui_weather_data_t *weather)
 {
     if(weather == NULL || s_manager.weather_temperature == NULL) return;
+    if(weather->quality_known && !weather->valid) {
+        lv_label_set_text(s_manager.weather_temperature, "--");
+        lv_label_set_text(s_manager.weather_condition, "天气未更新");
+        lv_label_set_text(s_manager.weather_advice, "等待有效天气数据");
+        lv_label_set_text(s_manager.weather_wind, "--");
+        lv_label_set_text(s_manager.weather_rain, "--");
+        lv_label_set_text(s_manager.weather_air, "--");
+        return;
+    }
     ui_weather_condition_t condition = weather->condition;
     if(condition >= UI_WEATHER_CONDITION_COUNT)
         condition = UI_WEATHER_CLOUDY;
@@ -153,27 +170,55 @@ static void weather_changed(const ui_weather_data_t *weather,
 
 static void apply_ride_data(const ui_ride_data_t *data)
 {
-    if(data == NULL || s_manager.extended_values[0] == NULL) return;
-    char text[24];
-    lv_snprintf(text, sizeof(text), "%.1f", (double)data->average_speed);
-    lv_label_set_text(s_manager.extended_values[0], text);
-    lv_snprintf(text, sizeof(text), "%.1f", (double)data->maximum_speed);
-    lv_label_set_text(s_manager.extended_values[1], text);
-    lv_snprintf(text, sizeof(text), "%ld", (long)data->altitude_m);
-    lv_label_set_text(s_manager.extended_values[2], text);
-    lv_snprintf(text, sizeof(text), "%lu", (unsigned long)data->ascent_m);
-    lv_label_set_text(s_manager.extended_values[3], text);
-    lv_snprintf(text, sizeof(text), "%lu",
-                (unsigned long)data->calories_kcal);
-    lv_label_set_text(s_manager.extended_values[4], text);
-    lv_snprintf(text, sizeof(text), "%d", data->temperature_c);
-    lv_label_set_text(s_manager.extended_values[5], text);
-    lv_snprintf(text, sizeof(text), "Z%u", data->heart_rate_zone);
-    lv_label_set_text(s_manager.extended_values[6], text);
-    lv_snprintf(text, sizeof(text), "%u/%u", data->current_lap,
-                data->total_laps);
-    lv_label_set_text(s_manager.extended_values[7], text);
+    if(data == NULL || s_manager.extended_metrics[0].root == NULL) return;
+    s_manager.latest_ride_data = *data;
+    static const ui_ride_field_t fields[8] = {
+        UI_RIDE_FIELD_AVERAGE_SPEED, UI_RIDE_FIELD_MAXIMUM_SPEED,
+        UI_RIDE_FIELD_ALTITUDE, UI_RIDE_FIELD_ASCENT, UI_RIDE_FIELD_CALORIES,
+        UI_RIDE_FIELD_TEMPERATURE, UI_RIDE_FIELD_HEART_RATE, UI_RIDE_FIELD_LAP
+    };
+    for(unsigned i = 0; i < 4; ++i) {
+        unsigned index = s_manager.extended_page * 4 + i;
+        ui_ride_field_t field = fields[index];
+        ui_metric_card_t *card = &s_manager.extended_metrics[i];
+        const ui_dashboard_field_definition_t *definition = ui_dashboard_field_definition(field);
+        bool special = index >= 6;
+        lv_label_set_text(card->title, special ? (index == 6 ? "心率区间" : "当前圈数") : definition->title);
+        ui_metric_card_set_unit(card, special ? (index == 6 ? "Z1-Z5" : "圈") : definition->unit);
+        ui_metric_card_set_value_font(card, index == 6 ? &ui_font_misans_zone_24 :
+            special ? &ui_font_misans_ui_24 : UI_FONT_METRIC_VALUE_SMALL);
+        char text[48];
+        if(!special) ui_dashboard_format_field(field, data, lv_tick_get(), text, sizeof(text));
+        else if(!ui_ride_data_field_valid(data, field, lv_tick_get())) lv_snprintf(text,sizeof(text),"--");
+        else if(index == 6) {
+            uint16_t heart[4], power[4];
+            ui_ride_summary_model_get_zones(heart, power);
+            unsigned zone = 1;
+            while(zone < 5 && data->heart_rate >= heart[zone - 1]) ++zone;
+            lv_snprintf(text, sizeof(text), "Z%u", zone);
+        } else lv_snprintf(text, sizeof(text), "%u/%u", data->current_lap, data->total_laps);
+        ui_metric_card_set_value(card, text);
+    }
+    lv_label_set_text(s_manager.extended_page_label, s_manager.extended_page ? "DATA 2/2" : "DATA 1/2");
 }
+
+static void change_extended_page(int direction)
+{
+    s_manager.extended_page = (s_manager.extended_page + (direction != 0)) % 2;
+    apply_ride_data(&s_manager.latest_ride_data);
+    for(unsigned i = 0; i < 4; ++i) {
+        int32_t y = 44 + (i / 2) * 88;
+        ui_motion_translate_fade(s_manager.extended_metrics[i].root, y + 4, y,
+            LV_OPA_40, LV_OPA_COVER, 140, NULL, NULL);
+    }
+}
+
+static void extended_clicked(lv_event_t *event)
+{
+    if(lv_event_get_code(event) == LV_EVENT_CLICKED) change_extended_page(1);
+}
+
+void ui_dynamic_card_manager_refresh_data(const ui_ride_data_t *data) { apply_ride_data(data); }
 
 static void ride_data_changed(const ui_ride_data_t *data, uint32_t version,
                               void *user_data)
@@ -204,9 +249,9 @@ static void apply_navigation(const nav_model_t *model)
     lv_snprintf(text, sizeof(text), "%lu",
                 (unsigned long)model->direction_distance);
     lv_label_set_text(s_manager.navigation_distance, text);
-    lv_label_set_text(s_manager.navigation_road,
+    (void)ui_text_set_label(s_manager.navigation_road,
                       model->road_name[0] != '\0' ? model->road_name :
-                                                   "未命名道路");
+                                                   "未命名道路", 20);
     lv_label_set_text(s_manager.navigation_instruction,
                       navigation_instruction(model->direction));
     lv_snprintf(text, sizeof(text), "%.1f km", (double)model->distance);
@@ -272,7 +317,7 @@ static lv_obj_t *create_label(lv_obj_t *parent, int32_t x, int32_t y,
     return label;
 }
 
-static void create_card_header(lv_obj_t *card, const char *symbol,
+static lv_obj_t *create_card_header(lv_obj_t *card, const char *symbol,
                                const char *title, const char *subtitle,
                                const char *page)
 {
@@ -281,10 +326,11 @@ static void create_card_header(lv_obj_t *card, const char *symbol,
                  UI_COLOR_YELLOW, LV_TEXT_ALIGN_CENTER);
     create_label(card, 76, 9, 112, title, UI_FONT_PAGE_TEXT,
                  UI_COLOR_YELLOW, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 188, 12, 170, subtitle, &lv_font_montserrat_16,
+    lv_obj_t *subtitle_label = create_label(card, 188, 12, 170, subtitle, &lv_font_montserrat_16,
                  secondary, LV_TEXT_ALIGN_LEFT);
     create_label(card, 410, 12, 34, page, &lv_font_montserrat_16,
                  secondary, LV_TEXT_ALIGN_RIGHT);
+    return subtitle_label;
 }
 
 static lv_obj_t *create_card(lv_obj_t *viewport)
@@ -306,38 +352,24 @@ static lv_obj_t *create_card(lv_obj_t *viewport)
 
 static void create_extended_card(lv_obj_t *card)
 {
-    const lv_color_t secondary = UI_TOKEN_COLOR_TEXT_SECONDARY;
-    static const char * const labels[8] = {
-        "平均速度", "最大速度", "当前海拔", "累计爬升",
-        "卡路里", "当前温度", "心率区间", "当前圈数"
-    };
-    static const char * const units[8] = {
-        "km/h", "km/h", "m", "m", "kcal", "℃", "阈值区间", "圈"
-    };
-
-    create_card_header(card, LV_SYMBOL_BARS, "骑行扩展", "EXTENDED DATA", "1/4");
-    create_rect(card, 45, 124, 399, 1, secondary, LV_OPA_50);
-
-    for(uint8_t index = 0; index < 8; index++)
-    {
-        int32_t column = index % 4;
-        int32_t row = index / 4;
-        int32_t x = 48 + column * 99;
-        int32_t y = 47 + row * 83;
-
-        if(column > 0)
-        {
-            create_rect(card, x - 8, y, 1, 67, secondary, LV_OPA_50);
-        }
-
-        create_label(card, x, y, 88, labels[index], UI_FONT_PAGE_TEXT,
-                     secondary, LV_TEXT_ALIGN_LEFT);
-        s_manager.extended_values[index] = create_label(
-            card, x, y + 25, 88, "--", &lv_font_montserrat_24,
-            UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
-        create_label(card, x, y + 52, 88, units[index], UI_FONT_PAGE_TEXT,
-                     UI_COLOR_WHITE, LV_TEXT_ALIGN_LEFT);
+    s_manager.extended_page_label = create_card_header(card, LV_SYMBOL_BARS, "骑行扩展", "DATA 1/2", "1/4");
+    lv_obj_set_width(s_manager.extended_page_label, 100);
+    s_manager.extended_hint = create_label(card, 290, 10, 108, "点按切换", UI_FONT_PAGE_TEXT,
+        UI_TOKEN_COLOR_TEXT_TERTIARY, LV_TEXT_ALIGN_RIGHT);
+    create_rect(card, 48, 130, 396, 1, UI_TOKEN_COLOR_SURFACE_OUTLINE, LV_OPA_COVER);
+    create_rect(card, 247, 47, 1, 172, UI_TOKEN_COLOR_SURFACE_OUTLINE, LV_OPA_COVER);
+    for(unsigned i = 0; i < 4; ++i) {
+        ui_metric_card_t *metric = &s_manager.extended_metrics[i];
+        ui_metric_card_create(metric, card, 48 + (i % 2) * 199, 44 + (i / 2) * 88,
+            196, 86, "", "--", "", UI_FONT_METRIC_VALUE_SMALL);
+        lv_obj_set_style_text_font(metric->title, UI_FONT_PAGE_TEXT, 0);
+        lv_obj_set_style_text_color(metric->title, UI_TOKEN_COLOR_TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_font(metric->unit, UI_FONT_PAGE_TEXT, 0);
+        lv_obj_set_style_text_color(metric->unit, UI_TOKEN_COLOR_TEXT_SECONDARY, 0);
+        lv_obj_clear_flag(metric->root, LV_OBJ_FLAG_CLICKABLE);
     }
+    lv_obj_add_flag(card, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(card, extended_clicked, LV_EVENT_CLICKED, NULL);
 }
 
 static void navigation_arrow_draw_cb(lv_event_t *event)
@@ -453,8 +485,8 @@ static lv_obj_t *create_music_control(lv_obj_t *card, int32_t x, int32_t y,
     lv_obj_set_style_transform_pivot_y(control, height / 2, 0);
     lv_obj_set_style_transform_scale(control, MUSIC_NORMAL_SCALE, 0);
     lv_obj_add_flag(control, LV_OBJ_FLAG_CLICKABLE);
-    create_label(control, 0, (height - (int32_t)font->line_height) / 2,
-                 width, symbol, font, UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    ui_align_label_center(create_label(control, 0, 0, width, symbol,
+        font, UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER));
     return control;
 }
 
@@ -570,12 +602,15 @@ static void create_music_card(lv_obj_t *card)
     lv_obj_set_style_transform_pivot_x(s_manager.music_controls[3], 80, 0);
     lv_obj_set_style_transform_pivot_y(s_manager.music_controls[3], 19, 0);
     lv_obj_set_style_transform_scale(s_manager.music_controls[3], MUSIC_NORMAL_SCALE, 0);
-    create_label(s_manager.music_controls[3], 8, 8, 25, LV_SYMBOL_LOOP,
-                 &lv_font_montserrat_16, UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
+    lv_obj_t *mode_icon = create_label(s_manager.music_controls[3], 8, 0,
+        25, LV_SYMBOL_LOOP, &lv_font_montserrat_16, UI_COLOR_WHITE,
+        LV_TEXT_ALIGN_CENTER);
+    ui_align_center_y(mode_icon, 8);
     s_manager.music_mode_label = create_label(
         s_manager.music_controls[3], 34, 7, 116, s_music_modes[0],
         UI_FONT_PAGE_TEXT, secondary, LV_TEXT_ALIGN_LEFT
     );
+    ui_align_center_y(s_manager.music_mode_label, 34);
 
     make_music_control_interactive(s_manager.music_controls[0], MUSIC_CONTROL_PREVIOUS);
     make_music_control_interactive(s_manager.music_controls[1], MUSIC_CONTROL_PLAY_PAUSE);
@@ -658,6 +693,9 @@ static void update_control_visuals(void)
 {
     ui_bottom_surface_set_dynamic_focus(
         s_manager.mode == UI_DYNAMIC_CARD_CONTROL);
+    if(s_manager.extended_hint) lv_label_set_text(s_manager.extended_hint,
+        s_manager.mode == UI_DYNAMIC_CARD_CONTROL && s_manager.active_card == UI_DYNAMIC_CARD_EXTENDED_DATA
+            ? "旋转翻页" : "点按切换");
 
     for(uint8_t index = 0; index < MUSIC_CONTROL_COUNT; index++)
     {
@@ -727,7 +765,7 @@ static void scroll_to_card(ui_dynamic_card_id_t card)
     if(card >= UI_DYNAMIC_CARD_COUNT) return;
     s_manager.target_card = card;
     lv_obj_update_layout(s_manager.viewport);
-    lv_obj_scroll_to_view(s_manager.cards[card], LV_ANIM_ON);
+    lv_obj_scroll_to_view(s_manager.cards[card], ui_motion_scroll_mode());
 }
 
 static void execute_music_control(uint8_t control_index)
@@ -886,6 +924,11 @@ bool ui_dynamic_card_manager_handle_input(ui_input_event_t input)
         return true;
     }
 
+    if(s_manager.active_card == UI_DYNAMIC_CARD_EXTENDED_DATA) {
+        change_extended_page(direction);
+        return true;
+    }
+
     if(s_manager.active_card == UI_DYNAMIC_CARD_MUSIC)
     {
         if(s_manager.control_focus < 0)
@@ -925,3 +968,5 @@ int8_t ui_dynamic_card_manager_get_control_focus(void)
 {
     return s_manager.control_focus;
 }
+
+unsigned ui_dynamic_card_manager_get_extended_page(void) { return s_manager.extended_page; }

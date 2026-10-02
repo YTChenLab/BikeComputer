@@ -54,7 +54,7 @@ int main(void)
     assert(!ui_ride_summary_model_active());
     assert(fabsf(summary.distance_km - 1.0f) < 0.001f);
     assert(summary.duration_seconds == 120U);
-    assert(fabsf(summary.average_speed_kmh - 27.0f) < 0.001f);
+    assert(fabsf(summary.average_speed_kmh - 30.0f) < 0.001f);
     assert(fabsf(summary.maximum_speed_kmh - 30.0f) < 0.001f);
     assert(summary.ascent_m == 20U);
     assert(summary.descent_m == 10U);

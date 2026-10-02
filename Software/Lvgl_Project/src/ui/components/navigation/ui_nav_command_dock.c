@@ -1,4 +1,6 @@
 #include "ui_nav_command_dock.h"
+#include "../../core/ui_text.h"
+#include "../../core/ui_motion.h"
 
 #include "ui_nav_layout.h"
 #include "../../core/ui_colors.h"
@@ -11,10 +13,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NAV_DOCK_BG              lv_color_hex(0x0B0D0C)
-#define NAV_DOCK_BORDER          lv_color_hex(0x4A4F4B)
-#define NAV_DOCK_DIVIDER         lv_color_hex(0x303431)
-#define NAV_DOCK_YELLOW          lv_color_hex(0xFFE600)
+#define NAV_DOCK_BG              UI_TOKEN_COLOR_SURFACE
+#define NAV_DOCK_BORDER          UI_TOKEN_COLOR_SURFACE_OUTLINE
+#define NAV_DOCK_DIVIDER         UI_TOKEN_COLOR_DIVIDER
+#define NAV_DOCK_YELLOW          UI_TOKEN_COLOR_ACCENT
 #define NAV_DOCK_ICON_X          10
 #define NAV_DOCK_ICON_Y          14
 #define NAV_DOCK_ICON_W         170
@@ -449,8 +451,8 @@ void ui_nav_command_dock_update(ui_nav_command_dock_t *dock,
         set_normal_visibility(dock, true);
         lv_obj_set_style_text_color(dock->action, NAV_DOCK_YELLOW, 0);
         lv_label_set_text(dock->action, maneuver_name(dock->maneuver));
-        lv_label_set_text(dock->road,
-                          model->road_name[0] != '\0' ? model->road_name : "当前道路");
+        (void)ui_text_set_label(dock->road,
+                          model->road_name[0] != '\0' ? model->road_name : "当前道路", 20);
         if(model->direction_distance >= 1000U) {
             lv_label_set_text_fmt(dock->distance_value, "%.1f",
                                   (double)model->direction_distance / 1000.0);
@@ -480,11 +482,14 @@ void ui_nav_command_dock_update(ui_nav_command_dock_t *dock,
     }
 
     bool maneuver_changed = dock->maneuver != old_maneuver;
-    if(animate_state_change &&
+    if(animate_state_change && !ui_motion_is_reduced() &&
        (maneuver_changed || dock->state == NAV_UI_APPROACH ||
         dock->state == NAV_UI_IMMINENT))
         animate_state(dock, dock->state, maneuver_changed);
     else {
+        lv_anim_delete(dock, set_icon_scale);
+        lv_anim_delete(dock->accent, set_accent_opa);
+        lv_obj_set_style_bg_opa(dock->accent, LV_OPA_COVER, 0);
         dock->icon_scale = 100;
         lv_obj_invalidate(dock->icon);
     }

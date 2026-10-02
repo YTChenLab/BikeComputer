@@ -12,6 +12,7 @@ typedef struct
     float distance_km;
     uint32_t duration_seconds;
     uint32_t moving_time_seconds;
+    uint8_t metric_flags; /* UI_REPORT_HAS_* and UI_REPORT_METRICS_KNOWN. */
     float average_speed_kmh;
     float maximum_speed_kmh;
     uint32_t ascent_m;
@@ -33,12 +34,22 @@ typedef struct
     ui_ride_report_trace_t trace;
     bool saved;
     uint32_t version;
+    uint32_t session_id;
+    int64_t started_at_utc;
+    int64_t finished_at_utc; /* Frozen from storage's cached RTC when staged. */
 } ui_ride_summary_t;
 
 void ui_ride_summary_model_init(void);
 void ui_ride_summary_model_begin(const ui_ride_data_t *data);
 void ui_ride_summary_model_update(const ui_ride_data_t *data);
 void ui_ride_summary_model_finish(bool saved);
+bool ui_ride_summary_model_restore(const ui_ride_summary_t *summary);
+void ui_ride_summary_model_set_paused(bool paused);
+void ui_ride_summary_model_get_zones(uint16_t heart_rate[4], uint16_t power[4]);
+bool ui_ride_summary_model_set_zones(const uint16_t heart_rate[4],
+                                     const uint16_t power[4]);
+uint32_t ui_ride_summary_model_session_id(void);
+uint32_t ui_ride_summary_model_reserve_session(void);
 bool ui_ride_summary_model_get(ui_ride_summary_t *summary);
 bool ui_ride_summary_model_active(void);
 

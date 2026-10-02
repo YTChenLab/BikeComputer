@@ -7,6 +7,11 @@
 
 static uint8_t s_draw_buffer[UI_TOKEN_SCREEN_WIDTH * 20 * 2];
 static uint32_t s_observer_calls;
+static void flush(lv_display_t *display, const lv_area_t *area, uint8_t *pixels)
+{
+    (void)area; (void)pixels;
+    lv_display_flush_ready(display);
+}
 
 static void state_changed(const ui_bottom_surface_state_t *state,
                           void *user_data)
@@ -26,6 +31,7 @@ int main(void)
     lv_display_set_buffers(display, s_draw_buffer, NULL,
                            sizeof(s_draw_buffer),
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_flush_cb(display, flush);
 
     lv_obj_t *slot = lv_obj_create(lv_screen_active());
     lv_obj_remove_style_all(slot);
@@ -168,6 +174,7 @@ int main(void)
     assert(!lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));
     lv_tick_inc(UI_TOKEN_MOTION_SURFACE_MS);
     lv_anim_refr_now();
+    (void)lv_timer_handler();
     assert(lv_obj_has_flag(root, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(normal, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(interaction, LV_OBJ_FLAG_HIDDEN));

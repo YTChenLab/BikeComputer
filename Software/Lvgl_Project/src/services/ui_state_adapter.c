@@ -38,6 +38,9 @@ bool ui_state_adapter_submit(const ui_state_adapter_snapshot_t *snapshot,
         s_adapter.pending.clock_minute = snapshot->clock_minute;
         s_adapter.pending.battery_percent = snapshot->battery_percent;
         s_adapter.pending.battery_charging = snapshot->battery_charging;
+        s_adapter.pending.status_quality_known = snapshot->status_quality_known;
+        s_adapter.pending.clock_valid = snapshot->clock_valid;
+        s_adapter.pending.battery_valid = snapshot->battery_valid;
     }
     if((fields & (UI_STATE_ADAPTER_GNSS |
                   UI_STATE_ADAPTER_SATELLITES)) != 0U) {
@@ -113,6 +116,8 @@ ui_state_adapter_mask_t ui_state_adapter_process(void)
     else if(has_satellites) {
         ui_app_state_set_satellites(snapshot.satellites);
     }
+    if(has_status && snapshot.status_quality_known)
+        ui_app_state_set_status_validity(snapshot.clock_valid, snapshot.battery_valid);
     if((fields & UI_STATE_ADAPTER_CONNECTIVITY) != 0U) {
         ui_app_state_set_connectivity(
             snapshot.wifi_enabled, snapshot.wifi_connected,

@@ -4,6 +4,7 @@
 #include "../../core/ui_event.h"
 #include "../../core/ui_theme.h"
 #include "../../design/ui_design_tokens.h"
+#include "../../design/ui_alignment.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -118,7 +119,7 @@ static void create_common(ui_dock_template_t *view, lv_obj_t *parent,
     lv_obj_t *close_icon = make_label(view->close_button, 0, 6, 30,
                                       LV_SYMBOL_CLOSE, LV_FONT_DEFAULT,
                                       LV_TEXT_ALIGN_CENTER);
-    (void)close_icon;
+    ui_align_label_center(close_icon);
     lv_obj_add_flag(view->root, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -132,7 +133,7 @@ static void create_info(ui_dock_template_t *view)
 static void create_action(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
     lv_obj_set_width(view->message, 204);
-    view->primary_button = make_button(view->root, 326, 78, 108, 56,
+    view->primary_button = make_button(view->root, 326, 142, 108, UI_PAGE_ACTION_HEIGHT,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "OK",
                      UI_FONT_PAGE_TEXT);
@@ -142,12 +143,12 @@ static void create_confirm(ui_dock_template_t *view, lv_event_cb_t event_cb)
 {
     lv_obj_set_height(view->accent, 184);
     lv_obj_set_width(view->message, 330);
-    view->secondary_button = make_button(view->root, 204, 158, 112, 48,
+    view->secondary_button = make_button(view->root, 204, 142, 112, UI_PAGE_ACTION_HEIGHT,
                                          UI_DOCK_INTERACTION_SECONDARY,
                                          event_cb);
     add_button_label(view->secondary_button, &view->secondary_label, "NO",
                      UI_FONT_PAGE_TEXT);
-    view->primary_button = make_button(view->root, 328, 158, 112, 48,
+    view->primary_button = make_button(view->root, 328, 142, 112, UI_PAGE_ACTION_HEIGHT,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "YES",
                      UI_FONT_PAGE_TEXT);
@@ -192,7 +193,7 @@ static void create_navigation(ui_dock_template_t *view,
     lv_obj_set_height(view->message, 72);
     lv_obj_set_style_text_font(view->message, UI_FONT_SURFACE_EMPHASIS, 0);
     lv_obj_set_style_text_align(view->message, LV_TEXT_ALIGN_CENTER, 0);
-    view->primary_button = make_button(view->root, 344, 139, 96, 58,
+    view->primary_button = make_button(view->root, 344, 142, 96, UI_PAGE_ACTION_HEIGHT,
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "OPEN",
                      UI_FONT_SURFACE_ACTION);
@@ -205,17 +206,17 @@ static void create_media(ui_dock_template_t *view, lv_event_cb_t event_cb)
     view->decrement_button = make_button(view->root, 76, 150, 50, 50,
                                          UI_DOCK_INTERACTION_DECREMENT,
                                          event_cb);
-    make_label(view->decrement_button, 0, 11, 48, LV_SYMBOL_PREV,
-               LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
+    ui_align_label_center(make_label(view->decrement_button, 0, 0, 48,
+        LV_SYMBOL_PREV, LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER));
     view->toggle_button = make_button(view->root, 138, 150, 50, 50,
                                       UI_DOCK_INTERACTION_TOGGLE, event_cb);
-    make_label(view->toggle_button, 0, 11, 48, LV_SYMBOL_PLAY,
-               LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
+    ui_align_label_center(make_label(view->toggle_button, 0, 0, 48,
+        LV_SYMBOL_PLAY, LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER));
     view->increment_button = make_button(view->root, 200, 150, 50, 50,
                                          UI_DOCK_INTERACTION_INCREMENT,
                                          event_cb);
-    make_label(view->increment_button, 0, 11, 48, LV_SYMBOL_NEXT,
-               LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER);
+    ui_align_label_center(make_label(view->increment_button, 0, 0, 48,
+        LV_SYMBOL_NEXT, LV_FONT_DEFAULT, LV_TEXT_ALIGN_CENTER));
     view->secondary_button = make_button(view->root, 268, 150, 112, 50,
                                          UI_DOCK_INTERACTION_SECONDARY,
                                          event_cb);

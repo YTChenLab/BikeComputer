@@ -28,6 +28,15 @@ typedef enum
 typedef void (*ui_motion_value_cb_t)(void *target, int32_t value);
 
 void ui_motion_init(void);
+/* LVGL-thread only. Springs retain position and velocity when retargeted. */
+void ui_motion_set_reduced(bool reduced);
+bool ui_motion_is_reduced(void);
+void ui_motion_set_riding(bool riding);
+lv_anim_enable_t ui_motion_scroll_mode(void);
+void ui_motion_spring(lv_obj_t *object, ui_motion_value_cb_t callback,
+                      int32_t from, int32_t to, bool expressive,
+                      lv_anim_completed_cb_t completed, void *user_data);
+uint32_t ui_motion_springs_running(void);
 void ui_motion_value(void *target, ui_motion_value_cb_t callback,
                      int32_t from, int32_t to, uint32_t duration,
                      lv_anim_path_cb_t path,

@@ -65,6 +65,7 @@ static void finish_animations(void)
 {
     lv_tick_inc(300);
     lv_anim_refr_now();
+    (void)lv_timer_handler();
     lv_refr_now(lv_display_get_default());
     assert(!s_layer_allocation_failed);
 }

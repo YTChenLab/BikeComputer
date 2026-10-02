@@ -81,6 +81,7 @@ set(
     MAIN_SOURCES
 
     src/hal/hal.c
+    src/hal/simulator_view.c
     src/perf_benchmark.c
 )
 
@@ -101,6 +102,8 @@ file(
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_ui_20\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_ui_24\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_metric_60\\.c$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_zone_24\\.c$")
+list(APPEND UI_SOURCES "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_zone_24.c")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_num_68\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_metric_40\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_action_32\\.c$")
@@ -123,6 +126,7 @@ set(UI_FONT_GENERATED_FILES
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_20.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_24.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_metric_60.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_zone_24.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_num_68.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_metric_40.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_action_32.c"
@@ -135,6 +139,7 @@ add_custom_command(
             "${PROJECT_SOURCE_DIR}/tools/generate_ui_font.py"
     DEPENDS
         "${PROJECT_SOURCE_DIR}/tools/generate_ui_font.py"
+        "${PROJECT_SOURCE_DIR}/tools/ui_extra_characters.txt"
         "${PROJECT_SOURCE_DIR}/assets/fonts_src/MiSans-Semibold.ttf"
         "${PROJECT_SOURCE_DIR}/assets/fonts_src/MiSans-Heavy.ttf"
         ${UI_RUNTIME_TEXT_SOURCES}
@@ -181,7 +186,8 @@ if(NOT MSVC)
 endif()
 
 # Custom target to run the executable
-add_custom_target(run COMMAND ${EXECUTABLE_OUTPUT_PATH}/main DEPENDS main)
+add_custom_target(run COMMAND ${EXECUTABLE_OUTPUT_PATH}/main
+    DEPENDS main WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
 # Conditionally include and link SDL2_image if LV_USE_DRAW_SDL is enabled
 if(LV_USE_DRAW_SDL)
@@ -246,11 +252,64 @@ target_include_directories(
 target_compile_definitions(main PRIVATE LV_CONF_INCLUDE_SIMPLE)
 target_link_libraries(main ${MAIN_LIBS})
 
+# Keep the Windows simulator runnable without a toolchain PATH.
+if(WIN32 AND TARGET SDL2::SDL2)
+    get_target_property(UI_SDL2_LIBRARY_TYPE SDL2::SDL2 TYPE)
+    if(UI_SDL2_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+        add_custom_command(TARGET main POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:main>"
+            COMMENT "Copying SDL2 runtime beside the simulator"
+            VERBATIM)
+    endif()
+endif()
+
 if(BUILD_TESTING)
+    add_executable(simulator_view_test tests/simulator_view_test.c src/hal/simulator_view.c)
+    target_include_directories(simulator_view_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR})
+    target_compile_definitions(simulator_view_test PRIVATE LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(simulator_view_test lvgl ${SDL2_LIBRARIES})
+    if(NOT MSVC)
+        target_link_libraries(simulator_view_test m pthread)
+    endif()
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/simulator_view_test_work")
+    add_test(NAME simulator_view_test COMMAND simulator_view_test)
+    set_tests_properties(simulator_view_test PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/simulator_view_test_work"
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+    add_library(ui_board_adapter_example OBJECT docs/examples/ui_board_adapter_example.c)
+    target_include_directories(ui_board_adapter_example PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR})
+    target_compile_definitions(ui_board_adapter_example PRIVATE LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_board_adapter_example lvgl)
+    add_executable(ui_app_integration_test tests/ui_app_integration_test.c
+        ${UI_SOURCES} ${SERVICE_SOURCES}
+        ${UI_FONT_GENERATED_FILES})
+    target_include_directories(ui_app_integration_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR})
+    target_compile_definitions(ui_app_integration_test PRIVATE LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_app_integration_test lvgl)
+    if(NOT MSVC)
+        target_link_libraries(ui_app_integration_test m pthread)
+    endif()
+    add_test(NAME ui_app_integration_test COMMAND ui_app_integration_test)
+    add_test(NAME ui_app_partial_render_test COMMAND ui_app_integration_test --partial)
+    set_tests_properties(ui_app_partial_render_test PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    set_tests_properties(ui_app_integration_test PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    add_executable(ui_hardware_input_test tests/ui_hardware_input_test.c src/ui/core/ui_hardware_input.c)
+    target_include_directories(ui_hardware_input_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_hardware_input_test COMMAND ui_hardware_input_test)
+    add_executable(ui_data_contract_test tests/ui_data_contract_test.c
+        src/ui/models/ui_ride_data_model.c src/ui/models/ui_ride_summary_model.c
+        src/ui/core/ui_concurrency.c)
+    target_include_directories(ui_data_contract_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(NOT MSVC)
+        target_link_libraries(ui_data_contract_test m)
+    endif()
+    add_test(NAME ui_data_contract_test COMMAND ui_data_contract_test)
     add_executable(ui_font_coverage_test
         tests/ui_font_coverage_test.c
         src/ui/fonts/ui_font_misans_ui_20.c
         src/ui/fonts/ui_font_misans_ui_24.c
+        src/ui/fonts/ui_font_misans_zone_24.c
         src/ui/fonts/ui_font_misans_nav_metric_40.c
         src/ui/fonts/ui_font_misans_nav_action_32.c
         src/ui/fonts/ui_font_misans_nav_unit_16.c
@@ -287,6 +346,7 @@ if(BUILD_TESTING)
     add_test(NAME ui_home_data_model_test COMMAND ui_home_data_model_test)
 
     add_executable(ui_weather_model_test
+        src/ui/core/ui_concurrency.c
         tests/ui_weather_model_test.c
         src/ui/models/ui_weather_model.c
     )
@@ -322,6 +382,8 @@ if(BUILD_TESTING)
     add_test(NAME ui_auto_pause_test COMMAND ui_auto_pause_test)
 
     add_executable(ui_core_logic_test
+        src/services/ui_preferences.c src/ui/models/ui_dashboard_layout.c
+        src/platform/pc/ui_pc_preferences.c
         tests/ui_core_logic_test.c
         src/ui/core/ui_dock.c
         src/ui/core/ui_dock_controller.c
@@ -344,9 +406,22 @@ if(BUILD_TESTING)
         src/ui/models/ui_ride_summary_model.c
         src/ui/models/ui_weather_model.c
         src/platform/stm32/ui_stm32_services.c
+        src/ui/core/ui_hardware_input.c
     )
     target_include_directories(ui_core_logic_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
     add_test(NAME ui_core_logic_test COMMAND ui_core_logic_test)
+    add_executable(ui_preferences_test tests/ui_preferences_test.c
+        src/services/ui_preferences.c src/ui/models/ui_dashboard_layout.c src/services/ui_device_info.c src/ui/core/ui_concurrency.c)
+    target_include_directories(ui_preferences_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_preferences_test COMMAND ui_preferences_test)
+
+    add_executable(ui_dashboard_layout_test tests/ui_dashboard_layout_test.c
+        src/ui/models/ui_dashboard_layout.c)
+    target_include_directories(ui_dashboard_layout_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(UNIX)
+        target_link_libraries(ui_dashboard_layout_test m)
+    endif()
+    add_test(NAME ui_dashboard_layout_test COMMAND ui_dashboard_layout_test)
 
     add_executable(ui_dock_view_test
         tests/ui_dock_view_test.c
@@ -499,6 +574,8 @@ if(BUILD_TESTING)
     add_test(NAME ui_service_adapter_test COMMAND ui_service_adapter_test)
 
     add_executable(ui_command_service_test
+        src/services/ui_state_adapter.c
+        src/ui/core/ui_app_state.c
         tests/ui_command_service_test.c
         src/services/ui_command_service.c
         src/ui/core/ui_concurrency.c
@@ -509,6 +586,7 @@ if(BUILD_TESTING)
     add_test(NAME ui_command_service_test COMMAND ui_command_service_test)
 
     add_executable(ui_bottom_surface_test
+        src/ui/core/ui_motion.c
         tests/ui_bottom_surface_test.c
         src/ui/core/ui_bottom_surface.c
         src/ui/design/ui_component_style.c
@@ -548,6 +626,7 @@ if(BUILD_TESTING)
     add_executable(ui_ride_summary_model_test
         tests/ui_ride_summary_model_test.c
         src/ui/models/ui_ride_summary_model.c
+        src/ui/core/ui_concurrency.c
     )
     target_include_directories(ui_ride_summary_model_test PRIVATE
         ${PROJECT_SOURCE_DIR}/src
@@ -601,6 +680,7 @@ if(BUILD_TESTING)
              COMMAND ui_pc_ride_history_storage_test)
 
     add_executable(ui_history_page_test
+        src/services/ui_ride_history_repository.c
         tests/ui_history_page_test.c
         src/ui/pages/ui_history_page.c
         src/ui/pages/ui_ride_detail_page.c
@@ -628,6 +708,7 @@ if(BUILD_TESTING)
     target_compile_definitions(ui_history_page_test PRIVATE
         LV_CONF_INCLUDE_SIMPLE)
     target_link_libraries(ui_history_page_test lvgl)
+    target_sources(ui_history_page_test PRIVATE src/ui/fonts/ui_font_misans_ui_24.c)
     if(NOT MSVC)
         target_link_libraries(ui_history_page_test m pthread)
     endif()
@@ -660,6 +741,7 @@ if(BUILD_TESTING)
     target_compile_definitions(ui_summary_page_test PRIVATE
         LV_CONF_INCLUDE_SIMPLE)
     target_link_libraries(ui_summary_page_test lvgl)
+    target_sources(ui_summary_page_test PRIVATE src/ui/fonts/ui_font_misans_ui_24.c)
     if(NOT MSVC)
         target_link_libraries(ui_summary_page_test m pthread)
     endif()
@@ -668,7 +750,9 @@ if(BUILD_TESTING)
     add_executable(ui_profile_achievements_test
         tests/ui_profile_achievements_test.c
         src/ui/pages/ui_profile_page.c
+        src/ui/models/ui_dashboard_layout.c
         src/ui/pages/ui_achievements_page.c
+        src/ui/models/ui_achievement_model.c
         src/ui/pages/ui_page_common.c
         src/ui/components/ui_status_bar.c
         src/ui/core/ui_app_state.c
@@ -682,6 +766,7 @@ if(BUILD_TESTING)
         src/ui/fonts/ui_font_misans_en_18.c
         src/ui/fonts/ui_font_misans_status_20.c
         src/ui/fonts/ui_font_misans_status_16.c
+        src/ui/fonts/ui_font_misans_metric_60.c
         src/ui/fonts/ui_font_misans_metric_small_46.c
         src/ui/fonts/ui_font_misans_num_48.c
     )
@@ -707,6 +792,13 @@ if (WIN32)
     else()
         target_link_options(main PRIVATE "-mconsole")
     endif()
+endif()
+
+if(BUILD_TESTING)
+    foreach(ui_test ui_control_center_test ui_navigation_test ui_profile_achievements_test ui_settings_list_test)
+        target_sources(${ui_test} PRIVATE src/ui/core/ui_text.c
+            src/ui/fonts/ui_font_misans_ui_24.c)
+    endforeach()
 endif()
 
 # Apply additional compile options if the build type is Debug

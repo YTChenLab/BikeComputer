@@ -90,6 +90,7 @@ static ui_ride_record_t record(uint64_t id, float distance)
         .finished_at_utc = 1750003600,
         .distance_km = distance,
         .duration_seconds = 3600U,
+        .metric_flags = UI_REPORT_METRICS_KNOWN | UI_REPORT_HAS_DISTANCE | UI_REPORT_HAS_SPEED | UI_REPORT_HAS_CALORIES,
         .moving_time_seconds = 3500U,
         .average_speed_kmh = distance,
         .maximum_speed_kmh = distance + 10.0f,
@@ -115,6 +116,10 @@ static ui_ride_record_t record(uint64_t id, float distance)
     value.trace.speed_tenths[1] = 310U;
     value.trace.speed_tenths[2] = 280U;
     value.trace.heart_rate_zone_seconds[2] = 1800U;
+    value.trace.time_seconds[2] = 3400U;
+    value.trace.valid_fields[2] = UINT32_C(1) << 16;
+    value.trace.latitude_microdegrees[2] = 31234567;
+    value.trace.longitude_microdegrees[2] = 121234567;
     return value;
 }
 
@@ -123,6 +128,9 @@ static void cleanup(void)
     (void)remove(TEST_PATH);
     (void)remove(TEST_PATH ".tmp");
     (void)remove(TEST_PATH ".bak");
+    (void)remove(TEST_PATH ".state");
+    (void)remove(TEST_PATH ".state.bak");
+    (void)remove(TEST_PATH ".state.tmp");
     (void)TEST_RMDIR(TEST_DIR);
 }
 
@@ -170,8 +178,12 @@ int main(void)
     assert(loaded[0].id == 11U && loaded[1].id == 12U);
     assert(loaded[1].distance_km == source[1].distance_km);
     assert(loaded[1].maximum_power == 640U);
+    assert(loaded[1].metric_flags == source[1].metric_flags);
+    assert(!loaded[1].trace.time_is_estimated);
     assert(loaded[1].trace.point_count == 3U);
     assert(loaded[1].trace.speed_tenths[1] == 310U);
+    assert(loaded[1].trace.time_seconds[2] == 3400U);
+    assert(loaded[1].trace.latitude_microdegrees[2] == 31234567);
 
     write_v1_file(&source[0]);
     assert(backend.load(loaded, UI_RIDE_HISTORY_MAX_RECORDS, &count,
@@ -181,6 +193,7 @@ int main(void)
     assert(loaded[0].has_heart_rate && loaded[0].has_power &&
            loaded[0].has_cadence);
     assert(loaded[0].trace.point_count == 0U);
+    assert(loaded[0].metric_flags == 0U); /* Legacy availability was not recorded. */
 
     ui_ride_record_t replacement = record(13U, 18.5f);
     assert(backend.store(&replacement, 1U, backend.context) ==
@@ -222,6 +235,41 @@ int main(void)
     assert(backend.load(loaded, UI_RIDE_HISTORY_MAX_RECORDS, &count,
                         backend.context) == UI_RIDE_HISTORY_CORRUPT);
 
+    cleanup();
+    assert(ui_ride_history_repository_register_storage(&backend));
+    ui_ride_history_repository_init();
+    assert(ui_ride_history_repository_load() == UI_RIDE_HISTORY_OK);
+    ui_ride_summary_t summary = { .distance_km = 1, .average_speed_kmh = 20,
+        .maximum_speed_kmh = 30, .duration_seconds = 100 };
+    assert(ui_ride_history_repository_prepare(&summary) == UI_RIDE_HISTORY_OK);
+    ui_ride_record_t pending;
+    assert(ui_ride_history_repository_get_pending(&pending));
+    /* Simulate process loss after archive commit but before checkpoint commit. */
+    assert(backend.append_record(&pending, backend.context) == UI_RIDE_HISTORY_OK);
+    ui_ride_history_repository_init();
+    assert(ui_ride_history_repository_load() == UI_RIDE_HISTORY_OK);
+    assert(!ui_ride_history_repository_has_pending());
+    ui_ride_history_totals_t totals;
+    ui_ride_history_model_totals(&totals);
+    assert(totals.ride_count == 1 && totals.total_distance_km == 1);
+    summary.duration_seconds = 101;
+    assert(ui_ride_history_repository_prepare(&summary) == UI_RIDE_HISTORY_OK);
+    ui_ride_history_repository_init();
+    assert(ui_ride_history_repository_load() == UI_RIDE_HISTORY_OK);
+    assert(ui_ride_history_repository_has_pending());
+    assert(ui_ride_history_repository_commit_pending() == UI_RIDE_HISTORY_OK);
+    for(unsigned i = 2; i <= 102; ++i) {
+        summary.duration_seconds = 100 + i;
+        assert(ui_ride_history_repository_prepare(&summary) == UI_RIDE_HISTORY_OK);
+        assert(ui_ride_history_repository_commit_pending() == UI_RIDE_HISTORY_OK);
+    }
+    assert(ui_ride_history_model_count() == UI_RIDE_HISTORY_MAX_RECORDS);
+    ui_ride_history_repository_init();
+    assert(ui_ride_history_repository_load() == UI_RIDE_HISTORY_OK);
+    ui_ride_history_model_totals(&totals);
+    assert(totals.ride_count == 103 && totals.total_distance_km == 103);
+    assert(backend.load_page(100, loaded, 5, &count, backend.context) == UI_RIDE_HISTORY_OK);
+    assert(count == 3 && loaded[2].id == pending.id);
     cleanup();
     puts("ui_pc_ride_history_storage_test: PASS");
     return 0;

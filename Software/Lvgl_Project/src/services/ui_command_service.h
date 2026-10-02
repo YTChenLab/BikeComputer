@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "ui_state_adapter.h"
 
 #define UI_COMMAND_QUEUE_MAX      16U
 #define UI_COMMAND_RESULT_MAX      8U
@@ -32,6 +33,9 @@ typedef enum
     UI_COMMAND_RIDE_FINISH,
     UI_COMMAND_RIDE_SAVE,
     UI_COMMAND_RIDE_UPLOAD,
+    UI_COMMAND_DISPLAY_SET_ENABLED,
+    UI_COMMAND_SYSTEM_SHUTDOWN,
+    UI_COMMAND_SYSTEM_RESTART,
     UI_COMMAND_COUNT
 } ui_command_type_t;
 
@@ -58,6 +62,7 @@ typedef struct
     ui_command_type_t type;
     ui_command_status_t status;
     int32_t error_code;
+    int32_t value;
 } ui_command_result_t;
 
 typedef struct
@@ -81,6 +86,12 @@ uint32_t ui_command_service_submit(ui_command_type_t type, int32_t value,
 bool ui_command_service_complete(uint32_t command_id,
                                  ui_command_status_t status,
                                  int32_t error_code);
+/* The state is copied with the result and applied only when its id matches
+ * the active successful command. Late, duplicate or unknown results cannot
+ * roll back a newer UI state. */
+bool ui_command_service_complete_with_state(uint32_t command_id,
+    ui_command_status_t status, int32_t error_code,
+    const ui_state_adapter_snapshot_t *state, ui_state_adapter_mask_t fields);
 
 /* UI-thread consumer. Backend callbacks and observers run outside the lock. */
 void ui_command_service_process(uint32_t elapsed_ms);

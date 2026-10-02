@@ -11,6 +11,7 @@
 lv_obj_t *ui_summary_page_create(ui_page_action_cb_t callback,
                                  void *user_data);
 void ui_summary_page_set_data(const ui_ride_summary_t *summary);
+void ui_summary_page_set_saved(bool saved);
 void ui_summary_page_set_active(bool active);
 bool ui_summary_page_handle_input(ui_input_event_t input);
 bool ui_summary_page_contains_scroll_point(int32_t x, int32_t y);

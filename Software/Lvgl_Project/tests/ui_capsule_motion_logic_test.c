@@ -55,9 +55,38 @@ int main(void)
     lv_obj_set_pos(capsule, 12, 20);
     lv_obj_set_size(capsule, 108, 88);
     ui_motion_focus_capsule(capsule, 244, 108);
-    finish_motion(12U);
+    finish_motion(30U);
     assert(lv_obj_get_x(capsule) == 244);
     assert(lv_obj_get_width(capsule) == 108);
+
+    ui_motion_focus_capsule(capsule, 12, 108);
+    finish_motion(2);
+    int32_t interrupted_x = lv_obj_get_x(capsule);
+    ui_motion_focus_capsule(capsule, 244, 108);
+    assert(lv_obj_get_x(capsule) == interrupted_x); /* Retarget preserves position. */
+    finish_motion(30);
+    assert(lv_obj_get_x(capsule) == 244);
+    lv_obj_t *temporary = lv_obj_create(lv_screen_active());
+    ui_motion_focus_capsule(temporary, 244, 108);
+    assert(ui_motion_springs_running() > 0);
+    lv_obj_delete(temporary);
+    finish_motion(2);
+    assert(ui_motion_springs_running() == 0);
+    ui_motion_set_reduced(true);
+    ui_motion_focus_capsule(capsule, 12, 108);
+    finish_motion(2);
+    assert(lv_obj_get_x(capsule) == 12 && ui_motion_springs_running() == 0);
+    assert(ui_motion_scroll_mode() == LV_ANIM_OFF);
+    ui_motion_pulse(capsule, 272, 180U);
+    assert(lv_anim_count_running() == 0U);
+    ui_motion_translate_fade_delayed(capsule, 24, 20, LV_OPA_30,
+                                     LV_OPA_COVER, 500U, 800U, NULL, NULL);
+    finish_motion(2);
+    assert(lv_obj_get_y(capsule) == 20);
+    assert(lv_obj_get_style_opa(capsule, 0) == LV_OPA_COVER);
+    assert(lv_anim_count_running() == 0U);
+    ui_motion_set_reduced(false);
+    assert(ui_motion_scroll_mode() == LV_ANIM_ON);
 
     ui_motion_toggle_press(capsule);
     finish_motion(5U);
@@ -77,13 +106,14 @@ int main(void)
         int32_t target_x = (cycle & 1U) != 0U ? 244 : 12;
         ui_motion_focus_capsule(capsule, target_x, 108);
         ui_motion_pulse(capsule, 268, 80U);
-        finish_motion(10U);
+        finish_motion(30U);
         assert(lv_obj_get_x(capsule) == target_x);
         assert(lv_obj_get_width(capsule) == 108);
         assert(lv_obj_get_style_transform_scale_x(capsule, 0) ==
                UI_MOTION_PRESS_SCALE_NORMAL);
     }
     assert(lv_anim_count_running() == 0U);
+    assert(ui_motion_springs_running() == 0U);
     assert(lv_obj_get_child_count(lv_screen_active()) == child_count);
     lv_refr_now(display);
     assert(!s_layer_failure);

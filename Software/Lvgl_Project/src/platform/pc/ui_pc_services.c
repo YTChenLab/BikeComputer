@@ -1,5 +1,6 @@
 #include "ui_pc_services.h"
 #include "ui_pc_ride_history_storage.h"
+#include "ui_pc_preferences.h"
 
 #include "services/ui_command_service.h"
 #include "services/ui_navigation_service.h"
@@ -13,6 +14,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 
 typedef struct
 {
@@ -20,6 +26,10 @@ typedef struct
     uint32_t storage_remaining_ms;
     uint32_t ride_data_remaining_ms;
     uint32_t ride_clock_remainder_ms;
+    uint32_t monotonic_ms;
+    uint64_t recording_timer_ms;
+    uint32_t telemetry_elapsed_ms;
+    ui_ride_data_t ride_data;
     uint32_t command_remaining_ms;
     uint32_t weather_remaining_ms;
     uint32_t navigation_remaining_ms;
@@ -31,6 +41,7 @@ typedef struct
     bool gnss_busy;
     bool storage_busy;
     bool command_busy;
+    bool storage_worker_started;
     bool next_gnss_success;
     bool next_storage_success;
     bool next_command_success;
@@ -41,6 +52,40 @@ typedef struct
 
 static ui_pc_services_context_t s_pc;
 static ui_pc_ride_history_storage_context_t s_history_storage;
+
+#ifdef _WIN32
+static DWORD WINAPI storage_worker(void *argument)
+#else
+static void *storage_worker(void *argument)
+#endif
+{
+    if(argument) (void)ui_ride_history_repository_page_worker();
+    else (void)ui_ride_history_repository_commit_worker();
+#ifdef _WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
+
+static bool start_storage_worker(bool page)
+{
+#ifdef _WIN32
+    HANDLE thread = CreateThread(NULL, 0, storage_worker, (void *)(uintptr_t)page, 0, NULL);
+    if(thread == NULL) return false;
+    CloseHandle(thread);
+#else
+    pthread_t thread;
+    if(pthread_create(&thread, NULL, storage_worker, (void *)(uintptr_t)page) != 0) return false;
+    pthread_detach(thread);
+#endif
+    return true;
+}
+
+static bool request_page_worker(void *context)
+{
+    (void)context; return start_storage_worker(true);
+}
 
 static void publish(ui_event_type_t type, ui_event_priority_t priority,
                     uint32_t dedupe_key)
@@ -61,13 +106,12 @@ static uint32_t random_value(ui_pc_services_context_t *pc, uint32_t limit)
 
 static void publish_ride_data(ui_pc_services_context_t *pc)
 {
-    ui_ride_data_t data = {0};
-    (void)ui_ride_data_model_get(&data, NULL);
+    ui_ride_data_t data = pc->ride_data;
     data.speed = pc->simulate_stationary ? 0.0f :
         (float)(120U + random_value(pc, 361U)) / 10.0f;
     if(!pc->ride_data_initialized) {
         data.distance = (float)(1200U + random_value(pc, 8800U)) / 100.0f;
-        data.ride_seconds = 1800U + random_value(pc, 7200U);
+        data.ride_seconds = 0;
         data.clock_hour = (uint8_t)random_value(pc, 24U);
         data.clock_minute = (uint8_t)random_value(pc, 60U);
         data.maximum_speed = data.speed;
@@ -80,10 +124,7 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
     else if(pc->ride_recording) {
         /* Keep simulator distance/time physically consistent with the
          * 800 ms telemetry cadence so Summary averages remain meaningful. */
-        data.distance += data.speed * (0.8f / 3600.0f);
-        pc->ride_clock_remainder_ms += 800U;
-        data.ride_seconds += pc->ride_clock_remainder_ms / 1000U;
-        pc->ride_clock_remainder_ms %= 1000U;
+        data.distance += data.speed * ((float)pc->telemetry_elapsed_ms / 3600000.0f);
     }
     data.heart_rate = (uint16_t)(105U + random_value(pc, 76U));
     data.power = pc->simulate_stationary ? 0U :
@@ -92,10 +133,11 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
         (uint16_t)(60U + random_value(pc, 56U));
     data.grade = (float)((int32_t)random_value(pc, 151U) - 50) / 10.0f;
     if(data.speed > data.maximum_speed) data.maximum_speed = data.speed;
+    data.ride_seconds = (uint32_t)(pc->recording_timer_ms / 1000U);
     data.average_speed = data.ride_seconds > 0U ?
         data.distance * 3600.0f / (float)data.ride_seconds : data.speed;
     data.altitude_m += (int32_t)random_value(pc, 5U) - 2;
-    if(pc->ride_recording && data.grade > 1.0f)
+    if(pc->ride_recording && pc->telemetry_elapsed_ms > 0 && data.grade > 1.0f)
         data.ascent_m += (uint32_t)(data.grade / 2.0f);
     data.calories_kcal = (uint32_t)(data.ride_seconds *
                                      (data.power > 0U ? data.power : 120U) /
@@ -107,6 +149,17 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
                            data.heart_rate >= 120U ? 2U : 1U;
     data.satellites = (uint8_t)(5U + random_value(pc, 12U));
     data.battery = (uint8_t)(68U + random_value(pc, 32U));
+    data.sample_time_ms = pc->monotonic_ms;
+    data.timer_ms = pc->recording_timer_ms;
+    data.ride_seconds = (uint32_t)(pc->recording_timer_ms / 1000U);
+    data.timestamp_utc = (int64_t)time(NULL);
+    for(unsigned field = 0; field < UI_RIDE_FIELD_COUNT; ++field)
+        ui_ride_data_set_quality(&data, (ui_ride_field_t)field, true, true,
+            pc->monotonic_ms, 3000U, UI_DATA_SOURCE_DEMO);
+    ui_ride_data_set_quality(&data, UI_RIDE_FIELD_POSITION, false, false,
+                            pc->monotonic_ms, 3000U, UI_DATA_SOURCE_DEMO);
+    pc->ride_data = data;
+    pc->telemetry_elapsed_ms = 0;
     ui_ride_data_model_submit(&data);
 
     pc->device_state.clock_hour = data.clock_hour;
@@ -125,12 +178,18 @@ static void publish_ride_data(ui_pc_services_context_t *pc)
     (void)ui_state_adapter_submit(
         &platform_state,
         UI_STATE_ADAPTER_STATUS | UI_STATE_ADAPTER_SATELLITES);
+    (void)ui_state_adapter_submit(&pc->device_state,
+        UI_STATE_ADAPTER_GNSS | UI_STATE_ADAPTER_CONNECTIVITY);
 }
 
 static void publish_weather(ui_pc_services_context_t *pc)
 {
     ui_weather_data_t weather;
     if(!ui_weather_model_get(&weather)) return;
+    weather.quality_known = true;
+    weather.valid = true;
+    weather.sampled_at_ms = pc->monotonic_ms;
+    weather.stale_after_ms = 900000;
     weather.temperature_c = (int8_t)(18 + random_value(pc, 11U));
     weather.feels_like_c = (int8_t)(weather.temperature_c - 1);
     weather.wind_kmh = (uint8_t)(5U + random_value(pc, 21U));
@@ -280,11 +339,22 @@ static void apply_command_state(ui_pc_services_context_t *pc)
             fields = UI_STATE_ADAPTER_MEDIA;
             break;
         case UI_COMMAND_RIDE_START:
+            pc->recording_timer_ms = 0;
+            pc->telemetry_elapsed_ms = 0;
+            pc->ride_data.distance = 0;
+            pc->ride_data.ride_seconds = 0;
+            pc->ride_data.ascent_m = pc->ride_data.calories_kcal = 0;
+            pc->ride_data.maximum_speed = pc->ride_data.average_speed = 0;
+            pc->ride_data.session_id = (uint32_t)pc->command.value;
+            pc->ride_recording = true;
+            publish_ride_data(pc);
+            break;
         case UI_COMMAND_RIDE_RESUME:
             pc->ride_recording = true;
             break;
         case UI_COMMAND_RIDE_PAUSE:
         case UI_COMMAND_RIDE_FINISH:
+            publish_ride_data(pc);
             pc->ride_recording = false;
             break;
         default:
@@ -304,16 +374,33 @@ static void command_tick(uint32_t elapsed_ms, void *context)
     }
 
     bool success = pc->next_command_success;
+    if(pc->command.type == UI_COMMAND_RIDE_UPLOAD) success = false;
     if(pc->command.type == UI_COMMAND_GNSS_ACQUIRE_FIX) {
         success = pc->next_gnss_success;
         pc->next_gnss_success = true;
     }
     else if(pc->command.type == UI_COMMAND_RIDE_SAVE) {
+        if(pc->storage_worker_started) {
+            ui_ride_history_result_t result;
+            if(!ui_ride_history_repository_process(&result)) return;
+            pc->storage_worker_started = false;
+            success = result == UI_RIDE_HISTORY_OK;
+        }
+        else {
         success = pc->next_storage_success;
         pc->next_storage_success = true;
         if(success) {
-            success = ui_ride_history_repository_commit_pending() ==
-                      UI_RIDE_HISTORY_OK;
+            success = ui_ride_history_repository_begin_commit();
+            if(success && start_storage_worker(false)) {
+                pc->storage_worker_started = true;
+                pc->command_remaining_ms = 0;
+                return;
+            }
+            if(success) {
+                (void)ui_ride_history_repository_abort_commit();
+                success = false;
+            }
+        }
         }
     }
     else {
@@ -352,6 +439,11 @@ static void tick(uint32_t elapsed_ms, void *context)
 {
     ui_pc_services_context_t *pc = context;
     if(pc == NULL || elapsed_ms == 0) return;
+    pc->monotonic_ms += elapsed_ms;
+    if(pc->ride_recording) {
+        pc->recording_timer_ms += elapsed_ms;
+        pc->telemetry_elapsed_ms += elapsed_ms;
+    }
 
     if(elapsed_ms >= pc->ride_data_remaining_ms) {
         publish_ride_data(pc);
@@ -391,6 +483,9 @@ static void tick(uint32_t elapsed_ms, void *context)
 
 void ui_pc_services_register(void)
 {
+    ui_pc_preferences_register();
+    (void)ui_ride_history_repository_register_page_worker(request_page_worker,NULL);
+    ui_navigation_service_set_demo_enabled(true);
     memset(&s_pc, 0, sizeof(s_pc));
     s_pc.next_gnss_success = true;
     s_pc.next_storage_success = true;
@@ -409,6 +504,7 @@ void ui_pc_services_register(void)
     s_pc.device_state.sound_level = 62U;
     s_pc.device_state.brightness_level = 75U;
     s_pc.navigation = (nav_model_t){
+        .demo = true,
         .speed = 28.6f,
         .distance = 12.6f,
         .remaining_ascent_m = 156U,
@@ -450,6 +546,11 @@ void ui_pc_services_register(void)
         .context = &s_pc
     };
     (void)ui_command_service_register_backend(&command_backend);
+}
+
+void ui_pc_services_set_demo_seed(uint32_t seed)
+{
+    s_pc.ride_rng_state = seed;
 }
 
 void ui_pc_services_set_next_gnss_result(bool success)

@@ -12,8 +12,6 @@ static ui_sound_context_t s_sound;
 
 void ui_sound_init(void)
 {
-    s_sound.backend = NULL;
-    s_sound.backend_user_data = NULL;
     s_sound.volume = 62;
     s_sound.enabled = true;
 }

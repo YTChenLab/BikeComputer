@@ -48,10 +48,10 @@
     "muted": "#A9BABB"
   },
   "graph": {
-    "nodes": 126871,
-    "directed_edges": 213230,
-    "names": 2133,
-    "bytes": 5544128,
+    "nodes": 155061,
+    "directed_edges": 271799,
+    "names": 2973,
+    "bytes": 6972592,
     "profile": "conservative bicycle access; no turn-restriction engine"
   },
   "source_sha256": "95b5bc401cb16ec369cab2981492a4dd3577627e13be753be0c5b8e5d80741f4",
@@ -107,5 +107,20 @@
   "label_layer": "upright cached labels, screen-space collision avoidance",
   "polygon_layer": "closed ways and multipolygon outer rings with holes",
   "package_sha256": "1dab02f8525599a7d86373833d3cb7fc533bd3ff22552fdc6d371f103d94d9fd",
-  "graph_sha256": "b5e75e69c50646c4527aeb3f515efd74c324299ed7b6630f3fd3400691df5cd4"
+  "graph_sha256": "b512d88899419ce51fbd75fae30592e3db67428d9db1afaf738bc5a794425828",
+  "original_graph": {
+    "nodes": 126871,
+    "directed_edges": 213230,
+    "names": 2133,
+    "bytes": 5544128,
+    "profile": "conservative bicycle access; no turn-restriction engine"
+  },
+  "original_graph_sha256": "b5e75e69c50646c4527aeb3f515efd74c324299ed7b6630f3fd3400691df5cd4",
+  "graph_source": "navigation-coverage.json",
+  "graph_bbox_lon_lat": [
+    108.63,
+    33.79,
+    109.28,
+    34.47
+  ]
 }

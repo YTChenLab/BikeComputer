@@ -1,4 +1,5 @@
 #include "ui_nav_search.h"
+#include "ui_online_places.h"
 #include "ui/core/ui_concurrency.h"
 #include <string.h>
 #include <math.h>
@@ -14,8 +15,9 @@ uint32_t ui_nav_search_request(const char *q,ui_nav_point_t c,bool valid,uint32_
 }
 bool ui_nav_search_submit(const ui_place_results_t *r)
 {
- if(!r||r->count>8||r->code>UI_NAV_CANCELLED)return false;
+ if(!r||r->count>8||r->code>UI_NAV_CANCELLED||r->online_status>UI_PLACE_ONLINE_KEY_ERROR)return false;
  for(unsigned i=0;i<r->count;i++){const ui_place_t *p=&r->items[i];if(!p->id||p->kind>7||!memchr(p->name,0,64)||!memchr(p->detail,0,64)||!isfinite(p->point.latitude)||!isfinite(p->point.longitude)||fabs(p->point.latitude)>85||fabs(p->point.longitude)>180||p->point.system!=UI_NAV_COORD_WGS84)return false;}
+ for(unsigned i=0;i<r->count;i++){const ui_place_t *p=&r->items[i];if(p->navigation_point_valid&&(!isfinite(p->navigation_point.latitude)||!isfinite(p->navigation_point.longitude)||fabs(p->navigation_point.latitude)>85||fabs(p->navigation_point.longitude)>180||p->navigation_point.system!=UI_NAV_COORD_WGS84))return false;}
  ui_concurrency_lock();bool accept=s.busy&&!s.ready&&r->request_id==s.id;if(accept){s.pending=*r;s.ready=true;}ui_concurrency_unlock();return accept;
 }
 void ui_nav_search_tick(uint32_t now){ui_concurrency_lock();bool timeout=s.busy&&!s.ready&&now-s.started>=5000;if(timeout){s.pending=(ui_place_results_t){.request_id=s.id,.code=UI_NAV_TIMEOUT};s.ready=true;}uint32_t id=s.id;ui_nav_search_backend_t p=port;

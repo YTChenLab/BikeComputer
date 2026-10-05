@@ -12,6 +12,16 @@ project(lvgl C CXX)
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(ui_online_places_test tests/ui_online_places_test.c src/services/ui_online_places.c
+        src/platform/pc/ui_pc_online_places.c)
+    target_include_directories(ui_online_places_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(WIN32)
+        target_link_libraries(ui_online_places_test winhttp)
+    endif()
+    if(NOT MSVC)
+        target_link_libraries(ui_online_places_test m)
+    endif()
+    add_test(NAME ui_online_places_test COMMAND ui_online_places_test)
     add_executable(ui_offline_places_test tests/ui_offline_places_test.c src/services/ui_offline_places.c
         src/services/ui_nav_search.c src/ui/core/ui_concurrency.c)
     target_include_directories(ui_offline_places_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
@@ -163,6 +173,10 @@ file(
 list(FILTER UI_RUNTIME_TEXT_SOURCES EXCLUDE REGEX "/src/ui/fonts/")
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
+if(BUILD_TESTING)
+    add_test(NAME map_places_test COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/map_places_test.py)
+    add_test(NAME osm_pbf_test COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/osm_pbf_test.py)
+endif()
 set(UI_FONT_GENERATED_FILES
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_20.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_ui_24.c"
@@ -214,6 +228,9 @@ list(
     ${SERVICE_SOURCES}
 )
 set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES})
+if(WIN32)
+    list(APPEND MAIN_LIBS winhttp)
+endif()
 
 # Create the main executable, depending on the FreeRTOS option
 if(USE_FREERTOS)
@@ -335,6 +352,9 @@ if(BUILD_TESTING)
     target_include_directories(ui_app_integration_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR})
     target_compile_definitions(ui_app_integration_test PRIVATE LV_CONF_INCLUDE_SIMPLE)
     target_link_libraries(ui_app_integration_test lvgl)
+    if(WIN32)
+        target_link_libraries(ui_app_integration_test winhttp)
+    endif()
     if(NOT MSVC)
         target_link_libraries(ui_app_integration_test m pthread)
     endif()
@@ -837,6 +857,7 @@ if(BUILD_TESTING)
     add_executable(ui_profile_achievements_test
         tests/ui_profile_achievements_test.c
         src/ui/pages/ui_profile_page.c
+        src/ui/components/ui_liquid_selection.c
         src/ui/models/ui_dashboard_layout.c
         src/ui/pages/ui_achievements_page.c
         src/ui/models/ui_achievement_model.c

@@ -18,12 +18,28 @@ int main(void)
  assert(ui_offline_places_query(&places,"jiaotong",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count);
  assert(ui_offline_places_query(&places,"zhonglou",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count);
  found=false;for(unsigned i=0;i<out.count;i++)if(strstr(out.items[i].name,"钟楼"))found=true;assert(found);
+ assert(out.items[0].kind==4); /* nearby bus stops must not hide the landmark */
  for(unsigned i=0;i<out.count;i++)for(unsigned j=0;j<i;j++)assert(out.items[i].id!=out.items[j].id);
  printf("place index: %u records, %u keys; query %u scanned, %u read bytes; result count=%u\n",places.records,places.keys,stats.scanned,stats.bytes,out.count);
  assert(ui_offline_places_query(&places,"zhonglou",center,true,&out,stop,NULL,&stats)==UI_NAV_CANCELLED);
  assert(ui_offline_places_query(&places,"zzzzzzzz",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&!out.count);
  assert(ui_offline_places_query(&places,"z",center,true,&out,NULL,NULL,&stats)==UI_NAV_UNSUPPORTED);
- assert(ui_offline_places_query(&places,"钟楼",center,true,&out,NULL,NULL,&stats)==UI_NAV_UNSUPPORTED);
+ assert(ui_offline_places_query(&places,"钟楼",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count);
+ const char *campus_queries[]={"SXKJDX","shanxikejidaxue","shaanxikejidaxue","skd","陕科大","陕西科技大学"};
+ for(unsigned q=0;q<sizeof(campus_queries)/sizeof(campus_queries[0]);q++){
+  assert(ui_offline_places_query(&places,campus_queries[q],center,true,&out,NULL,NULL,&stats)==UI_NAV_OK);
+  bool weiyang=false,taihua=false;for(unsigned i=0;i<out.count;i++){
+   const ui_place_t *p=&out.items[i];if(strstr(p->name,"未央校区")&&strstr(p->name,"陕西科技大学")){weiyang=true;assert(p->point.latitude>34.35&&p->point.longitude>108.95);}
+   if(strstr(p->name,"太华路校区")&&strstr(p->name,"陕西科技大学"))taihua=true;
+  }assert(weiyang&&taihua);
+ }
+ assert(ui_offline_places_query(&places,"sxkjdxwy",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count);
+ assert(strstr(out.items[0].name,"未央校区")&&strstr(out.items[0].name,"陕西科技大学"));
+ assert(ui_offline_places_query(&places,"陕西科技大学（未央校区）",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count==1);
+ assert(ui_offline_places_query(&places,"skdwy",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count==1&&strstr(out.items[0].name,"未央校区"));
+ assert(ui_offline_places_query(&places,"SHANXI KEJI DAXUE",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count>=2);
+ assert(ui_offline_places_query(&places,"xbdx",center,true,&out,NULL,NULL,&stats)==UI_NAV_OK&&out.count&&out.items[0].kind==3);
+ assert(ui_offline_places_query(&places,"\xe9\x00",center,true,&out,NULL,NULL,&stats)==UI_NAV_UNSUPPORTED);
  io.size=127;assert(ui_offline_places_open(&places,&io)==UI_NAV_NO_MAP);fclose(input.file);
  uint32_t id=0;ui_nav_search_backend_t port={.request=dispatched,.context=&id};assert(ui_nav_search_register(&port));
  uint32_t first=ui_nav_search_request("zhonglou",center,true,100),second=ui_nav_search_request("jiaotong",center,true,200);assert(first!=second&&id==second);

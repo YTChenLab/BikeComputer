@@ -27,7 +27,7 @@ static struct {
  ui_nav_view_t view,return_view;ui_nav_list_t list;ui_nav_snapshot_t snapshot;
  ui_nav_item_t selected_place,selected_map;ui_nav_catalog_t catalog;ui_nav_result_t result;ui_nav_request_t retry;
  uint32_t request_id,result_version,catalog_version,render_revision;
- bool active,arrival_map,created,pointer_owned,pointer_dragged,controls_active,search_origin,suspended;int height,pointer_x,pointer_y;ui_nav_view_t pointer_view;
+ bool active,arrival_map,created,pointer_owned,pointer_dragged,controls_active,search_origin,search_entrance,search_manual,search_online,suspended;int height,pointer_x,pointer_y;ui_nav_view_t pointer_view;
  ui_nav_map_t *map;ui_nav_data_strip_t trip;ui_nav_command_dock_t maneuver;
  void (*exit_page)(void);
  void (*start_callback)(void);
@@ -174,8 +174,17 @@ static void build(ui_nav_view_t v)
   ui_nav_icon_label(s.content,16,16,432,110,"移动地图选择位置",24,false,NAV_ICON_PIN,46,0xFFD900);
   button(s.content,16,142,210,72,"返回",A_BACK,0,false);button(s.content,238,142,210,72,"选这里",A_PICK_CONFIRM,0,true);
  }else if(v==UI_NAV_VIEW_DESTINATION){
-  ui_nav_icon_label(s.content,16,16,432,110,s.selected_place.name,24,false,NAV_ICON_PIN,48,0xFFD900);
-  button(s.content,16,142,210,72,"返回地图",A_BACK,0,false);lv_obj_t *b=button(s.content,238,142,210,72,"规划路线",A_PLAN,0,true);
+  lv_obj_t *b;
+  if(s.search_origin){
+   lv_obj_t *name=label(s.content,16,8,432,s.selected_place.name,24,false);lv_obj_set_height(name,60);
+   lv_obj_t *detail=label(s.content,16,72,432,s.selected_place.detail,20,true);lv_label_set_long_mode(detail,LV_LABEL_LONG_DOT);lv_obj_set_height(detail,24);
+   label(s.content,16,104,432,s.search_manual?"手动位置 · 请确认入口":s.search_online?"联网坐标 · 请确认落点":s.search_entrance?"地图入口 · 请确认通行":"地图位置 · 可调整到入口",20,true);
+   button(s.content,16,142,136,72,"返回",A_BACK,0,false);button(s.content,164,142,136,72,"调整位置",A_PICK,0,false);
+   b=button(s.content,312,142,136,72,"规划路线",A_PLAN,0,true);
+  }else{
+   ui_nav_icon_label(s.content,16,16,432,110,s.selected_place.name,24,false,NAV_ICON_PIN,48,0xFFD900);
+   button(s.content,16,142,210,72,"返回地图",A_BACK,0,false);b=button(s.content,238,142,210,72,"规划路线",A_PLAN,0,true);
+  }
   if(!(s.snapshot.capabilities&UI_NAV_CAP_PLAN))lv_obj_add_state(b,LV_STATE_DISABLED);
  }else if(v==UI_NAV_VIEW_PREVIEW){
   bool preparing=s.snapshot.busy&&q->state!=UI_NAV_SESSION_STARTING;
@@ -383,7 +392,8 @@ bool ui_nav_workspace_back(void)
 {
  if(s.view==UI_NAV_VIEW_MENU){build(UI_NAV_VIEW_LIVE);return true;}
  if(s.view==UI_NAV_VIEW_STOP||s.view==UI_NAV_VIEW_DELETE){if(s.snapshot.busy)return true;build(s.return_view);return true;}
- if(s.view==UI_NAV_VIEW_PICK||s.view==UI_NAV_VIEW_DESTINATION){if(s.map)s.map->pick_point_valid=false;build(UI_NAV_VIEW_CENTER);return true;}
+ if(s.view==UI_NAV_VIEW_PICK&&s.search_origin){if(s.map)ui_nav_map_center_point(s.map,s.selected_place.point);build(UI_NAV_VIEW_DESTINATION);return true;}
+ if(s.view==UI_NAV_VIEW_PICK||s.view==UI_NAV_VIEW_DESTINATION){if(s.map)s.map->pick_point_valid=false;build(UI_NAV_VIEW_CENTER);if(s.search_origin)ui_navigation_open_search();return true;}
  if(s.view==UI_NAV_VIEW_PREVIEW){if(s.snapshot.busy)ui_nav_session_cancel();if(s.search_origin){ui_nav_session_discard_preview();if(s.map){s.map->route_point_count=0;s.map->pick_point_valid=false;s.map->detail_frame.destination_valid=false;lv_obj_invalidate(s.map->route_layer);}build(UI_NAV_VIEW_CENTER);ui_navigation_open_search();return true;}if(s.retry.kind==UI_NAV_REQ_PLAN){build(UI_NAV_VIEW_DESTINATION);return true;}ui_navigation_open_routes();return true;}
  if(s.view==UI_NAV_VIEW_MAP_DETAIL||s.view==UI_NAV_VIEW_MAP_VERSIONS||s.view==UI_NAV_VIEW_STORAGE){load(UI_NAV_LIST_MAPS,0);return true;}
  if(auxiliary(s.view)){build(ui_nav_session_active()?UI_NAV_VIEW_LIVE:UI_NAV_VIEW_CENTER);return true;}
@@ -422,8 +432,10 @@ void ui_nav_workspace_handle_pointer(const ui_input_pointer_event_t *event)
 
 void ui_nav_workspace_open_menu(void){if(ui_nav_session_active())build(s.view==UI_NAV_VIEW_MENU?UI_NAV_VIEW_LIVE:UI_NAV_VIEW_MENU);else ui_navigation_open_routes();}
 void ui_nav_workspace_open_routes(void){load(UI_NAV_LIST_ROUTES,0);}
-void ui_nav_workspace_preview_destination(const ui_nav_item_t *place){if(!place||ui_nav_session_active())return;s.search_origin=false;s.selected_place=*place;build(UI_NAV_VIEW_DESTINATION);}
-void ui_nav_workspace_plan_search_destination(const ui_nav_item_t *place){if(!place||ui_nav_session_active())return;s.search_origin=true;s.selected_place=*place;perform(A_PLAN,0);}
+void ui_nav_workspace_preview_destination(const ui_nav_item_t *place){if(!place||ui_nav_session_active())return;
+ if(s.search_origin&&s.view==UI_NAV_VIEW_PICK){s.selected_place.point=place->point;s.search_entrance=false;s.search_manual=true;}
+ else {s.search_origin=false;s.selected_place=*place;}build(UI_NAV_VIEW_DESTINATION);}
+void ui_nav_workspace_preview_search_destination(const ui_nav_item_t *place,bool mapped_entrance,bool online){if(!place||ui_nav_session_active())return;ui_nav_session_cancel();ui_nav_session_discard_preview();s.search_origin=true;s.search_entrance=mapped_entrance;s.search_online=online;s.search_manual=false;s.selected_place=*place;s.saved[UI_NAV_VIEW_DESTINATION].id=A_PLAN;build(UI_NAV_VIEW_DESTINATION);}
 void ui_nav_workspace_suspend(bool value){s.suspended=value;if(ui_bottom_surface_root()){if(value)lv_obj_add_flag(ui_bottom_surface_root(),LV_OBJ_FLAG_HIDDEN);else lv_obj_clear_flag(ui_bottom_surface_root(),LV_OBJ_FLAG_HIDDEN);}}
 void ui_nav_workspace_preview_route(const ui_nav_item_t *r)
 {if(!r||ui_nav_session_active())return;s.search_origin=false;request((ui_nav_request_t){.kind=UI_NAV_REQ_LOAD_ROUTE,.route_id=r->id,.route_revision=r->revision,.destination=*r});build(UI_NAV_VIEW_PREVIEW);}

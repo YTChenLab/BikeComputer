@@ -1,40 +1,41 @@
 {
   "format": "BPOI0001",
+  "revision": 2,
   "coordinate_system": "WGS84",
   "bbox_lon_lat": [
-    108.78,
-    34.12,
-    109.15,
-    34.46
+    108.63,
+    33.79,
+    109.28,
+    34.47
   ],
-  "places": 5348,
-  "kinds": {
-    "4": 193,
-    "5": 97,
-    "6": 252,
-    "3": 191,
-    "7": 14,
-    "0": 4444,
-    "1": 157
+  "district_counts": {
+    "雁塔区": 6372,
+    "碑林区": 1403,
+    "莲湖区": 1749,
+    "灞桥区": 1821,
+    "未央区": 3386,
+    "长安区": 3046,
+    "新城区": 1419
   },
-  "keys": 91205,
-  "bytes": 7057748,
-  "sha256": "9b9a8ed6b52a56e97cdf8f8fd1013f39d5774d458cc338cbc0c47a9f85951fcd",
+  "mapped_entrances": 32,
+  "places": 19196,
+  "kinds": {
+    "6": 4888,
+    "4": 178,
+    "7": 8180,
+    "3": 821,
+    "5": 130,
+    "1": 194,
+    "0": 4805
+  },
+  "keys": 374147,
+  "bytes": 28513484,
+  "sha256": "9178c60fadd543ecc0855ec665db7e140d1ae459cdc098b92fbf01e0438e8a51",
   "sources": [
     {
-      "file": "xian-layered.osm.json",
-      "sha256": "95b5bc401cb16ec369cab2981492a4dd3577627e13be753be0c5b8e5d80741f4",
-      "timestamp": "2026-07-24T11:04:51Z"
-    },
-    {
-      "file": "detail-0-0.json",
-      "sha256": "2076a0b3d7d96803d4ce8a796ef2fe117f887bd2f246bb360615dba6038c9375",
-      "timestamp": "2026-06-01T08:52:28Z"
-    },
-    {
-      "file": "xian-poi.osm.json",
-      "sha256": "775225ec42155fbd284b195f0d2a2754b7a6581dbe3e9ef670186fcebfe6538c",
-      "timestamp": "2026-10-03T16:30:49Z"
+      "file": "merged-navigation.json",
+      "sha256": "ec04e646b353a07b5c6668866988cdbeea5b3fb356ebf3930f2fde925002698e",
+      "timestamp": "2026-10-05T08:13:49Z"
     }
   ],
   "pronunciation_source": {
@@ -44,8 +45,8 @@
   },
   "unsupported_reading_characters": [],
   "limitations": [
-    "OSM named places and roads, not complete street-address geocoding.",
-    "Anchors are not verified public entrances.",
+    "OSM named places and mapped addresses; completeness is not guaranteed.",
+    "Mapped entrances need field confirmation; absent entrances use a display anchor.",
     "Common polyphonic alternatives limited to eight variants per name."
   ],
   "license": "OSM ODbL-1.0; Unihan Unicode-3.0"

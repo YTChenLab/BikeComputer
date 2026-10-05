@@ -3,7 +3,7 @@
 #include "ui_page_common.h"
 #include "../core/ui_text.h"
 #include "../core/ui_sound.h"
-#include "../core/ui_motion.h"
+#include "../components/ui_liquid_selection.h"
 #include "../core/ui_memory.h"
 #include "../core/ui_theme.h"
 #include "../design/ui_design_tokens.h"
@@ -40,9 +40,11 @@ typedef struct {
     int32_t selected;
     unsigned preset;
     bool active;
+    ui_liquid_selection_t selection;
 } profile_context_t;
 
 static profile_context_t s_profile;
+static void update_focus(bool animate);
 
 static lv_obj_t *profile_label(lv_obj_t *parent, int32_t x, int32_t y,
                                int32_t width, const char *text,
@@ -88,15 +90,17 @@ static lv_obj_t *profile_surface(int32_t x, int32_t y, int32_t width,
 
 static void profile_action_event(lv_event_t *event)
 {
+    if(!s_profile.active) return;
     unsigned index = (unsigned)(uintptr_t)lv_event_get_user_data(event);
     if(index >= PROFILE_ACTION_COUNT) return;
-    lv_obj_t *object = lv_event_get_target(event);
     switch(lv_event_get_code(event)) {
-        case LV_EVENT_PRESSED: ui_motion_button_press(object); break;
-        case LV_EVENT_RELEASED:
-        case LV_EVENT_PRESS_LOST: ui_motion_button_release(object); break;
+        case LV_EVENT_PRESSED:
+            s_profile.selected = (int32_t)index;
+            update_focus(true);
+            break;
         case LV_EVENT_CLICKED:
             s_profile.selected = (int32_t)index;
+            update_focus(true);
             if(s_profile.callback != NULL)
                 s_profile.callback(s_profile.action_ids[index], s_profile.user_data);
             break;
@@ -113,7 +117,9 @@ static void profile_register_action(lv_obj_t *object, unsigned index,
     lv_obj_add_flag(object, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(object, profile_action_event, LV_EVENT_ALL,
                         (void *)(uintptr_t)index);
-    lv_obj_set_style_transform_scale(object, 248, LV_STATE_PRESSED);
+    /* Large cards stay at their native size: pressing must not allocate a
+     * transformed card framebuffer just to show focus feedback. */
+    if(index != 0U) lv_obj_set_style_radius(object, 24, 0);
     lv_obj_set_style_opa(object, LV_OPA_80, LV_STATE_PRESSED);
 }
 
@@ -138,23 +144,11 @@ static lv_obj_t *profile_menu(int32_t x, int32_t y, int32_t width,
     return subtitle;
 }
 
-static void update_focus(void)
+static void update_focus(bool animate)
 {
-    for(unsigned index = 0U; index < PROFILE_ACTION_COUNT; ++index) {
-        if(s_profile.actions[index] == NULL) continue;
-        bool focused = s_profile.active && s_profile.selected == (int32_t)index;
-        lv_obj_set_style_border_color(s_profile.actions[index],
-                                      focused ? UI_TOKEN_COLOR_ACCENT :
-                                                UI_TOKEN_COLOR_SURFACE_OUTLINE,
-                                      0);
-        lv_obj_set_style_border_width(s_profile.actions[index],
-                                      focused ? UI_TOKEN_BORDER_FOCUS : 1, 0);
-        lv_obj_set_style_shadow_color(s_profile.actions[index],
-                                      UI_TOKEN_COLOR_ACCENT, 0);
-        lv_obj_set_style_shadow_width(s_profile.actions[index], focused ? 8 : 0, 0);
-        lv_obj_set_style_shadow_opa(s_profile.actions[index],
-                                    focused ? LV_OPA_30 : LV_OPA_TRANSP, 0);
-    }
+    if(s_profile.selected >= 0)
+        ui_liquid_selection_select(&s_profile.selection,
+                                   (unsigned)s_profile.selected, animate);
 }
 
 static void format_uint64(char *buffer, size_t capacity, uint64_t value)
@@ -489,13 +483,20 @@ lv_obj_t *ui_profile_page_create(ui_page_action_cb_t callback, void *user_data)
     profile_menu(10, UI_PAGE_ACTION_Y, 460, UI_PAGE_ACTION_HEIGHT,
         LV_SYMBOL_SETTINGS, "系统设置", "SETTINGS", 7, UI_PAGE_ACTION_SETTINGS);
 
+    /* Only operable cards participate. Identity and lifetime statistics
+     * remain read-only; inset badges, progress and activity cells retain
+     * their own opaque backgrounds and colors. */
+    ui_liquid_selection_init(&s_profile.selection, s_profile.screen, false, NULL);
+    for(unsigned i = 0U; i < PROFILE_ACTION_COUNT; ++i)
+        ui_liquid_selection_add(&s_profile.selection, s_profile.actions[i]);
+
     ui_home_data_t home;
     if(ui_home_data_model_get(&home)) update_identity(&home);
     ui_home_data_model_subscribe(home_changed, NULL);
     lv_label_set_long_mode(s_profile.name, LV_LABEL_LONG_DOT);
     lv_label_set_long_mode(s_profile.tagline, LV_LABEL_LONG_DOT);
     ui_profile_page_refresh();
-    update_focus();
+    update_focus(false);
     return s_profile.screen;
 }
 
@@ -504,7 +505,8 @@ void ui_profile_page_set_active(bool active)
     s_profile.active = active;
     if(active) ui_profile_page_refresh();
     s_profile.selected = active ? 0 : -1;
-    update_focus();
+    ui_liquid_selection_set_active(&s_profile.selection, active);
+    update_focus(false);
 }
 
 bool ui_profile_page_handle_input(ui_input_event_t input)
@@ -515,7 +517,7 @@ bool ui_profile_page_handle_input(ui_input_event_t input)
         if(next < 0) next = (int32_t)PROFILE_ACTION_COUNT - 1;
         if(next >= (int32_t)PROFILE_ACTION_COUNT) next = 0;
         s_profile.selected = next;
-        update_focus();
+        update_focus(true);
         ui_sound_play(UI_SFX_FOCUS);
         return true;
     }

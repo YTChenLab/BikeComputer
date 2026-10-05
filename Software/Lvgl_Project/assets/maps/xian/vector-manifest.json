@@ -1,0 +1,58 @@
+{
+  "format": "BMAP0001",
+  "coordinate_system": "WGS84",
+  "name": "西安城区基础地图",
+  "bbox_lon_lat": [
+    108.63,
+    33.79,
+    109.28,
+    34.47
+  ],
+  "building_detail_bbox_lon_lat": [
+    108.92,
+    34.25,
+    108.98,
+    34.28
+  ],
+  "source": "https://overpass.private.coffee/api/interpreter",
+  "osm_timestamp": "2026-10-05T08:13:49Z",
+  "downloaded_utc": "2026-10-05T09:18:33.182167+00:00",
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "copyright_url": "https://www.openstreetmap.org/copyright",
+  "raw_sha256": "ec04e646b353a07b5c6668866988cdbeea5b3fb356ebf3930f2fde925002698e",
+  "package_sha256": "c6a680dbb3f40b0f99974b08501e6a365d5834a9fbf89d9ac6e287a71695c9dd",
+  "package_bytes": 28051988,
+  "tiles": 4420,
+  "max_tile_bytes": 1418360,
+  "features": {
+    "road": 174390,
+    "park": 3263,
+    "water": 6592,
+    "building": 103674,
+    "omitted_invalid_polygons": 15
+  },
+  "route": {
+    "name": "西安城区骑行",
+    "distance_m": 3952,
+    "points": 99,
+    "start": [
+      108.934498,
+      34.257941200000005
+    ],
+    "end": [
+      108.964295,
+      34.2699991
+    ],
+    "source": "host-side Dijkstra on cycling-allowed OSM roads",
+    "ascent_available": false,
+    "position_source": "simulated route replay, not GNSS",
+    "speed_kmh": 18
+  },
+  "limitations": [
+    "urban rectangular coverage, not complete Xi’an administrative region",
+    "building detail only in central coverage rectangle",
+    "multipolygons with holes omitted rather than incorrectly filled",
+    "routing legality and real road availability require field validation"
+  ]
+}

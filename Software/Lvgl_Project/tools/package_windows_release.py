@@ -53,6 +53,15 @@ def main():
                  '启动模拟器.cmd', f'docs/V{version}_RELEASE_NOTES.md', 'docs/RELEASE_WORKFLOW.md']:
         entries.append((project / name, name))
     entries.append((project / 'lvgl/LICENCE.txt', 'licenses/LVGL-LICENCE.txt'))
+    # Public template only; never bundle runtime/ or a user's API key.
+    for name in ['config/navigation-online.example.ini', 'docs/导航联网搜索_20261005.md',
+                 'docs/导航搜索准确性_20261005.md', 'assets/fonts_src/MiSans-Semibold.ttf']:
+        if (project / name).is_file():
+            entries.append((project / name, name))
+    # Keep the font's copyright notice and the official license with the
+    # bundled application resource; these must not be silently omitted.
+    for name in ['MiSans-NOTICE.txt', 'MiSans-IP-License.pdf']:
+        entries.append((project / 'assets/fonts_src' / name, 'licenses/' + name))
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as package:
         for path, name in sorted(entries, key=lambda entry: entry[1]):
             package.write(path, name)

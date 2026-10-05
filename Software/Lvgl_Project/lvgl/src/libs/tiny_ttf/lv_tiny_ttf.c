@@ -229,6 +229,10 @@ static bool ttf_get_glyph_dsc_cb(const lv_font_t * font, lv_font_glyph_dsc_t * d
     lv_cache_entry_t * entry = lv_cache_acquire_or_create(dsc->glyph_cache, &search_key, (void *)dsc);
 
     if(entry == NULL) {
+        /* A font without this codepoint is a normal fallback miss, not a
+         * cache allocation failure. The cache create callback also rejects
+         * such glyphs; keep the actual allocation error visible below. */
+        if(stbtt_FindGlyphIndex(&dsc->info, (int)unicode_letter) == 0) return false;
         if(!dsc->cache_size) {  /* no cache, do everything directly */
             uint32_t g1 = stbtt_FindGlyphIndex(&dsc->info, (int)unicode_letter);
             tiny_ttf_glyph_cache_create_cb(&search_key, dsc);

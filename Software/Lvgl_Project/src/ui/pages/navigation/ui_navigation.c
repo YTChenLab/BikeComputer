@@ -322,7 +322,9 @@ void ui_navigation_open_search(void)
  s_navigation.search_restore=false;
  lv_anim_delete(&s_navigation.map,NULL);
  s_navigation.map.state=NAV_EXPLORE;ui_nav_map_set_focus(&s_navigation.map,s_navigation.map.focused_control,false);ui_nav_workspace_suspend(true);
- ui_nav_search_panel_open(s_navigation.search_previous_center,s_navigation.map.origin_valid);
+ ui_nav_snapshot_t snapshot;ui_nav_store_get(&snapshot);
+ bool position_valid=snapshot.session.position_valid&&snapshot.session.position.system==UI_NAV_COORD_WGS84;
+ ui_nav_search_panel_open(position_valid?snapshot.session.position:s_navigation.search_previous_center,position_valid);
 }
 void ui_navigation_close_search(void)
 {
@@ -332,8 +334,8 @@ void ui_navigation_close_search(void)
 void ui_navigation_search_selected(const ui_place_t *place)
 {
  if(!place||!ui_nav_search_panel_active()||ui_nav_session_active())return;
- ui_nav_item_t item={.id=place->id,.revision=1,.point=place->point};snprintf(item.name,sizeof(item.name),"%s",place->name);snprintf(item.detail,sizeof(item.detail),"%s",place->detail);
+ ui_nav_item_t item={.id=place->id,.revision=1,.point=place->navigation_point_valid?place->navigation_point:place->point};snprintf(item.name,sizeof(item.name),"%s",place->name);snprintf(item.detail,sizeof(item.detail),"%s",place->detail);
  ui_nav_search_panel_close(true);ui_nav_workspace_suspend(false);s_navigation.search_restore=false;ui_navigation_search_layout(false);
- ui_nav_map_center_point(&s_navigation.map,place->point);ui_nav_workspace_plan_search_destination(&item);select_card(UI_NAV_CARD_DOCK,true);
+ ui_nav_map_center_point(&s_navigation.map,item.point);ui_nav_workspace_preview_search_destination(&item,place->entrance&&place->navigation_point_valid,place->online);select_card(UI_NAV_CARD_DOCK,true);
  s_navigation.request_cached=false;s_navigation.requested_at=0;
 }

@@ -6,3 +6,5 @@ CMakeUserPresets.json
 *.tmp
 runtime/
 dist/
+__pycache__/
+*.pyc

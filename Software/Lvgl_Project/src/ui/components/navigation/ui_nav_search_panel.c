@@ -1,4 +1,5 @@
 #include "ui_nav_search_panel.h"
+#include "services/ui_online_places.h"
 #include "ui_nav_visual.h"
 #include "ui_nav_layout.h"
 #include "ui/pages/navigation/ui_navigation.h"
@@ -147,8 +148,8 @@ static void query_header(void)
  char status[24]="";
  if(strlen(s.query)>=2){
   if(s.pending||s.results.request_id!=s.request)snprintf(status,sizeof(status),"查找中");
-  else if(results_ready())snprintf(status,sizeof(status),"%u 个地点",s.results.count);
-  else snprintf(status,sizeof(status),"%s",s.results.code==UI_NAV_NO_MAP?"无索引":
+  else if(results_ready())snprintf(status,sizeof(status),s.results.limited?"%u+ 地点":"%u 个地点",s.results.count);
+  else snprintf(status,sizeof(status),"%s",s.results.online_status==UI_PLACE_ONLINE_KEY_ERROR?"密钥无效":s.results.online_status==UI_PLACE_ONLINE_TIMEOUT?"联网超时":s.results.online_status==UI_PLACE_ONLINE_FAILED?"联网失败":s.results.code==UI_NAV_NO_MAP?"无索引":
    s.results.code==UI_NAV_UNAVAILABLE?"未接入":s.results.code==UI_NAV_TIMEOUT?"超时":s.results.code?"失败":"无结果");
  }
  ui_text_set_label(s.status_label,status,20);
@@ -304,16 +305,17 @@ void ui_nav_search_panel_open(ui_nav_point_t center,bool valid)
 {
  bool visible=!lv_obj_has_flag(s.root,LV_OBJ_FLAG_HIDDEN);
  int header_y=visible?lv_obj_get_style_y(s.header,0):564,input_y=visible?lv_obj_get_style_y(s.input,0):776;
+ s.query[0]=0; /* Every entry starts a new search, including rapid reopen. */
  s.center=center;s.center_valid=valid;s.active=true;s.zone=FOCUS_LETTERS;
  lv_obj_clear_flag(s.root,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(s.root);
  ui_motion_cancel(s.list,move_y);ui_motion_cancel(s.list,candidates_geometry);
- if(!visible){s.candidates_open=false;candidates_geometry(NULL,0);}else candidates_geometry(NULL,s.candidates_progress);
+ s.candidates_open=false;candidates_geometry(NULL,0);
  ui_motion_cancel(s.header,move_y);lv_obj_set_y(s.header,header_y);
  ui_motion_value(s.header,move_y,header_y,0,300,lv_anim_path_ease_in_out,NULL,NULL);
  if(!visible){lv_obj_set_width(s.header_bg,432);lv_obj_set_height(s.header_bg,48);}
  ui_motion_spring(s.header_bg,width,lv_obj_get_style_width(s.header_bg,0),464,true,NULL,NULL);
  ui_motion_spring(s.header_bg,height,lv_obj_get_style_height(s.header_bg,0),56,true,NULL,NULL);
- strip_stop();strip_select(s.selected_letter,false);
+ strip_stop();strip_select(0,false);
  ui_motion_cancel(s.input,move_y);lv_obj_set_y(s.input,input_y);
  ui_motion_value(s.input,move_y,input_y,UI_NAV_SEARCH_INPUT_TOP-62,260,lv_anim_path_ease_in_out,NULL,NULL);
  ui_navigation_search_layout(true);query_changed();

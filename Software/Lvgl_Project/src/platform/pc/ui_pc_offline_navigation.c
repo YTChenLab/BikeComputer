@@ -5,6 +5,8 @@
 #include "services/ui_nav_raster.h"
 #include "services/ui_nav_store.h"
 #include "services/ui_nav_search.h"
+#include "ui_pc_online_places.h"
+#include "ui_pc_online_fonts.h"
 #include "ui/core/ui_concurrency.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +43,7 @@ static bool open_file(const char *path,file_io_t *f,ui_offline_map_io_t *io)
 static struct {
     char map_path[512],graph_path[512],places_path[512],map_date[16],map_name[48];
     ui_offline_places_t places;bool places_verified,search_running;ui_nav_search_request_t search_request;
+    ui_pc_online_places_config_t online;
     ui_offline_route_t route,base_route;
     ui_offline_tiles_t tiles;ui_offline_graph_t graph;
     file_io_t tile_file;ui_offline_tile_cache_t cache;
@@ -77,7 +80,7 @@ static ui_nav_item_t map_item(void)
         .map_status=s.map_status==UI_NAV_OK?UI_NAV_MAP_READY:s.map_status==UI_NAV_NO_MAP?UI_NAV_MAP_MISSING:UI_NAV_MAP_CORRUPT};
     snprintf(i.name,sizeof(i.name),"%s",s.map_name[0]?s.map_name:"西安城区基础地图");
     snprintf(i.version_name,sizeof(i.version_name),"%s",s.map_date[0]?s.map_date:"未知");
-    snprintf(i.detail,sizeof(i.detail),"(c) OpenStreetMap contributors");snprintf(i.coverage,sizeof(i.coverage),"西安城区 · 彩色离线地图");return i;
+    snprintf(i.detail,sizeof(i.detail),"(c) OpenStreetMap contributors");snprintf(i.coverage,sizeof(i.coverage),"城六区、长安 · 城区彩色地图");return i;
 }
 typedef struct {bool plan;ui_nav_request_t command;ui_nav_point_t start;ui_nav_map_request_t map;ui_offline_route_t route;} job_t;
 static bool cancelled(void *context)
@@ -120,7 +123,8 @@ static void map_worker(job_t *job)
             acquired=ui_nav_raster_begin(r.id,&slot,&pixels);code=acquired?ui_offline_tiles_window(&s.tiles,&s.cache,&r,pixels,frame,&raster_stats):UI_NAV_UNAVAILABLE;
             if(code==UI_NAV_OK)ui_nav_raster_publish(slot,r.id);
         }else if(s.tile_status!=UI_NAV_NO_MAP)code=s.tile_status;
-        else {
+        if(code==UI_NAV_NO_MAP){
+            if(acquired){ui_nav_raster_abort(slot);acquired=false;}memset(frame,0,sizeof(*frame));
             file_io_t input;ui_offline_map_io_t io;ui_offline_map_t map;
             if(open_file(s.map_path,&input,&io)){code=ui_offline_map_open(&map,&io);if(code==UI_NAV_OK)code=ui_offline_map_read(&map,&r,frame,&stats);fclose(input.file);}
         }
@@ -172,7 +176,11 @@ static void *search_worker(void *unused)
    if(out.code==UI_NAV_OK)ui_offline_places_query(&places,r.query,r.center,r.center_valid,&out,search_cancelled,&r.id,NULL);
    fclose(file.file);
   }
-  out.request_id=r.id;ui_nav_search_submit(&out);handled=r.id;
+  if(!search_cancelled(&r.id)){
+   ui_place_results_t online;ui_place_online_status_t status=ui_pc_online_places_query(&s.online,&r,&online,search_cancelled,&r.id);
+   if(!search_cancelled(&r.id))ui_online_places_merge(&out,&online,status);
+  }
+  out.request_id=r.id;if(!search_cancelled(&r.id))ui_nav_search_submit(&out);handled=r.id;
  }
  return 0;
 }
@@ -256,6 +264,10 @@ static bool request_map(const ui_nav_map_request_t *request,void *context)
 bool ui_pc_offline_navigation_register(const char *directory)
 {
     if(!directory)return false;ui_pc_offline_navigation_shutdown();memset(&s,0,sizeof(s));s.multiplier=1;
+    const char *online_config=getenv("BIKE_NAV_ONLINE_CONFIG");
+    ui_pc_online_places_load(&s.online,online_config&&online_config[0]?online_config:"runtime/navigation-online.ini");
+    if(s.online.enabled&&s.online.valid&&!ui_pc_online_fonts_enable("assets/fonts_src/MiSans-Semibold.ttf"))
+        fprintf(stderr,"联网字库加载失败，使用内置字库。\n");
     char path[512];snprintf(s.map_path,sizeof(s.map_path),"%s/xian-urban.bmap",directory);snprintf(s.graph_path,sizeof(s.graph_path),"%s/xian-cycle.bgraph",directory);snprintf(s.places_path,sizeof(s.places_path),"%s/xian-places.bpoi",directory);
     file_io_t input;ui_offline_map_io_t io;ui_offline_map_t map;s.map_status=UI_NAV_NO_MAP;s.route_status=UI_NAV_NO_ROUTE;s.graph_status=UI_NAV_NO_ROUTE;s.tile_status=UI_NAV_NO_MAP;
     if(open_file(s.map_path,&input,&io)){s.map_status=ui_offline_map_open(&map,&io);s.map_size=io.size;if(s.map_status==UI_NAV_OK){s.revision=map.revision;memcpy(s.map_date,map.version_name,16);memcpy(s.map_name,map.name,48);}fclose(input.file);}

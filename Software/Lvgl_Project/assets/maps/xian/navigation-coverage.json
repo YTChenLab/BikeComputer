@@ -1,0 +1,67 @@
+{
+  "coverage": {
+    "provider": "Geofabrik OSM regional snapshot",
+    "bbox": [
+      108.63,
+      33.79,
+      109.28,
+      34.47
+    ],
+    "districts": [
+      "新城区",
+      "碑林区",
+      "莲湖区",
+      "雁塔区",
+      "灞桥区",
+      "未央区",
+      "长安区"
+    ],
+    "tiles": [
+      {
+        "file": "xian-region.json",
+        "bbox": [
+          108.63,
+          33.79,
+          109.28,
+          34.47
+        ]
+      }
+    ],
+    "complete": true
+  },
+  "graph": {
+    "nodes": 155061,
+    "directed_edges": 271799,
+    "names": 2973,
+    "bytes": 6972592,
+    "profile": "conservative bicycle access; no turn-restriction engine"
+  },
+  "colour_bbox": [
+    108.78,
+    34.12,
+    109.15,
+    34.46
+  ],
+  "coordinate_system": "WGS84",
+  "licence": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "sources": [
+    {
+      "file": "sust-campus.json",
+      "sha256": "2e7d87c35cf1d4a6e2051c201444703627e0d4a2f2e4d4d6b9aacccccd3b2069"
+    },
+    {
+      "file": "xian-region.json",
+      "sha256": "6b066bd03ccdf45699efaead18303dc96fb7faf54821f9ba8fe9f66bbc991cb5"
+    },
+    {
+      "file": "districts.json",
+      "sha256": "986e65edd1380e42f91ab07b34ba4bb789f74679917954f3cf664152cf4336ef"
+    }
+  ],
+  "limits": [
+    "OSM coverage and access may differ from reality.",
+    "Colour coverage is smaller than vector/road/search coverage.",
+    "High-tech coverage follows Yanta and Changan district boundaries; other managed districts are not included."
+  ]
+}

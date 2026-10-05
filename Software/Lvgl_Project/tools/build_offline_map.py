@@ -57,7 +57,8 @@ def polygon_parts(pts):
         signs=[cross(p[i-1],p[i],p[(i+1)%len(p)]) for i in range(len(p))]
         if any(abs(s)>1e-15 for s in signs) and (all(s>=0 for s in signs) or all(s<=0 for s in signs)):return [p]
     return triangles(pts)
-def clip_points(points,polygon,bbox=BBOX):
+def clip_points(points,polygon,bbox=None):
+    if bbox is None:bbox=BBOX
     if not polygon:
         a,b=points;dx=b[0]-a[0];dy=b[1]-a[1];lo,hi=0.,1.
         for p,q in ((-dx,a[0]-bbox[0]),(dx,bbox[2]-a[0]),(-dy,a[1]-bbox[1]),(dy,bbox[3]-a[1])):
@@ -77,8 +78,10 @@ def clip_points(points,polygon,bbox=BBOX):
         p=result
     return list(dict.fromkeys(p))
 def main():
+    global BBOX
     parser=argparse.ArgumentParser();parser.add_argument('source',type=Path);parser.add_argument('output',type=Path)
-    args=parser.parse_args();out=args.output;out.mkdir(parents=True,exist_ok=True)
+    parser.add_argument('--bbox',type=float,nargs=4,default=BBOX)
+    args=parser.parse_args();BBOX=tuple(args.bbox);out=args.output;out.mkdir(parents=True,exist_ok=True)
     raw=args.source.read_bytes();data=json.loads(raw)
     if data.get('remark'):raise ValueError('Overpass returned incomplete/error response: '+data['remark'])
     nodes={e['id']:(e['lon'],e['lat']) for e in data['elements'] if e['type']=='node'}

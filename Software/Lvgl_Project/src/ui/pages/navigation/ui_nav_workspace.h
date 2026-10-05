@@ -28,7 +28,7 @@ void ui_nav_workspace_handle_pointer(const ui_input_pointer_event_t *event);
 void ui_nav_workspace_open_menu(void);
 void ui_nav_workspace_open_routes(void);
 void ui_nav_workspace_preview_destination(const ui_nav_item_t *place);
-void ui_nav_workspace_plan_search_destination(const ui_nav_item_t *place);
+void ui_nav_workspace_preview_search_destination(const ui_nav_item_t *place,bool mapped_entrance,bool online);
 void ui_nav_workspace_suspend(bool suspend);
 void ui_nav_workspace_preview_route(const ui_nav_item_t *route);
 void ui_nav_workspace_open_phone(void);

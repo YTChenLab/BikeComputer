@@ -59,6 +59,11 @@ int main(void)
     for(unsigned i=1;i<a->count;i++)assert(a->points[i].cumulative_m>a->points[i-1].cumulative_m);
     end=(ui_nav_point_t){34.262,108.948,UI_NAV_COORD_WGS84};assert(ui_offline_graph_plan(&graph,start,end,workspace,bytes,b,NULL,NULL,&stats)==UI_NAV_OK);
     assert(a->distance_m!=b->distance_m&&a->points[a->count-1].position.longitude!=b->points[b->count-1].position.longitude);
+    /* The formerly missing SUST main campus must route to Weiyang, not Taihua. */
+    end=(ui_nav_point_t){34.3811545,108.97182845,UI_NAV_COORD_WGS84};
+    assert(ui_offline_graph_plan(&graph,start,end,workspace,bytes,b,NULL,NULL,&stats)==UI_NAV_OK);
+    assert(b->points[b->count-1].position.latitude>34.35&&stats.end_snap_m<=180);
+    printf("SUST Weiyang: %.0f m, %u points, endpoint snap %.1f m\n",b->distance_m,b->count,stats.end_snap_m);
     assert(ui_offline_graph_plan(&graph,start,end,workspace,bytes,b,cancel_now,NULL,&stats)==UI_NAV_CANCELLED);
     end.system=UI_NAV_COORD_GCJ02;assert(ui_offline_graph_plan(&graph,start,end,workspace,bytes,b,NULL,NULL,&stats)==UI_NAV_UNSUPPORTED);
     end=(ui_nav_point_t){31.2,121.5,UI_NAV_COORD_WGS84};assert(ui_offline_graph_plan(&graph,start,end,workspace,bytes,b,NULL,NULL,&stats)==UI_NAV_NO_MAP);

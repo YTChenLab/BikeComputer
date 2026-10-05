@@ -7,6 +7,9 @@
 #include "services/ui_nav_map_provider.h"
 #include "platform/pc/ui_pc_navigation.h"
 #include "platform/pc/ui_pc_offline_navigation.h"
+#include "platform/pc/ui_pc_online_fonts.h"
+#include "ui/core/ui_text.h"
+#include "ui/core/ui_theme.h"
 #include "ui/core/ui_app.h"
 #include "ui/core/ui_app_state.h"
 #include "ui/core/ui_state_machine.h"
@@ -26,8 +29,10 @@
 #include "ui/pages/ui_achievements_page.h"
 #include "ui/pages/ui_boot_page.h"
 #include "ui/pages/ui_home_page.h"
+#include "ui/pages/ui_profile_page.h"
 #include "ui/pages/ui_devices_page.h"
 #include "ui/components/ui_liquid_selection.h"
+#include "ui/design/ui_design_tokens.h"
 #include "ui/pages/ui_ride_report_page.h"
 #include "services/ui_command_service.h"
 #include "ui/models/ui_ride_data_model.h"
@@ -100,7 +105,9 @@ static void log_message(lv_log_level_t level, const char *message)
 {
     (void)level;
     if(strstr(message, "No memory") || strstr(message, "layer buffer failed") ||
-       strstr(message, "glyph dsc. not found")) {
+       strstr(message, "glyph dsc. not found") ||
+       strstr(message, "cache not allocated") ||
+       strstr(message, "tiny_ttf: out of memory")) {
         render_failure = true;
         fprintf(stderr,"LVGL render failure: %s",message);
     }
@@ -399,7 +406,37 @@ static void test_shell_pages(void)
     assert(find_label(lv_screen_active(),"成就进度"));
     assert(!find_label(lv_screen_active(),"个人主页"));
     assert(!find_label(lv_screen_active(),"LV 12") && !find_label(lv_screen_active(),"ACTIVE"));
+    ui_liquid_selection_t *profile_selection=lv_obj_get_user_data(lv_screen_active());
+    assert(profile_selection->count==8 && ui_profile_page_selected_index()==0);
+    lv_obj_t *profile_stats=lv_obj_get_parent(find_label(lv_screen_active(),"骑行总数据"));
+    assert(profile_stats && !lv_obj_has_flag(profile_stats,LV_OBJ_FLAG_CLICKABLE));
+    ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    for(unsigned i=0;i<12;i++){advance(25);char name[48];snprintf(name,sizeof(name),"profile_liquid_%02u",i);capture(name);}
+    ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(40);capture("profile_liquid_reverse");
+    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);capture("profile_achievement_selected");
+    assert(ui_profile_page_selected_index()==1);
+    assert(lv_color_eq(lv_obj_get_style_text_color(find_label(lv_screen_active(),"成就进度"),0),lv_color_hex(0x101010)));
+    touch(100,230,true);touch(100,230,false);advance(20);
+    assert(ui_router_current()==UI_ROUTE_PROFILE && ui_profile_page_selected_index()==1);
+    ui_motion_set_reduced(true);
+    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(20);capture("profile_activity_selected");
+    assert(ui_profile_page_selected_index()==2 && profile_selection->progress==1000);
+    assert(lv_color_eq(lv_obj_get_style_text_color(find_label(lv_screen_active(),"成就进度"),0),UI_TOKEN_COLOR_TEXT_PRIMARY));
+    ui_motion_set_reduced(false);
+    for(unsigned i=0;i<5;i++)ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    advance(700);capture("profile_settings_selected");
+    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);
+    assert(ui_profile_page_selected_index()==0);
+    ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(700);
+    assert(ui_profile_page_selected_index()==7);
     ui_app_handle_input(UI_INPUT_BACK); advance(600);
+    assert(!profile_selection->active);
+    ui_app_handle_input(UI_INPUT_OPEN_PROFILE);advance(600);
+    assert(ui_profile_page_selected_index()==0);capture("profile_reopened");
+    touch(330,726,true);advance(100);capture("profile_touch_pressed");touch(330,726,false);advance(600);
+    assert(ui_router_current()==UI_ROUTE_DEVICES && !profile_selection->active);
+    ui_app_handle_input(UI_INPUT_BACK);advance(600);
+    if(ui_router_current()==UI_ROUTE_PROFILE){ui_app_handle_input(UI_INPUT_BACK);advance(600);}
     ui_app_handle_input(UI_INPUT_OPEN_SETTINGS); advance(600);
     assert(ui_router_current()==UI_ROUTE_SETTINGS);capture("settings_initial");
     assert(lv_color_eq(lv_obj_get_style_bg_color(lv_screen_active(),0),lv_color_black()));
@@ -706,11 +743,23 @@ static void alpha_submit(void)
  for(unsigned i=0;i<3;i++){
   result.items[i]=(ui_place_t){.id=100+i,.kind=2,.point={.latitude=34.26,.longitude=108.94,.system=UI_NAV_COORD_WGS84}};
   snprintf(result.items[i].name,64,"测试地点 %u",i+1);snprintf(result.items[i].detail,64,"地标");
+  if(i==0){result.items[i].online=true;snprintf(result.items[i].detail,64,"高德 · 雁塔区");}
  }
  assert(ui_nav_search_submit(&result));advance(100);
 }
 static void test_alpha_input(void)
 {
+ assert(ui_pc_online_fonts_enable("assets/fonts_src/MiSans-Semibold.ttf"));
+ char rare_name[]={(char)0xe7,(char)0x92,(char)0x9f,0};char rendered[32];
+ assert(ui_text_prepare(rare_name,24,rendered,sizeof(rendered),NULL)&&!strcmp(rendered,rare_name));
+ char unsupported[]={(char)0xf4,(char)0x8f,(char)0xbf,(char)0xbf,0};
+ assert(!ui_text_prepare(unsupported,24,rendered,sizeof(rendered),NULL)&&!strcmp(rendered,"?"));
+ assert(ui_text_prepare(rare_name,24,rendered,sizeof(rendered),NULL)&&!strcmp(rendered,rare_name));
+ const lv_font_t *registered_font;
+ assert(ui_text_prepare("ABC",20,rendered,sizeof(rendered),&registered_font));
+ lv_font_glyph_dsc_t latin_glyph;
+ assert(lv_font_get_glyph_dsc(registered_font->fallback,&latin_glyph,'C',0));
+ assert(latin_glyph.resolved_font->dsc==ui_font_misans_en_18.dsc);
  ui_nav_search_backend_t backend={.request=alpha_request_copy};assert(ui_nav_search_register(&backend));
  assert(ui_router_replace(UI_ROUTE_NAVIGATION,UI_MOTION_PAGE_NONE));
  for(unsigned i=0;i<8&&!ui_nav_workspace_map_visible();i++)assert(ui_navigation_handle_back());
@@ -755,10 +804,14 @@ static void test_alpha_input(void)
  ui_app_handle_input(UI_INPUT_PAGE_PREV);assert(strcmp(ui_nav_search_panel_query(),"zbcd")==0);
  advance(220);alpha_submit();ui_app_handle_input(UI_INPUT_PAGE_NEXT);ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
  assert(find_label(lv_screen_active(),"查看结果")&&ui_state_machine_state()==UI_RIDE_STATE_HOME);
- /* Return exits without erasing; reopening retains the query and current letter. */
+ /* A new entry clears the query, dial, candidates and old request. */
+ uint32_t closed_request=alpha_request.id;
  ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_search_panel_active());
- ui_navigation_open_search();advance(700);assert(strcmp(ui_nav_search_panel_query(),"zbcd")==0);
+ ui_navigation_open_search();advance(700);assert(!ui_nav_search_panel_query()[0]);
  assert(lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_IDLE_HEIGHT);
+ assert(!ui_nav_search_submit(&(ui_place_results_t){.request_id=closed_request}));
+ ui_app_handle_input(UI_INPUT_ENCODER_PRESS);ui_app_handle_input(UI_INPUT_ENCODER_CW);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ assert(strcmp(ui_nav_search_panel_query(),"ab")==0);advance(220);
  /* Empty/error completions remain compact, with status confined to the query. */
  assert(ui_nav_search_submit(&(ui_place_results_t){.request_id=alpha_request.id}));advance(400);
  assert(find_label(search_root,"无结果")&&lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN));capture("alpha_no_results");
@@ -777,8 +830,8 @@ static void test_alpha_input(void)
  assert(!lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_HEIGHT);
  /* Reopening during candidate animation must restore one coherent geometry. */
  ui_navigation_close_search();advance(50);ui_navigation_open_search();advance(700);
- assert(ui_nav_search_panel_active()&&lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_IDLE_HEIGHT);
- ui_motion_set_reduced(true);alpha_submit();advance(20);
+ assert(ui_nav_search_panel_active()&&!ui_nav_search_panel_query()[0]&&lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_IDLE_HEIGHT);
+ ui_motion_set_reduced(true);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(220);alpha_submit();advance(20);
  assert(ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_HEIGHT);
  ui_app_handle_input(UI_INPUT_PAGE_PREV);advance(20);
  assert(lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_IDLE_HEIGHT);
@@ -788,6 +841,12 @@ static void test_alpha_input(void)
  for(unsigned i=0;i<UI_PLACE_QUERY_MAX;i++)ui_app_handle_input(UI_INPUT_PAGE_PREV);
  assert(!ui_nav_search_panel_query()[0]);ui_app_handle_input(UI_INPUT_BACK);advance(700);
  assert(!ui_nav_search_panel_active()&&ui_navigation_map()->safe_height==UI_NAV_MAP_HEIGHT);
+ ui_navigation_open_search();advance(700);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(220);alpha_submit();advance(400);
+ tap_label(lv_screen_active(),"测试地点 1",true);advance(700);
+ assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&!ui_nav_search_panel_active());
+ assert(find_label(lv_screen_active(),"联网坐标 · 请确认落点"));
+ assert(ui_navigation_handle_back());advance(700);assert(ui_nav_search_panel_active()&&!ui_nav_search_panel_query()[0]);
+ ui_navigation_close_search();advance(700);
  assert(ui_nav_search_register(NULL));assert(ui_router_replace(UI_ROUTE_HOME,UI_MOTION_PAGE_NONE));
 }
 static void test_ride_preparation_cancel(void)
@@ -911,12 +970,39 @@ static void test_offline_workflow(void)
  tap_label(lv_screen_active(),results.items[chosen].name,true);
  for(unsigned i=0;i<12;i++){advance(25);char name[64];snprintf(name,sizeof(name),"xian_search_close_%02u",i);capture(name);if(i==4)capture("xian_search_closing");}offline_settle();
  assert(!ui_nav_search_panel_active()&&map->safe_height==540&&lv_obj_get_height(map->root)==540&&lv_obj_get_y(map->root)==62);
+ assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION);ui_nav_session_get(&planned);assert(planned.state==UI_NAV_SESSION_IDLE);
+ capture("xian_search_confirmation");tap_label(lv_screen_active(),"规划路线",false);offline_settle();
  ui_nav_session_get(&planned);assert(planned.state==UI_NAV_SESSION_PREVIEW&&planned.route.id==2&&strstr(planned.route.name,"钟楼"));capture("xian_search_preview");
- ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(ui_nav_search_panel_active()&&strcmp(ui_nav_search_panel_query(),query)==0);
+ ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(ui_nav_search_panel_active()&&!ui_nav_search_panel_query()[0]);
  ui_nav_session_get(&planned);assert(planned.state==UI_NAV_SESSION_IDLE&&!planned.route.id);
  ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_search_panel_active()&&map->safe_height==540);
  ui_navigation_open_search();advance(90);ui_navigation_close_search();advance(60);ui_navigation_open_search();advance(800);assert(ui_nav_search_panel_active()&&map->safe_height>=UI_NAV_SEARCH_MAP_HEIGHT&&map->safe_height<=UI_NAV_SEARCH_MAP_IDLE_HEIGHT);ui_navigation_close_search();advance(800);assert(!ui_nav_search_panel_active()&&map->safe_height==540);
  ui_motion_set_reduced(true);ui_navigation_open_search();advance(100);assert(map->safe_height>=UI_NAV_SEARCH_MAP_HEIGHT&&map->safe_height<=UI_NAV_SEARCH_MAP_IDLE_HEIGHT);ui_navigation_close_search();advance(100);assert(map->safe_height==540&&!ui_nav_search_panel_active());ui_motion_set_reduced(false);
+ /* Reproduce the user's abbreviation, choose Weiyang explicitly and confirm. */
+ ui_navigation_open_search();advance(700);
+ assert(!ui_nav_search_panel_query()[0]);current='a';
+ const char *campus_query="sxkjdx";
+ for(const char *p=campus_query;*p;p++){
+  int delta=(*p-current+26)%26;if(delta>13)delta-=26;
+  for(int i=0;i<abs(delta);i++)ui_app_handle_input(delta>0?UI_INPUT_ENCODER_CW:UI_INPUT_ENCODER_CCW);
+  advance(150);char key[2]={(char)(*p-32),0};tap_label(lv_screen_active(),key,false);current=*p;
+ }
+ for(unsigned i=0;i<400;i++){advance(10);
+#ifdef _WIN32
+  Sleep(2);
+#endif
+ }
+ ui_nav_search_get(&results,NULL,&search_busy);assert(!search_busy&&results.code==UI_NAV_OK);
+ bool has_weiyang=false;for(unsigned i=0;i<results.count;i++)if(strstr(results.items[i].name,"陕西科技大学")&&strstr(results.items[i].name,"未央校区")){chosen=i;has_weiyang=true;}
+ assert(has_weiyang);capture("sust_campus_candidates");tap_label(lv_screen_active(),results.items[chosen].name,true);offline_settle();
+ assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&map->pick_point.latitude>34.35);capture("sust_weiyang_confirmation");
+ tap_label(lv_screen_active(),"调整位置",false);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_PICK);
+ ui_app_handle_input(UI_INPUT_BACK);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&!ui_nav_search_panel_active());
+ tap_label(lv_screen_active(),"调整位置",false);advance(400);tap_label(lv_screen_active(),"选这里",false);advance(400);
+ assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&find_label(lv_screen_active(),"陕西科技大学（未央校区）"));capture("sust_manual_position");
+ tap_label(lv_screen_active(),"规划路线",false);offline_settle();ui_nav_session_get(&planned);
+ assert(planned.state==UI_NAV_SESSION_PREVIEW&&strstr(planned.route.name,"未央校区"));capture("sust_weiyang_route");
+ ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(ui_nav_search_panel_active());ui_app_handle_input(UI_INPUT_BACK);advance(700);
  assert(ui_state_machine_state()==UI_RIDE_STATE_HOME&&record_count==2&&!ui_ride_summary_model_active());
  assert(!render_failure);ui_pc_offline_navigation_shutdown();puts("ui_offline_navigation_integration: PASS");
 }

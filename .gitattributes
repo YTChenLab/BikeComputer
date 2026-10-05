@@ -1,9 +1,9 @@
+# 默认自动识别文本文件
 * text=auto
 
-# GNU checksum manifests must stay LF on Windows checkouts.
+# 跨平台文本使用 LF；GNU 校验清单不能带行尾回车
 .gitattributes text eol=lf
 **/SHA256SUMS.txt text eol=lf
-
 *.c text eol=lf
 *.h text eol=lf
 *.cpp text eol=lf
@@ -15,6 +15,7 @@ CMakeLists.txt text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 
+# 图像、字体与其他二进制资源
 *.png binary
 *.jpg binary
 *.jpeg binary
@@ -23,8 +24,7 @@ CMakeLists.txt text eol=lf
 *.otf binary
 *.bin binary
 
-
-# Large offline map packages; retain real objects outside ordinary Git history.
+# 大型离线地图使用 Git LFS，禁止普通文本换行转换
 Software/Lvgl_Project/assets/maps/**/*.btiles filter=lfs diff=lfs merge=lfs -text
 Software/Lvgl_Project/assets/maps/**/*.bmap filter=lfs diff=lfs merge=lfs -text
 Software/Lvgl_Project/assets/maps/**/*.bgraph filter=lfs diff=lfs merge=lfs -text

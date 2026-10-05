@@ -1,16 +1,15 @@
-# Generated build products
+# LVGL 构建产物与本机工具
 Software/Lvgl_Project/build/
 Software/Lvgl_Project/bin/
 Software/Lvgl_Project/.tools/
 
-# Local CMake and editor state
+# 本机 CMake 配置、编辑器缓存与临时文件
 **/CMakeUserPresets.json
 **/.cache/
 *.log
 *.tmp
 
-# Operating system files
+# 操作系统辅助文件
 .DS_Store
 Thumbs.db
 Desktop.ini
-

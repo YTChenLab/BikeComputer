@@ -19,3 +19,9 @@ CMakeLists.txt text eol=lf
 *.otf binary
 *.bin binary
 
+
+# Large offline map packages; retain real objects outside ordinary Git history.
+Software/Lvgl_Project/assets/maps/**/*.btiles filter=lfs diff=lfs merge=lfs -text
+Software/Lvgl_Project/assets/maps/**/*.bmap filter=lfs diff=lfs merge=lfs -text
+Software/Lvgl_Project/assets/maps/**/*.bgraph filter=lfs diff=lfs merge=lfs -text
+Software/Lvgl_Project/assets/maps/**/*.bpoi filter=lfs diff=lfs merge=lfs -text

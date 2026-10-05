@@ -3,6 +3,7 @@
 
 #include "../../core/ui_dock.h"
 #include "lvgl.h"
+#include "../ui_liquid_selection.h"
 
 typedef struct
 {
@@ -24,6 +25,7 @@ typedef struct
     lv_obj_t *slider;
     lv_obj_t *value_label;
     ui_dock_type_t type;
+    ui_liquid_selection_t liquid;
 } ui_dock_template_t;
 
 void ui_dock_template_create(ui_dock_template_t *view, lv_obj_t *parent,

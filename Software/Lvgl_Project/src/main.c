@@ -206,6 +206,7 @@
 #include "hal/hal.h"
 #include "perf_benchmark.h"
 #include "platform/pc/ui_pc_services.h"
+#include "platform/pc/ui_pc_offline_navigation.h"
 
 
 /*
@@ -355,6 +356,8 @@ int main(int argc, char **argv)
 
     /* Register the PC-only asynchronous GNSS/TF simulator backend. */
     ui_pc_services_register();
+    (void)ui_pc_offline_navigation_register("assets/maps/xian");
+    atexit(ui_pc_offline_navigation_shutdown);
     ui_init();
 
 

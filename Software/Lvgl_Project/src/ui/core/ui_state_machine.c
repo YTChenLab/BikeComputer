@@ -38,10 +38,12 @@ bool ui_state_machine_dispatch(ui_ride_event_t event)
             break;
         case UI_RIDE_STATE_PRE_RIDE:
             if(event == UI_RIDE_EVENT_GPS_READY) next = UI_RIDE_STATE_GPS_READY;
+            else if(event == UI_RIDE_EVENT_PREPARE_CANCEL) next = UI_RIDE_STATE_HOME;
             else return false;
             break;
         case UI_RIDE_STATE_GPS_READY:
             if(event == UI_RIDE_EVENT_GO) next = UI_RIDE_STATE_RIDING;
+            else if(event == UI_RIDE_EVENT_PREPARE_CANCEL) next = UI_RIDE_STATE_HOME;
             else return false;
             break;
         case UI_RIDE_STATE_RIDING:

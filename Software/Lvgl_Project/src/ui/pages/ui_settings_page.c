@@ -61,8 +61,10 @@ lv_obj_t *ui_settings_page_create(ui_page_action_cb_t callback,
     ui_page_status_create(&s_status, screen);
     ui_page_title(screen, "系统设置", "SETTINGS");
 
-    ui_settings_list_create(&s_list, screen, 20, 156, 440, UI_PAGE_LIST_WITH_FOOTNOTE_BOTTOM - 156,
+    ui_settings_list_create(&s_list, screen, 8, 156, 464, UI_PAGE_LIST_WITH_FOOTNOTE_BOTTOM - 156,
                             list_action, NULL);
+    (void)ui_settings_list_set_row_size(&s_list,UI_TOKEN_LIST_LARGE_ROW_HEIGHT,UI_TOKEN_LIST_LARGE_ROW_GAP);
+    ui_liquid_selection_set_wide_focus(&s_list.liquid,true);
     (void)ui_settings_list_add(&s_list, UI_SETTINGS_ITEM_WIFI,
         UI_SETTINGS_ROW_TOGGLE, "WiFi", "网络连接与传输", "");
     (void)ui_settings_list_add(&s_list, UI_SETTINGS_ITEM_BLUETOOTH,

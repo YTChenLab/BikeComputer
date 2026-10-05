@@ -1,0 +1,1 @@
+[out:json][timeout:25];(nwr["tourism"~"^(museum|attraction|viewpoint)$"](34.12,108.78,34.46,109.15);nwr["historic"]["name"](34.12,108.78,34.46,109.15);nwr["amenity"="hospital"](34.12,108.78,34.46,109.15);nwr["railway"="station"](34.12,108.78,34.46,109.15););out body center;

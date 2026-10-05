@@ -1,0 +1,253 @@
+{
+  "date": "2026-10-03",
+  "basis": "Navigation UI v2.0 Final user references",
+  "ctest_passed": 34,
+  "ctest_total": 34,
+  "render_pairs": [
+    {
+      "page": "nav_approach",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_arrival",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_arrival_map",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_center",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_cross_page",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_delete_confirm",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_destination",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_gps_weak",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_imminent",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_live",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_map_detail",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_map_unavailable",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_maps",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_menu",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_overview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_pick",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_places",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preparing",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_reroute_failed",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_reroute_success",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_rerouting",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_roundabout",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_saved_preview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_saved_routes",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_search_unavailable",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_stop_confirm",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_storage",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    }
+  ],
+  "menu_replay_cycles": 60,
+  "menu_replay_stable_heap_bytes": 37736,
+  "menu_replay_stable_timers": 6,
+  "pc_struct_sizes_bytes": {
+    "session": 664,
+    "map_frame": 8624,
+    "catalog": 2408
+  },
+  "scope": "PC LVGL UI acceptance; synthetic geometry; no hardware FPS or real-map claim",
+  "delivery_audit": {
+    "prts_boot_source_files": 6,
+    "prts_boot_unchanged": true,
+    "boot_sources": [
+      "src/ui/pages/ui_boot_motion.c",
+      "src/ui/pages/ui_boot_motion.h",
+      "src/ui/pages/ui_boot_page.c",
+      "src/ui/pages/ui_boot_page.h",
+      "src/ui/pages/ui_boot_prts_assets.c",
+      "src/ui/pages/ui_boot_prts_assets.h"
+    ]
+  }
+}

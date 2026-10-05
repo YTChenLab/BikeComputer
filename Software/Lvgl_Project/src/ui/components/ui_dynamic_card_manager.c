@@ -47,7 +47,7 @@ typedef struct
     lv_obj_t *indicator_dots[UI_DYNAMIC_CARD_COUNT];
     lv_obj_t *music_controls[MUSIC_CONTROL_COUNT];
     ui_metric_card_t extended_metrics[4];
-    lv_obj_t *extended_page_label, *extended_hint;
+    lv_obj_t *extended_page_label;
     ui_ride_data_t latest_ride_data;
     unsigned extended_page;
     lv_obj_t *music_play_icon;
@@ -322,13 +322,13 @@ static lv_obj_t *create_card_header(lv_obj_t *card, const char *symbol,
                                const char *page)
 {
     const lv_color_t secondary = UI_TOKEN_COLOR_TEXT_TERTIARY;
-    create_label(card, 46, 11, 28, symbol, &lv_font_montserrat_22,
+    create_label(card, 46, (40 - lv_font_montserrat_22.line_height) / 2, 28, symbol, &lv_font_montserrat_22,
                  UI_COLOR_YELLOW, LV_TEXT_ALIGN_CENTER);
-    create_label(card, 76, 9, 112, title, UI_FONT_PAGE_TEXT,
+    create_label(card, 76, (40 - UI_FONT_PAGE_TEXT->line_height) / 2, 112, title, UI_FONT_PAGE_TEXT,
                  UI_COLOR_YELLOW, LV_TEXT_ALIGN_LEFT);
-    lv_obj_t *subtitle_label = create_label(card, 188, 12, 170, subtitle, &lv_font_montserrat_16,
+    lv_obj_t *subtitle_label = create_label(card, 188, (40 - lv_font_montserrat_16.line_height) / 2, 170, subtitle, &lv_font_montserrat_16,
                  secondary, LV_TEXT_ALIGN_LEFT);
-    create_label(card, 410, 12, 34, page, &lv_font_montserrat_16,
+    create_label(card, 410, (40 - lv_font_montserrat_16.line_height) / 2, 34, page, &lv_font_montserrat_16,
                  secondary, LV_TEXT_ALIGN_RIGHT);
     return subtitle_label;
 }
@@ -353,9 +353,8 @@ static lv_obj_t *create_card(lv_obj_t *viewport)
 static void create_extended_card(lv_obj_t *card)
 {
     s_manager.extended_page_label = create_card_header(card, LV_SYMBOL_BARS, "骑行扩展", "DATA 1/2", "1/4");
-    lv_obj_set_width(s_manager.extended_page_label, 100);
-    s_manager.extended_hint = create_label(card, 290, 10, 108, "点按切换", UI_FONT_PAGE_TEXT,
-        UI_TOKEN_COLOR_TEXT_TERTIARY, LV_TEXT_ALIGN_RIGHT);
+    lv_obj_set_width(s_manager.extended_page_label, 210);
+    lv_obj_set_style_text_align(s_manager.extended_page_label, LV_TEXT_ALIGN_CENTER, 0);
     create_rect(card, 48, 130, 396, 1, UI_TOKEN_COLOR_SURFACE_OUTLINE, LV_OPA_COVER);
     create_rect(card, 247, 47, 1, 172, UI_TOKEN_COLOR_SURFACE_OUTLINE, LV_OPA_COVER);
     for(unsigned i = 0; i < 4; ++i) {
@@ -693,9 +692,6 @@ static void update_control_visuals(void)
 {
     ui_bottom_surface_set_dynamic_focus(
         s_manager.mode == UI_DYNAMIC_CARD_CONTROL);
-    if(s_manager.extended_hint) lv_label_set_text(s_manager.extended_hint,
-        s_manager.mode == UI_DYNAMIC_CARD_CONTROL && s_manager.active_card == UI_DYNAMIC_CARD_EXTENDED_DATA
-            ? "旋转翻页" : "点按切换");
 
     for(uint8_t index = 0; index < MUSIC_CONTROL_COUNT; index++)
     {

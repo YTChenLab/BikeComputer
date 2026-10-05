@@ -629,9 +629,9 @@ static int32_t create_summary(report_page_t *page, int32_t y)
     bool aerobic = heart_total > 0U &&
         page->model.trace.heart_rate_zone_seconds[2] * 100U /
         heart_total >= 30U;
-    uint8_t rules = (long_ride ? 1U : 0U) + (climbing ? 1U : 0U) +
+    /* Save state is required even when a distance/climbing/zone summary exists. */
+    uint8_t rules = 1U + (long_ride ? 1U : 0U) + (climbing ? 1U : 0U) +
                     (aerobic ? 1U : 0U);
-    if(rules == 0U) rules = 1U;
     int32_t height = 58 + rules * 70;
     lv_obj_t *card = report_card(page->content, y, height);
     section_title(card, "骑行总结", "RIDE SUMMARY");
@@ -657,9 +657,8 @@ static int32_t create_summary(report_page_t *page, int32_t y)
         summary_rule(card,row_y,"区间分布","HEART RATE ZONES",description);
         row_y += 70;
     }
-    if(!long_ride && !climbing && !aerobic)
-        page->completion_status=summary_rule(card,row_y,"骑行完成","RIDE COMPLETE",
-                                            completion_text(page->model.saved));
+    page->completion_status=summary_rule(card,row_y,"骑行完成","RIDE COMPLETE",
+                                        completion_text(page->model.saved));
     return y + height + REPORT_SECTION_GAP;
 }
 

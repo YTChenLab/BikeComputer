@@ -34,7 +34,8 @@ typedef enum
     UI_RIDE_EVENT_SAVE_SUCCESS,
     UI_RIDE_EVENT_SAVE_FAILED,
     UI_RIDE_EVENT_SUMMARY_DISMISSED,
-    UI_RIDE_EVENT_RESET
+    UI_RIDE_EVENT_RESET,
+    UI_RIDE_EVENT_PREPARE_CANCEL
 } ui_ride_event_t;
 
 typedef void (*ui_state_changed_cb_t)(ui_ride_state_t previous,

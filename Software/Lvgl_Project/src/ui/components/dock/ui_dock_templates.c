@@ -137,6 +137,9 @@ static void create_action(ui_dock_template_t *view, lv_event_cb_t event_cb)
                                        UI_DOCK_INTERACTION_PRIMARY, event_cb);
     add_button_label(view->primary_button, &view->primary_label, "OK",
                      UI_FONT_PAGE_TEXT);
+    view->secondary_button=make_button(view->root,204,142,112,UI_PAGE_ACTION_HEIGHT,UI_DOCK_INTERACTION_SECONDARY,event_cb);
+    add_button_label(view->secondary_button,&view->secondary_label,"取消",UI_FONT_PAGE_TEXT);
+    lv_obj_add_flag(view->secondary_button,LV_OBJ_FLAG_HIDDEN);
 }
 
 static void create_confirm(ui_dock_template_t *view, lv_event_cb_t event_cb)
@@ -239,6 +242,11 @@ void ui_dock_template_create(ui_dock_template_t *view, lv_obj_t *parent,
         case UI_DOCK_TYPE_MEDIA: create_media(view, event_cb); break;
         default: break;
     }
+    if(type==UI_DOCK_TYPE_ACTION||type==UI_DOCK_TYPE_CONFIRM){
+        ui_liquid_selection_init(&view->liquid,view->root,false,NULL);
+        if(type==UI_DOCK_TYPE_CONFIRM){ui_liquid_selection_add(&view->liquid,view->secondary_button);ui_liquid_selection_add(&view->liquid,view->primary_button);}
+        else{ui_liquid_selection_add(&view->liquid,view->primary_button);ui_liquid_selection_add(&view->liquid,view->secondary_button);}
+    }
 }
 
 static lv_color_t priority_color(ui_dock_priority_t priority)
@@ -269,6 +277,7 @@ void ui_dock_template_update(ui_dock_template_t *view,
         if(card->value == UI_NAVIGATION_TURN_LEFT) arrow = LV_SYMBOL_LEFT;
         else if(card->value == UI_NAVIGATION_TURN_RIGHT) arrow = LV_SYMBOL_RIGHT;
         else if(card->value == UI_NAVIGATION_TURN_U_TURN) arrow = LV_SYMBOL_REFRESH;
+        else if(card->value == UI_NAVIGATION_TURN_ROUNDABOUT) arrow = LV_SYMBOL_LOOP;
         lv_label_set_text(view->icon, arrow);
         lv_obj_set_style_text_color(view->icon, UI_TOKEN_COLOR_ACCENT, 0);
     }
@@ -289,6 +298,14 @@ void ui_dock_template_update(ui_dock_template_t *view,
         lv_label_set_text(view->secondary_label,
                           card->secondary_action[0] ? card->secondary_action :
                           (card->type == UI_DOCK_TYPE_MEDIA ? "MODE" : "BACK"));
+    }
+    if(view->type==UI_DOCK_TYPE_ACTION){
+        bool secondary=card->secondary_action[0]!=0;
+        if(secondary){lv_obj_clear_flag(view->secondary_button,LV_OBJ_FLAG_HIDDEN);lv_obj_set_size(view->primary_button,112,UI_PAGE_ACTION_HEIGHT);lv_obj_set_x(view->primary_button,328);}
+        else{lv_obj_add_flag(view->secondary_button,LV_OBJ_FLAG_HIDDEN);lv_obj_set_size(view->primary_button,108,UI_PAGE_ACTION_HEIGHT);lv_obj_set_x(view->primary_button,326);}
+        if(card->id==0x1001U&&strcmp(card->primary_action,"定位中")==0)lv_obj_add_state(view->primary_button,LV_STATE_DISABLED);
+        else lv_obj_clear_state(view->primary_button,LV_STATE_DISABLED);
+        lv_obj_set_style_opa(view->primary_button,LV_OPA_50,LV_STATE_DISABLED);
     }
     if(view->slider != NULL) {
         int32_t minimum = card->minimum;

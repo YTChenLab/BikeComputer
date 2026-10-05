@@ -1,4 +1,7 @@
+#include "services/ui_nav_session.h"
+#include "services/ui_nav_map_provider.h"
 #include "ui_app.h"
+#include "../pages/navigation/ui_nav_workspace.h"
 
 #include "ui_colors.h"
 #include "ui_app_state.h"
@@ -123,6 +126,9 @@ static lv_obj_t *s_blank_overlay;
 static bool s_display_blank;
 static ui_action_t s_pending_power_action;
 static bool s_start_command_pending, s_system_command_pending;
+static bool s_prepare_requested,s_navigation_start_waiting;
+static bool s_finish_command_pending;
+static uint32_t s_fix_command_id,s_pending_nav_route,s_pending_nav_revision,s_finish_nav_request;
 static uint32_t s_last_event_tick;
 static uint32_t s_last_interaction_tick;
 static ui_preferences_t s_preferences;
@@ -198,6 +204,10 @@ static void app_show_settings_control(app_settings_control_t control);
 static void app_refresh_settings_control(bool failed);
 static void app_show_power_confirmation(bool restart);
 static void app_refresh_history_models(void);
+static bool app_cancel_ride_preparation(void);
+static void app_navigation_start(void);
+static bool app_navigation_finish(void);
+static void app_present_ride_data(void);
 static bool app_prepare_ride_save(void);
 static void app_dismiss_settings_control(void);
 static void app_continue_power(void);
@@ -407,30 +417,36 @@ static void app_event_received(const ui_event_t *event, void *user_data)
     }
     switch(event->type) {
         case UI_EVENT_GPS_SEARCHING:
-            if(!app_submit_command(UI_COMMAND_GNSS_ACQUIRE_FIX, 0, 3000U))
+            if(!s_prepare_requested) break;
+            s_fix_command_id=ui_command_service_submit(UI_COMMAND_GNSS_ACQUIRE_FIX,0,3000U);
+            if(!s_fix_command_id)
                 (void)app_publish_event(UI_EVENT_GPS_FAILED,
                                         UI_EVENT_PRIORITY_P1_RIDING_SAFETY);
             break;
         case UI_EVENT_RIDE_GO_REQUESTED:
-            if(s_start_command_pending || s_pending_power_action != UI_ACTION_HOME) break;
+            if(ui_state_machine_state()!=UI_RIDE_STATE_GPS_READY || s_start_command_pending || s_pending_power_action != UI_ACTION_HOME) break;
             s_start_command_pending = true;
             if(!app_submit_command(UI_COMMAND_RIDE_START,
                                    (int32_t)ui_ride_summary_model_reserve_session(), 2000U)) {
                 s_start_command_pending = false;
                 ui_event_t failed = {0};
-                failed.type = UI_EVENT_COMMAND_FAILED;
+                failed.type = UI_EVENT_GPS_READY;
                 failed.priority = UI_EVENT_PRIORITY_P2_RIDE_STATE;
-                failed.timeout_ms = 4000U;
-                snprintf(failed.title, sizeof(failed.title), "START FAILED");
+                snprintf(failed.title, sizeof(failed.title), "骑行启动失败");
                 snprintf(failed.message, sizeof(failed.message),
-                         "RIDE COMMAND QUEUE REJECTED");
+                         "未开始记录，可重试或取消");
                 snprintf(failed.primary_action,
-                         sizeof(failed.primary_action), "CLOSE");
+                         sizeof(failed.primary_action), "GO");
                 (void)ui_event_bus_publish(&failed);
             }
             break;
         case UI_EVENT_RIDE_FINISH_CONFIRMED:
+            if(s_finish_command_pending||(ui_state_machine_state()!=UI_RIDE_STATE_FINISHING&&
+                ui_state_machine_state()!=UI_RIDE_STATE_STOPPING))break;
+            s_finish_command_pending=true;
             if(!app_submit_command(UI_COMMAND_RIDE_FINISH, 0, 2000U)) {
+                s_finish_command_pending=false;
+                app_show_feature_info("结束骑行失败","骑行尚未结束，请重试结束并保存");
                 (void)app_publish_event(UI_EVENT_RIDE_FINISH_CANCELLED,
                                         UI_EVENT_PRIORITY_P0_CRITICAL);
             }
@@ -489,7 +505,17 @@ static void app_event_received(const ui_event_t *event, void *user_data)
         case UI_EVENT_NAVIGATION_OPEN_REQUESTED:
             app_show(UI_PAGE_NAVIGATION);
             break;
+        case UI_EVENT_RIDE_PREPARE_CANCELLED:
+            (void)app_cancel_ride_preparation();break;
         case UI_EVENT_RIDE_STARTED:
+            s_prepare_requested=false;
+            if(s_navigation_start_waiting) {
+                s_navigation_start_waiting=false;ui_nav_session_t session;ui_nav_session_get(&session);
+                app_show(UI_PAGE_NAVIGATION);
+                if(session.route.id!=s_pending_nav_route || session.route.revision!=s_pending_nav_revision || !ui_nav_workspace_start())
+                    app_show_feature_info("导航未启动","骑行已开始记录，请重新选择路线");
+            }
+            app_update_quick_states();break;
         case UI_EVENT_RIDE_PAUSED:
         case UI_EVENT_RIDE_RESUMED:
         case UI_EVENT_RIDE_FINISH_CANCELLED:
@@ -510,6 +536,13 @@ static void app_event_timer_cb(lv_timer_t *timer)
     ui_history_page_tick();
     ui_system_services_tick(elapsed);
     ui_command_service_process(elapsed);
+    if(s_finish_nav_request) {
+        ui_nav_result_t result;ui_nav_session_get_result(&result,NULL);
+        if(result.request_id==s_finish_nav_request) {
+            s_finish_nav_request=0;
+            if(result.code!=UI_NAV_OK) app_show_feature_info("导航结束失败","骑行记录已独立收尾，请重试结束导航");
+        }
+    }
     uint32_t commits = ui_ride_history_repository_commits();
     if(commits != s_seen_storage_commits) {
         s_seen_storage_commits = commits;
@@ -544,6 +577,17 @@ static void app_event_timer_cb(lv_timer_t *timer)
     s_auto_pause.speed_valid = ui_ride_data_field_valid(
         &s_latest_ride_data, UI_RIDE_FIELD_SPEED, now);
     app_auto_pause_tick(elapsed);
+    ui_nav_session_tick(now);
+    (void)ui_nav_map_provider_process(now);
+    static uint32_t nav_session_id,nav_revision;
+    ui_nav_session_t nav_session; ui_nav_session_get(&nav_session);
+    if(nav_session.id!=nav_session_id || nav_session.route.revision!=nav_revision ||
+       !ui_nav_session_active() || ui_router_current()==UI_PAGE_NAVIGATION) {
+        ui_dock_controller_hide_navigation();
+        (void)ui_event_bus_remove_source(0x4E415600UL);
+    }
+    nav_session_id=nav_session.id; nav_revision=nav_session.route.revision;
+    ui_app_state_set_navigation_active(ui_nav_session_active());
     (void)ui_navigation_service_process();
     (void)ui_navigation_service_expire(now);
     (void)ui_input_queue_drain(UI_INPUT_QUEUE_MAX,
@@ -557,8 +601,7 @@ static void app_event_timer_cb(lv_timer_t *timer)
             valid |= UI_RIDE_FIELD_BIT(i);
     if(valid != s_display_valid_flags) {
         s_display_valid_flags = valid;
-        ui_dashboard_set_data(&s_latest_ride_data);
-        ui_dynamic_card_manager_refresh_data(&s_latest_ride_data);
+        app_present_ride_data();
     }
     app_update_ride_badge();
 }
@@ -579,6 +622,19 @@ static lv_obj_t *app_make_screen(void) {
 static void app_add_status(ui_page_t page) {
     ui_page_status_create(&s_pages[page].status, s_pages[page].screen);
 }
+static void app_present_ride_data(void)
+{
+    ui_ride_data_t view=s_latest_ride_data;
+    ui_ride_state_t state=ui_state_machine_state();
+    if(state==UI_RIDE_STATE_PRE_RIDE||state==UI_RIDE_STATE_GPS_READY){
+        /* Preparation is a fresh trip display, not the preceding ride's
+         * counters. Keep the producer model intact for recording/storage. */
+        view.distance=0;view.ride_seconds=0;view.timer_ms=0;
+        view.average_speed=0;view.maximum_speed=0;view.ascent_m=0;view.calories_kcal=0;
+        view.current_lap=0;view.total_laps=0;
+    }
+    ui_dashboard_set_data(&view);ui_dynamic_card_manager_refresh_data(&view);
+}
 static void app_ride_data_changed(const ui_ride_data_t *data,
                                   uint32_t version, void *user_data) {
     (void)version;
@@ -586,7 +642,7 @@ static void app_ride_data_changed(const ui_ride_data_t *data,
     if(data == NULL) return;
     s_latest_ride_data = *data;
     ui_auto_pause_set_speed(&s_auto_pause, data->speed);
-    ui_dashboard_set_data(data);
+    app_present_ride_data();
 }
 
 static bool app_request_pause_toggle(ui_ride_pause_reason_t reason)
@@ -777,6 +833,8 @@ static void app_ride_state_changed(ui_ride_state_t previous,
     ui_app_state_set_ride_state(current);
     app_update_ride_badge();
     ui_motion_set_riding(current == UI_RIDE_STATE_RIDING);
+    if(current==UI_RIDE_STATE_PRE_RIDE||current==UI_RIDE_STATE_GPS_READY||
+       previous==UI_RIDE_STATE_PRE_RIDE||previous==UI_RIDE_STATE_GPS_READY)app_present_ride_data();
     ui_ride_summary_model_set_paused(current == UI_RIDE_STATE_PAUSED);
     if(event == UI_RIDE_EVENT_GO && current == UI_RIDE_STATE_RIDING) {
         ui_ride_data_t data;
@@ -861,6 +919,10 @@ static bool app_command_feedback_needed(const ui_command_result_t *result)
         case UI_COMMAND_RIDE_SAVE:
             return false;
         case UI_COMMAND_RIDE_START:
+            /* The preparation card owns retry/cancel feedback for this
+             * command, so no hidden generic failure can reappear later. */
+            return !s_prepare_requested && result->status != UI_COMMAND_STATUS_PENDING &&
+                   result->status != UI_COMMAND_STATUS_SUCCESS;
         case UI_COMMAND_RIDE_PAUSE:
         case UI_COMMAND_RIDE_RESUME:
         case UI_COMMAND_MEDIA_SET_PLAYING:
@@ -943,6 +1005,8 @@ static void app_command_changed(const ui_command_result_t *result,
 {
     (void)user_data;
     if(result == NULL) return;
+    if(result->type==UI_COMMAND_RIDE_FINISH&&result->status!=UI_COMMAND_STATUS_PENDING)
+        s_finish_command_pending=false;
     ui_settings_item_t settings_item;
     if(app_settings_item_for_command(result->type, &settings_item)) {
         ui_settings_feedback_t feedback = UI_SETTINGS_FEEDBACK_IDLE;
@@ -1025,6 +1089,10 @@ static void app_command_changed(const ui_command_result_t *result,
          s_settings_control == APP_SETTINGS_CONTROL_BRIGHTNESS)))
         app_refresh_settings_control(true);
     if(result->status == UI_COMMAND_STATUS_PENDING) return;
+    if(result->type==UI_COMMAND_GNSS_ACQUIRE_FIX) {
+        if(result->id!=s_fix_command_id || !s_prepare_requested) return;
+        s_fix_command_id=0;
+    }
     if(result->type == UI_COMMAND_RIDE_START) s_start_command_pending = false;
     if(result->type == UI_COMMAND_DISPLAY_SET_ENABLED && result->status != UI_COMMAND_STATUS_SUCCESS &&
        (result->value == 0) == s_display_blank) {
@@ -1097,6 +1165,12 @@ static void app_command_changed(const ui_command_result_t *result,
                 s_pending_auto_pause_action = UI_AUTO_PAUSE_ACTION_NONE;
                 break;
             case UI_COMMAND_RIDE_FINISH:
+                s_navigation_start_waiting=false;
+                if(ui_nav_session_active()) {
+                    ui_nav_session_cancel();
+                    s_finish_nav_request=ui_nav_session_request(&(ui_nav_request_t){.kind=UI_NAV_REQ_STOP},lv_tick_get());
+                    if(!s_finish_nav_request) app_show_feature_info("导航结束失败","骑行记录继续保存，请重试结束导航");
+                }
                 (void)app_publish_event(UI_EVENT_RIDE_SAVE_STARTED,
                                         UI_EVENT_PRIORITY_P2_RIDE_STATE);
                 if(!app_prepare_ride_save() ||
@@ -1134,7 +1208,15 @@ static void app_command_changed(const ui_command_result_t *result,
     LV_LOG_WARN("UI command failed: id=%lu type=%d status=%d error=%ld",
                 (unsigned long)result->id, (int)result->type,
                 (int)result->status, (long)result->error_code);
-    if(result->type == UI_COMMAND_RIDE_START) app_continue_power();
+    if(result->type == UI_COMMAND_RIDE_START) {
+        app_continue_power();
+        if(s_prepare_requested) {
+            ui_event_t retry={.type=UI_EVENT_GPS_READY,.priority=UI_EVENT_PRIORITY_P2_RIDE_STATE};
+            snprintf(retry.title,sizeof(retry.title),"骑行启动失败");
+            snprintf(retry.message,sizeof(retry.message),"未开始记录，可重试或取消");
+            (void)ui_event_bus_publish(&retry);
+        }
+    }
     if(result->type == UI_COMMAND_GNSS_ACQUIRE_FIX) {
         (void)app_publish_event(UI_EVENT_GPS_FAILED,
                                 UI_EVENT_PRIORITY_P1_RIDING_SAFETY);
@@ -1144,6 +1226,7 @@ static void app_command_changed(const ui_command_result_t *result,
                                 UI_EVENT_PRIORITY_P0_CRITICAL);
     }
     else if(result->type == UI_COMMAND_RIDE_FINISH) {
+        app_show_feature_info("结束骑行失败","骑行尚未结束，请重试结束并保存");
         s_pending_power_action = UI_ACTION_HOME;
         (void)app_publish_event(UI_EVENT_RIDE_FINISH_CANCELLED,
                                 UI_EVENT_PRIORITY_P2_RIDE_STATE);
@@ -1252,7 +1335,7 @@ static void app_navigation_enter(ui_route_id_t route, lv_obj_t *screen,
                                 page->show_dynamic_surface))
         LV_LOG_ERROR("Navigation Bottom Surface mount failed");
     ui_navigation_set_active(true);
-    ui_app_state_set_navigation_active(true);
+    ui_app_state_set_navigation_active(ui_nav_session_active());
 }
 
 static void app_navigation_leave(ui_route_id_t route, lv_obj_t *screen,
@@ -1261,7 +1344,7 @@ static void app_navigation_leave(ui_route_id_t route, lv_obj_t *screen,
     (void)screen;
     (void)user_data;
     ui_navigation_set_active(false);
-    ui_app_state_set_navigation_active(false);
+    ui_app_state_set_navigation_active(ui_nav_session_active());
     ui_bottom_surface_unmount();
 }
 
@@ -1359,6 +1442,7 @@ static void app_surface_page_enter(ui_route_id_t route, lv_obj_t *screen,
     if(!ui_bottom_surface_mount(page->bottom_surface_slot,
                                 page->show_dynamic_surface))
         LV_LOG_ERROR("Page Bottom Surface mount failed route=%d", (int)route);
+    if(route==UI_PAGE_SAVED_ROUTES) ui_saved_routes_page_set_active(true);
 }
 
 static void app_surface_page_leave(ui_route_id_t route, lv_obj_t *screen,
@@ -1368,6 +1452,7 @@ static void app_surface_page_leave(ui_route_id_t route, lv_obj_t *screen,
     (void)screen;
     (void)user_data;
     ui_bottom_surface_unmount();
+    if(route==UI_PAGE_SAVED_ROUTES) ui_saved_routes_page_set_active(false);
 }
 static bool app_control_shade_visible(void)
 {
@@ -1618,13 +1703,73 @@ static void app_back(void) {
     ui_sound_play(UI_SFX_BACK);
     (void)ui_router_back();
 }
+static void app_navigation_routes(ui_nav_list_t kind) {
+    ui_saved_routes_page_set_kind(kind);app_show(UI_PAGE_SAVED_ROUTES);
+}
+static bool app_cancel_ride_preparation(void)
+{
+    ui_ride_state_t state=ui_state_machine_state();
+    if(!s_prepare_requested && state!=UI_RIDE_STATE_PRE_RIDE && state!=UI_RIDE_STATE_GPS_READY) return false;
+    /* Once recording is submitted, wait for the authoritative ACK. */
+    if(s_start_command_pending) return true;
+    s_prepare_requested=s_navigation_start_waiting=false;
+    if(s_fix_command_id) (void)ui_command_service_cancel_fix(s_fix_command_id);
+    s_fix_command_id=0;
+    (void)ui_event_bus_remove_mask(UI_EVENT_MASK(UI_EVENT_RIDE_START_REQUESTED)|
+        UI_EVENT_MASK(UI_EVENT_GPS_SEARCHING)|UI_EVENT_MASK(UI_EVENT_GPS_READY)|
+        UI_EVENT_MASK(UI_EVENT_GPS_FAILED)|UI_EVENT_MASK(UI_EVENT_RIDE_GO_REQUESTED));
+    if(state==UI_RIDE_STATE_PRE_RIDE || state==UI_RIDE_STATE_GPS_READY)
+        (void)ui_state_machine_dispatch(UI_RIDE_EVENT_PREPARE_CANCEL);
+    (void)ui_dock_hide(0x1001U);app_hide_quick_immediate();ui_router_clear_history();
+    (void)ui_router_replace(UI_PAGE_HOME,UI_MOTION_PAGE_BACKWARD);
+    return true;
+}
+static void app_navigation_start(void)
+{
+    ui_ride_state_t state=ui_state_machine_state();ui_nav_session_t session;ui_nav_session_get(&session);
+    if(session.state!=UI_NAV_SESSION_PREVIEW || !session.route.start_allowed || s_navigation_start_waiting) return;
+    if(state==UI_RIDE_STATE_RIDING || state==UI_RIDE_STATE_PAUSED) {
+        if(!ui_nav_workspace_start()) app_show_feature_info("导航未启动","请等待当前导航操作完成后重试");
+        return;
+    }
+    if(state!=UI_RIDE_STATE_HOME && state!=UI_RIDE_STATE_PRE_RIDE && state!=UI_RIDE_STATE_GPS_READY) {
+        app_show_feature_info("暂不能开始导航","请先完成当前骑行的结束与保存");return;
+    }
+    if(ui_ride_history_repository_has_pending() || s_pending_power_action!=UI_ACTION_HOME) {
+        app_show_feature_info("暂不能开始导航","请先保存骑行记录或完成当前系统操作");return;
+    }
+    s_navigation_start_waiting=true;s_pending_nav_route=session.route.id;s_pending_nav_revision=session.route.revision;
+    if(state==UI_RIDE_STATE_HOME) app_action(UI_ACTION_START_RIDE);
+    else app_show(UI_PAGE_DASHBOARD);
+}
+static bool app_navigation_finish(void)
+{
+    ui_ride_state_t state=ui_state_machine_state();
+    if(state==UI_RIDE_STATE_STOPPING||state==UI_RIDE_STATE_SAVING||state==UI_RIDE_STATE_UNSAVED||s_finish_command_pending)return true;
+    if(state!=UI_RIDE_STATE_RIDING&&state!=UI_RIDE_STATE_PAUSED&&state!=UI_RIDE_STATE_FINISHING)return false;
+    app_hide_quick_immediate();
+    /* The navigation confirmation already obtained consent: reuse recording ACK and storage, without a second dialog. */
+    if(state!=UI_RIDE_STATE_FINISHING)
+        (void)app_publish_event(UI_EVENT_RIDE_FINISH_REQUESTED,UI_EVENT_PRIORITY_P2_RIDE_STATE);
+    if(ui_state_machine_state()==UI_RIDE_STATE_FINISHING)
+        (void)app_publish_event(UI_EVENT_RIDE_FINISH_CONFIRMED,UI_EVENT_PRIORITY_P2_RIDE_STATE);
+    return true;
+}
+
 static void app_create_navigation(void) {
     lv_obj_t *screen = app_make_screen();
     s_pages[UI_PAGE_NAVIGATION].screen = screen;
     app_add_status(UI_PAGE_NAVIGATION);
     ui_navigation_create(screen);
+    ui_navigation_set_exit_callback(ui_app_handle_back);
+    ui_navigation_set_routes_callback(app_navigation_routes);
+    ui_nav_workspace_set_start_callback(app_navigation_start);
+    ui_nav_workspace_set_finish_callback(app_navigation_finish);
     s_pages[UI_PAGE_NAVIGATION].bottom_surface_slot =
         ui_page_bottom_surface_slot_create(screen);
+    /* Full workspace host: tall dock states must never be clipped by a 226 px slot. */
+    lv_obj_set_pos(s_pages[UI_PAGE_NAVIGATION].bottom_surface_slot,8,62);
+    lv_obj_set_size(s_pages[UI_PAGE_NAVIGATION].bottom_surface_slot,464,776);
 }
 static void app_page_action(ui_page_action_t action, void *user_data) {
     (void)user_data;
@@ -1635,12 +1780,22 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
             app_action(UI_ACTION_START_RIDE);
             break;
         case UI_PAGE_ACTION_START_NAVIGATION:
-            app_action(UI_ACTION_NAVIGATION);
+        {
+            ui_nav_item_t selected;
+            bool from_routes=ui_router_current()==UI_PAGE_SAVED_ROUTES && ui_saved_routes_page_selected(&selected);
+            ui_nav_list_t kind=ui_saved_routes_page_kind();app_action(UI_ACTION_NAVIGATION);
+            if(from_routes){if(kind==UI_NAV_LIST_FAVORITES)ui_navigation_preview_destination(&selected);else ui_navigation_preview_route(&selected);}
             break;
+        }
+        case UI_PAGE_ACTION_ROUTE_IMPORT:
+            app_action(UI_ACTION_NAVIGATION); ui_navigation_import_route(); break;
+        case UI_PAGE_ACTION_ROUTE_PHONE:
+            app_action(UI_ACTION_NAVIGATION); ui_navigation_open_phone(); break;
         case UI_PAGE_ACTION_SAVE_RIDE: app_action(UI_ACTION_SAVE_RIDE); break;
         case UI_PAGE_ACTION_UPLOAD_RIDE: app_action(UI_ACTION_UPLOAD_RIDE); break;
         case UI_PAGE_ACTION_HISTORY: app_action(UI_ACTION_HISTORY); break;
-        case UI_PAGE_ACTION_SAVED_ROUTES: app_show(UI_PAGE_SAVED_ROUTES); break;
+        case UI_PAGE_ACTION_SAVED_ROUTES: ui_saved_routes_page_set_kind(UI_NAV_LIST_ROUTES);app_show(UI_PAGE_SAVED_ROUTES); break;
+        case UI_PAGE_ACTION_NAV_MAPS: app_action(UI_ACTION_NAVIGATION);ui_navigation_open_maps();break;
         case UI_PAGE_ACTION_RECENT_RIDE_DETAIL: {
             if(ui_ride_history_model_get_newest(0U, &s_detail_record)) {
                 ui_ride_detail_page_set_record(&s_detail_record);
@@ -1665,14 +1820,21 @@ static void app_page_action(ui_page_action_t action, void *user_data) {
             ui_profile_page_set_activity_time(ui_ride_history_repository_now_utc());
             ui_profile_page_refresh();
             break;
+        case UI_PAGE_ACTION_HOME_REFRESH:
+            if(ui_home_page_refresh_feedback())app_refresh_history_models();break;
         case UI_PAGE_ACTION_DEVICE_SCAN: {
             ui_app_state_t state;
             bool enabled = ui_app_state_get(&state) && state.bluetooth_enabled;
             /* Full-height devices has no mounted dock. Put unavailable
              * feedback inside the page so taps never appear to do nothing. */
-            ui_devices_page_set_feedback(enabled ?
-                "暂无法扫描，蓝牙服务待接入" : "请先在系统设置中开启蓝牙");
+            ui_devices_page_set_feedback(!enabled?"请先在系统设置中开启蓝牙":ui_devices_page_request_scan()?
+                "正在扫描附近设备":"暂无法扫描，蓝牙服务待接入");
             break;
+        }
+        case UI_PAGE_ACTION_DEVICE_SELECT: {
+            ui_app_state_t state;bool enabled=ui_app_state_get(&state)&&state.bluetooth_enabled;
+            ui_devices_page_set_feedback(!enabled?"请先在系统设置中开启蓝牙":ui_devices_page_request_selected()?
+                "正在请求设备连接":"连接服务待接入，当前设备尚未连接");break;
         }
         case UI_PAGE_ACTION_POWER_MENU: app_show(UI_PAGE_POWER); break;
         case UI_PAGE_ACTION_WIFI_TOGGLE: app_action(UI_ACTION_WIFI); break;
@@ -2130,6 +2292,7 @@ static void app_action(ui_action_t action) {
                 break;
             }
             if(ui_state_machine_state() == UI_RIDE_STATE_HOME) {
+                if(s_prepare_requested) break;s_prepare_requested=true;
                 app_hide_quick_immediate();
                 ui_router_clear_history();
                 (void)ui_router_replace(UI_PAGE_DASHBOARD,
@@ -2204,6 +2367,8 @@ static void app_action(ui_action_t action) {
 void ui_app_init(void) {
     s_pending_power_action = UI_ACTION_HOME;
     s_start_command_pending = s_system_command_pending = false;
+    s_prepare_requested=s_navigation_start_waiting=false;s_finish_command_pending=false;
+    s_fix_command_id=s_finish_nav_request=0;
     s_display_blank = false;
     s_last_event_tick = lv_tick_get();
     s_last_interaction_tick = s_last_event_tick;
@@ -2217,6 +2382,8 @@ void ui_app_init(void) {
     ui_state_adapter_init();
     ui_input_queue_init();
     ui_navigation_service_init();
+    ui_nav_session_init();
+    ui_nav_map_provider_init();
     ui_page_status_registry_init();
     ui_event_bridge_init();
     ui_event_bus_init();
@@ -2296,6 +2463,7 @@ void ui_app_init(void) {
     s_event_timer = lv_timer_create(app_event_timer_cb, 20, NULL);
 }
 void ui_app_handle_back(void) {
+    if(app_cancel_ride_preparation()) return;
     s_last_interaction_tick = lv_tick_get();
     if(ui_router_current() == UI_PAGE_BOOT || s_boot_fade_state != APP_BOOT_FADE_IDLE) return;
     if(ui_dashboard_editor_handle_input(UI_INPUT_BACK)) return;
@@ -2344,6 +2512,7 @@ void ui_app_handle_back(void) {
     if(!app_control_shade_visible() &&
        ui_router_current() == UI_PAGE_DASHBOARD &&
        ui_dynamic_card_manager_back()) return;
+    if(!app_control_shade_visible() && ui_router_current()==UI_PAGE_NAVIGATION && ui_navigation_handle_back()) return;
     app_back();
 }
 
@@ -2392,6 +2561,7 @@ void ui_app_handle_input(ui_input_event_t input) {
     }
     if(input == UI_INPUT_PAGE_NEXT || input == UI_INPUT_PAGE_PREV) {
         if(s_powered_off || app_control_shade_visible()) return;
+        if(ui_router_current()==UI_PAGE_NAVIGATION && ui_navigation_handle_input(input)) return;
         bool next = input == UI_INPUT_PAGE_NEXT;
         ui_route_id_t route = ui_router_current();
         if(app_ride_domain_active()) {
@@ -2413,6 +2583,9 @@ void ui_app_handle_input(ui_input_event_t input) {
         return;
     }
     if(input == UI_INPUT_TOGGLE_CONTROL_CENTER) {
+        if(!s_powered_off && !app_control_shade_visible() &&
+           ui_router_current()==UI_PAGE_NAVIGATION && ui_navigation_handle_input(input)) return;
+        if(ui_router_current()==UI_PAGE_NAVIGATION && ui_nav_session_active() && !app_control_shade_visible()) { ui_navigation_open_menu(); return; }
         app_handle_key('m');
         return;
     }
@@ -2422,6 +2595,8 @@ void ui_app_handle_input(ui_input_event_t input) {
     }
     if(input == UI_INPUT_RIDE_TOGGLE) {
         if(s_powered_off || app_safety_interaction_active()) return;
+        if(!app_control_shade_visible() && ui_router_current()==UI_PAGE_NAVIGATION &&
+           ui_navigation_handle_input(input)) return;
         if(ui_ride_history_repository_has_pending()) app_action(UI_ACTION_SUMMARY);
         else if(ui_state_machine_state() == UI_RIDE_STATE_HOME) app_action(UI_ACTION_START_RIDE);
         else if(ui_state_machine_state() == UI_RIDE_STATE_GPS_READY)
@@ -2475,7 +2650,7 @@ void ui_app_handle_input(ui_input_event_t input) {
        ui_router_current() == UI_PAGE_SAVED_ROUTES &&
        (input == UI_INPUT_ENCODER_PRESS || input == UI_INPUT_ENCODER_CW ||
         input == UI_INPUT_ENCODER_CCW)) {
-        if(input == UI_INPUT_ENCODER_PRESS) app_back();
+        (void)ui_saved_routes_page_handle_input(input);
         return;
     }
     if(!s_powered_off && !app_control_shade_visible() &&
@@ -2608,6 +2783,7 @@ void ui_app_handle_pointer(const ui_input_pointer_event_t *event) {
     }
 
     lv_point_t point = { .x = event->x, .y = event->y };
+    if(ui_router_current()==UI_PAGE_NAVIGATION&&!app_control_shade_visible())ui_navigation_handle_pointer(event);
 
     if(event->type == UI_INPUT_TOUCH_BEGIN) {
         ui_system_control_shade_state_t shade =

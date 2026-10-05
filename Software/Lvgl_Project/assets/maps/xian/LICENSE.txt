@@ -1,0 +1,20 @@
+This derived offline vector database contains OpenStreetMap data.
+The xian-cycle.bgraph routing database is derived from the same OSM sources.
+The xian-color.btiles map images are produced from those sources, with original
+cartography. OSM attribution must remain visible; see the OSM copyright page
+below for database and produced-work attribution requirements.
+Copyright (c) OpenStreetMap contributors.
+Database licence: Open Data Commons Open Database License (ODbL) 1.0.
+https://opendatacommons.org/licenses/odbl/1-0/
+https://www.openstreetmap.org/copyright
+
+The database, including this BMAP vector package, is distributed under ODbL 1.0.
+The coordinate/record format and converter source are documented in
+docs/西安离线地图接入_20261003.md and tools/build_offline_map.py.
+Original source query: overpass-query.txt. Provenance and checksums: manifest.json.
+Source endpoint: https://overpass.private.coffee/api/interpreter
+This is original OSM vector data; no offline bulk download of rendered OSM tiles.
+
+The supplied GPX is a planned route derived from road connectivity. It is not
+a recorded ride or a guarantee of current access/road conditions. PC rider
+positions are simulated along that route. Elevation data is not supplied.

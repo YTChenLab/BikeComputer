@@ -1,0 +1,5150 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-03T16:20:36Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 3861900116,
+  "lat": 34.2417007,
+  "lon": 108.9693122,
+  "tags": {
+    "amenity": "school",
+    "name": "1号楼"
+  }
+},
+{
+  "type": "node",
+  "id": 3861900117,
+  "lat": 34.2414785,
+  "lon": 108.9681599,
+  "tags": {
+    "amenity": "school",
+    "name": "3号楼"
+  }
+},
+{
+  "type": "node",
+  "id": 3861900118,
+  "lat": 34.2415695,
+  "lon": 108.9686584,
+  "tags": {
+    "amenity": "school",
+    "name": "2号楼"
+  }
+},
+{
+  "type": "node",
+  "id": 3861900119,
+  "lat": 34.2420988,
+  "lon": 108.9684111,
+  "tags": {
+    "amenity": "school",
+    "name": "铁一中4公寓"
+  }
+},
+{
+  "type": "node",
+  "id": 3861900120,
+  "lat": 34.2423416,
+  "lon": 108.9697277,
+  "tags": {
+    "amenity": "school",
+    "name": "铁一中3公寓"
+  }
+},
+{
+  "type": "node",
+  "id": 3861900121,
+  "lat": 34.2419320,
+  "lon": 108.9697383,
+  "tags": {
+    "amenity": "school",
+    "name": "1北楼"
+  }
+},
+{
+  "type": "node",
+  "id": 4829598343,
+  "lat": 34.2711260,
+  "lon": 108.9370880,
+  "tags": {
+    "amenity": "school",
+    "name": "弈德围棋学校",
+    "website": "http://www.yidewq.com"
+  }
+},
+{
+  "type": "node",
+  "id": 7300873663,
+  "lat": 34.2259857,
+  "lon": 108.9995656,
+  "tags": {
+    "amenity": "school",
+    "name": "西安交通大学附属中学曲江校区"
+  }
+},
+{
+  "type": "node",
+  "id": 9136582083,
+  "lat": 34.2362519,
+  "lon": 108.9024154,
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "31",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "高新路",
+    "amenity": "school",
+    "brand": "新东方",
+    "brand:en": "New Oriental Education",
+    "brand:wikidata": "Q13631921",
+    "brand:wikipedia": "zh:新东方学校",
+    "brand:zh": "新东方",
+    "grades": "1-12",
+    "name": "新东方优能中学",
+    "name:en": "New Oriental Youneng School",
+    "name:zh": "新东方优能中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "node",
+  "id": 11164620007,
+  "lat": 34.2580163,
+  "lon": 108.9556256,
+  "tags": {
+    "addr:street": "东县门",
+    "amenity": "school",
+    "name": "西安市第八中学",
+    "name:en": "Xi'an Eighth Middle School"
+  }
+},
+{
+  "type": "node",
+  "id": 11945017994,
+  "lat": 34.2511730,
+  "lon": 108.9828529,
+  "tags": {
+    "amenity": "college",
+    "name": "电力工程系"
+  }
+},
+{
+  "type": "node",
+  "id": 11945034820,
+  "lat": 34.2490256,
+  "lon": 108.9804749,
+  "tags": {
+    "amenity": "college",
+    "name": "航天航空学院"
+  }
+},
+{
+  "type": "node",
+  "id": 11945034830,
+  "lat": 34.2476061,
+  "lon": 108.9827813,
+  "tags": {
+    "amenity": "college",
+    "name": "能源与动力工程学院"
+  }
+},
+{
+  "type": "node",
+  "id": 12696864642,
+  "lat": 34.2599375,
+  "lon": 108.9733939,
+  "tags": {
+    "amenity": "school",
+    "name": "东关小学"
+  }
+},
+{
+  "type": "node",
+  "id": 12696864643,
+  "lat": 34.2591893,
+  "lon": 108.9729332,
+  "tags": {
+    "amenity": "school",
+    "name": "西安龙门补习学校"
+  }
+},
+{
+  "type": "node",
+  "id": 13465417301,
+  "lat": 34.2600541,
+  "lon": 108.9242480,
+  "tags": {
+    "amenity": "school",
+    "education": "school",
+    "name:en": "High-school"
+  }
+},
+{
+  "type": "node",
+  "id": 14013699746,
+  "lat": 34.2636549,
+  "lon": 108.9436720,
+  "tags": {
+    "amenity": "school",
+    "name": "西一路小学"
+  }
+},
+{
+  "type": "node",
+  "id": 14112408602,
+  "lat": 34.2360465,
+  "lon": 108.9646495,
+  "tags": {
+    "amenity": "school",
+    "name": "建大附小"
+  }
+},
+{
+  "type": "node",
+  "id": 14148641502,
+  "lat": 34.2356758,
+  "lon": 108.9628703,
+  "tags": {
+    "amenity": "college",
+    "name": "工会"
+  }
+},
+{
+  "type": "node",
+  "id": 14148641601,
+  "lat": 34.2354608,
+  "lon": 108.9637589,
+  "tags": {
+    "amenity": "college",
+    "name": "国际教育学院"
+  }
+},
+{
+  "type": "way",
+  "id": 158138961,
+  "center": {
+    "lat": 34.2588912,
+    "lon": 108.9950967
+  },
+  "nodes": [
+    1703846932,
+    1703846921,
+    11306452313,
+    11306452315,
+    11306452317,
+    1703846925,
+    1703846929,
+    3657376958,
+    1703846924,
+    1703846930,
+    1703846926,
+    11754124132,
+    11754124133,
+    1703846927,
+    11754124134,
+    1703846932
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:district": "新城区",
+    "addr:housenumber": "19",
+    "addr:province": "陕西省",
+    "addr:street": "金花南路",
+    "amenity": "university",
+    "name": "西安工程大学金花校区",
+    "name:en": "Xi'an Polytechnic University Jinhua Campus",
+    "name:zh": "西安工程大学金花校区",
+    "website": "https://www.xpu.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 162542040,
+  "center": {
+    "lat": 34.2338825,
+    "lon": 108.9130521
+  },
+  "nodes": [
+    1744059729,
+    4731515304,
+    1744059719,
+    1744059731,
+    1744059718,
+    1744059732,
+    1744059723,
+    1744059735,
+    1744059729
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "2",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "太白南路",
+    "amenity": "university",
+    "name": "西安电子科技大学（北校区）",
+    "name:en": "Xidian University North Campus",
+    "name:zh": "西安电子科技大学（北校区）"
+  }
+},
+{
+  "type": "way",
+  "id": 177231509,
+  "center": {
+    "lat": 34.2462904,
+    "lon": 108.9106220
+  },
+  "nodes": [
+    8985144706,
+    1876844137,
+    1876844153,
+    1876844128,
+    1876844133,
+    3642584303,
+    1876844135,
+    9140213514,
+    5466388387,
+    11773139459,
+    1876844150,
+    8984905516,
+    8984905515,
+    1876844127,
+    8984905510,
+    8984905511,
+    8984905514,
+    8984905513,
+    8984905507,
+    4053233453,
+    8984905509,
+    8985144706
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:housenumber": "127号",
+    "addr:postcode": "710072",
+    "addr:street": "友谊西路",
+    "amenity": "university",
+    "name": "西北工业大学友谊校区",
+    "name:en": "Northwestern Polytechnical University (Youyi Campus)",
+    "name:zh": "西北工业大学友谊校区",
+    "operator": "西北工业大学",
+    "website": "http://www.nwpu.edu.cn/",
+    "wikidata": "Q832550",
+    "wikipedia": "zh:西北工业大学",
+    "wikipedia:en": "Northwestern_Polytechnical_University"
+  }
+},
+{
+  "type": "way",
+  "id": 249318212,
+  "center": {
+    "lat": 34.2219965,
+    "lon": 108.9531994
+  },
+  "nodes": [
+    2559424637,
+    2559424638,
+    2559424639,
+    9019127242,
+    2559424637
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "223",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "翠华路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "大雁塔小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 258087796,
+  "center": {
+    "lat": 34.2282579,
+    "lon": 108.9450539
+  },
+  "nodes": [
+    2634988865,
+    2634988866,
+    2634988867,
+    2634988868,
+    12690619593,
+    2634988869,
+    2634988870,
+    2634988865
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "115",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "兴善寺东街",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市育才中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 269474454,
+  "center": {
+    "lat": 34.2271348,
+    "lon": 108.9554008
+  },
+  "nodes": [
+    2746845193,
+    14087611178,
+    14087611177,
+    14087611176,
+    2649011315,
+    4041139426,
+    6602036019,
+    2746843959,
+    2746843960,
+    2746843961,
+    14087604287,
+    2746845193
+  ],
+  "tags": {
+    "alt_name": "长安大学校本部东院",
+    "amenity": "university",
+    "name": "长安大学雁塔校区",
+    "name:en": "Chang'an University (Yanta Campus)",
+    "name:zh": "长安大学雁塔校区",
+    "operator": "长安大学",
+    "operator:type": "government",
+    "website": "https://www.chd.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 287278027,
+  "center": {
+    "lat": 34.2499678,
+    "lon": 108.9232174
+  },
+  "nodes": [
+    2909001279,
+    2909001280,
+    12405031886,
+    12405031892,
+    2909001281,
+    12405031888,
+    12405031889,
+    12405031891,
+    12405031890,
+    12405031894,
+    12405031895,
+    12405031887,
+    2909001282,
+    13654060105,
+    11909100554,
+    13654060106,
+    11968819183,
+    11968819182,
+    11968819181,
+    2909001283,
+    11968819184,
+    2909001284,
+    11968819185,
+    11968819186,
+    2909001279
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "229",
+    "addr:postcode": "710069",
+    "addr:province": "陕西省",
+    "addr:street": "太白北路",
+    "amenity": "university",
+    "name": "西北大学太白校区",
+    "name:en": "Northwest University Taibai Campus",
+    "name:zh": "西北大学太白校区",
+    "website": "https://www.nwu.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 287278032,
+  "center": {
+    "lat": 34.2484333,
+    "lon": 108.9846434
+  },
+  "nodes": [
+    3024121415,
+    2909001501,
+    3024121414,
+    3024121413,
+    3908906526,
+    3908906527,
+    2909001506,
+    3024121415
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "交大附中"
+  }
+},
+{
+  "type": "way",
+  "id": 290669696,
+  "center": {
+    "lat": 34.2551714,
+    "lon": 108.9883851
+  },
+  "nodes": [
+    2941777311,
+    11905741588,
+    11905741587,
+    11905741586,
+    11905741585,
+    2941777312,
+    2941777313,
+    2941777314,
+    2941777315,
+    2941777316,
+    2941777317,
+    2941777318,
+    3947329485,
+    3947329484,
+    3947329354,
+    3947329470,
+    3947329473,
+    2941777319,
+    2941777320,
+    3947329249,
+    2941777321,
+    3947329253,
+    3947329480,
+    2941777322,
+    2941777325,
+    2941777323,
+    2941777324,
+    2941777311
+  ],
+  "tags": {
+    "amenity": "university",
+    "name": "西安理工大学金花校区",
+    "name:en": "Xi'an University of Technology",
+    "name:zh": "西安理工大学金花校区",
+    "website": "https://www.xaut.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 291162505,
+  "center": {
+    "lat": 34.2197313,
+    "lon": 108.9243009
+  },
+  "nodes": [
+    2945883948,
+    2945883949,
+    9015824023,
+    9015824022,
+    9015824021,
+    9015824020,
+    9015824019,
+    9015824018,
+    9015824017,
+    9015811816,
+    9015811815,
+    9015811814,
+    9015811812,
+    9015811813,
+    9015811811,
+    9015811810,
+    2945883950,
+    2945883951,
+    9015811809,
+    9015811808,
+    9015811807,
+    9015811806,
+    2945883948
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "100",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "含光路",
+    "amenity": "university",
+    "name": "西安美术学院",
+    "name:en": "Xi'an Academy of Fine Arts",
+    "name:zh": "西安美术学院",
+    "website": "https://www.xafa.edu.cn/",
+    "wikidata": "Q15949940",
+    "wikipedia": "zh:西安美术学院"
+  }
+},
+{
+  "type": "way",
+  "id": 291575965,
+  "center": {
+    "lat": 34.2740170,
+    "lon": 108.9460705
+  },
+  "nodes": [
+    2950394780,
+    2950394781,
+    2950394793,
+    2950394782,
+    11586949796,
+    11586949795,
+    11586949801,
+    2950394785,
+    2950394786,
+    2950394787,
+    2950394788,
+    2950394789,
+    2950394790,
+    2950394791,
+    2950394792,
+    2950394780
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第八十九中学·汇知中学",
+    "name:en": "Xian No 89 Middle School"
+  }
+},
+{
+  "type": "way",
+  "id": 292598678,
+  "center": {
+    "lat": 34.2661820,
+    "lon": 108.9139957
+  },
+  "nodes": [
+    2961305663,
+    4079421556,
+    4079421557,
+    10680170077,
+    2961305664,
+    2961305665,
+    2961305666,
+    2961305668,
+    2961305669,
+    10680170078,
+    4079421565,
+    4079421554,
+    2961305663
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "铁塔寺路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市第一中学",
+    "religion": "none",
+    "website": "https://xayz.com"
+  }
+},
+{
+  "type": "way",
+  "id": 293499681,
+  "center": {
+    "lat": 34.2415429,
+    "lon": 108.9688829
+  },
+  "nodes": [
+    2971051558,
+    2971051559,
+    2971051560,
+    2971051549,
+    11768151438,
+    11768151439,
+    2971051550,
+    11768151441,
+    11768151440,
+    11768151442,
+    3942799743,
+    3942799744,
+    3942799742,
+    3942799741,
+    2971051551,
+    2971051558
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市铁一中学"
+  }
+},
+{
+  "type": "way",
+  "id": 293954087,
+  "center": {
+    "lat": 34.2849693,
+    "lon": 108.9655036
+  },
+  "nodes": [
+    2975317756,
+    2975317757,
+    2975317755,
+    2975317754,
+    2975317753,
+    2975317751,
+    2975317752,
+    2975317750,
+    2975317756
+  ],
+  "tags": {
+    "amenity": "school"
+  }
+},
+{
+  "type": "way",
+  "id": 333416295,
+  "center": {
+    "lat": 34.2434986,
+    "lon": 108.9139199
+  },
+  "nodes": [
+    8984905509,
+    4053233453,
+    8984905507,
+    9139930242,
+    3653241255,
+    8985144706,
+    8984905509
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:district": "碑林区",
+    "addr:housenumber": "127",
+    "addr:postcode": "710072",
+    "addr:province": "陕西",
+    "addr:street": "友谊西路",
+    "amenity": "school",
+    "grades": "10-12",
+    "name": "西安市西北工业大学附中分校",
+    "operator": "西北工业大学附属中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 333416300,
+  "center": {
+    "lat": 34.2407378,
+    "lon": 108.9124412
+  },
+  "nodes": [
+    3405303650,
+    3405303651,
+    3405303652,
+    3405303653,
+    1315879389,
+    9140148813,
+    1315879388,
+    1315879387,
+    9140148814,
+    9140148815,
+    3405303654,
+    3405303669,
+    11770262343,
+    3405303670,
+    3405303655,
+    3405303656,
+    3405303657,
+    9140148816,
+    9140213417,
+    9140213418,
+    9140213419,
+    3405303658,
+    9140213422,
+    9140213423,
+    9140213424,
+    9140213425,
+    9140213426,
+    9140213427,
+    9140213428,
+    9140213421,
+    9140213420,
+    3405303650
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "127",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "友谊西路",
+    "amenity": "school",
+    "grades": "7-9",
+    "name": "西北工业大学附属中学",
+    "operator": "西北工业大学附属中学",
+    "religion": "none",
+    "wikidata": "Q14676666",
+    "wikimedia_commons": "Category:Middle School Attached to Northwestern Polytechnical University",
+    "wikipedia": "en:Middle School Attached to Northwestern Polytechnical University"
+  }
+},
+{
+  "type": "way",
+  "id": 333988781,
+  "center": {
+    "lat": 34.2474692,
+    "lon": 108.9123613
+  },
+  "nodes": [
+    3410665718,
+    9140213479,
+    9140213478,
+    3410665719,
+    3410665722,
+    3410665723,
+    3410665724,
+    3410665725,
+    3410665718
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "127",
+    "addr:postcode": "710072",
+    "addr:province": "陕西",
+    "addr:street": "友谊西路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西北工业大学附属小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 370292239,
+  "center": {
+    "lat": 34.2227774,
+    "lon": 108.9915802
+  },
+  "nodes": [
+    3740022543,
+    3740022544,
+    3958929898,
+    4045169979,
+    3740022545,
+    3740022546,
+    4045169970,
+    11925990609,
+    3958929906,
+    11925979661,
+    3958929907,
+    11925990741,
+    11925990742,
+    9558404927,
+    9558404925,
+    3740022543
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "曲江",
+    "addr:housenumber": "58",
+    "addr:postcode": "710054",
+    "addr:province": "陕西",
+    "addr:street": "雁翔路",
+    "amenity": "university",
+    "education": "university",
+    "name": "西安理工大学曲江校区东区",
+    "name:de": "Technische Universität Xi'an, Qujiang Ost Campus",
+    "name:en": "Xi'an University of Technology, Qujiang East Campus",
+    "name:zh": "西安理工大学曲江校区东区"
+  }
+},
+{
+  "type": "way",
+  "id": 370292240,
+  "center": {
+    "lat": 34.2233812,
+    "lon": 108.9853262
+  },
+  "nodes": [
+    3740022560,
+    12493056519,
+    11928213558,
+    12493056518,
+    3740022562,
+    12493056517,
+    11928213557,
+    9566195131,
+    11928213555,
+    11928213521,
+    11928213520,
+    11928213519,
+    11928213560,
+    11928213561,
+    11924914349,
+    3740022563,
+    12493056661,
+    12493056662,
+    3740022564,
+    3740022565,
+    12493056669,
+    12493056668,
+    12493056663,
+    12493056664,
+    12493056666,
+    12493056665,
+    12493056667,
+    3740022560
+  ],
+  "tags": {
+    "amenity": "university",
+    "education": "university",
+    "name": "西安理工大学曲江校区西区",
+    "name:de": "Technische Universität Xi'an, Qujiang West Campus",
+    "name:en": "Xi'an University of Technology, Qujiang West Campus",
+    "name:zh": "西安理工大学曲江校区西区"
+  }
+},
+{
+  "type": "way",
+  "id": 376248140,
+  "center": {
+    "lat": 34.2747887,
+    "lon": 108.9757189
+  },
+  "nodes": [
+    3796914960,
+    3796914961,
+    11121980982,
+    3796914962,
+    3967625570,
+    11121980984,
+    11121980983,
+    3796914964,
+    8985398431,
+    8985398432,
+    3796914941,
+    3796914942,
+    11764969174,
+    3796914965,
+    3796914966,
+    3796914967,
+    11811911700,
+    11811911701,
+    3796914968,
+    3796914969,
+    11811911695,
+    11811911694,
+    11811911693,
+    3796914970,
+    11121980986,
+    3796914971,
+    3796914972,
+    11121980981,
+    3796914973,
+    3796914974,
+    3796914975,
+    3796914976,
+    3796914979,
+    3796914980,
+    11121980980,
+    3796914960
+  ],
+  "tags": {
+    "alt_name": "第四军医大学",
+    "amenity": "university",
+    "landuse": "military",
+    "name": "空军军医大学",
+    "name:en": "Air Force Medical University",
+    "name:zh": "空军军医大学",
+    "official_name": "中国人民解放军空军军医大学",
+    "website": "https://www.fmmu.edu.cn/",
+    "wikipedia": "zh:中国人民解放军空军军医大学"
+  }
+},
+{
+  "type": "way",
+  "id": 378456334,
+  "center": {
+    "lat": 34.2174678,
+    "lon": 108.9018728
+  },
+  "nodes": [
+    3818657585,
+    3818657600,
+    3818657597,
+    3818657605,
+    3818657608,
+    9269925938,
+    9269925939,
+    9269925940,
+    9269925941,
+    9269925943,
+    3818657606,
+    3818657585
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "1",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "科技六路",
+    "amenity": "university",
+    "name": "西安文理学院（高新校区）",
+    "name:en": "Xi'an University Gaoxin Campus",
+    "name:zh": "西安文理学院（高新校区）"
+  }
+},
+{
+  "type": "way",
+  "id": 379492031,
+  "center": {
+    "lat": 34.2344514,
+    "lon": 108.9528753
+  },
+  "nodes": [
+    3827908457,
+    11902516374,
+    11902516373,
+    3827908458,
+    4084374559,
+    3827908474,
+    3827908475,
+    3827908476,
+    3827908477,
+    5303075772,
+    5303075774,
+    5303075776,
+    5303075778,
+    3827908459,
+    5303075782,
+    5303075787,
+    5303075789,
+    5303075791,
+    3827908461,
+    3827908462,
+    5303075785,
+    3827908463,
+    3827908464,
+    3827908465,
+    3827908457
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:postcode": "710064",
+    "addr:province": "陕西",
+    "addr:street": "二环南路",
+    "amenity": "university",
+    "name": "长安大学校本部北院",
+    "name:en": "Chang'an University",
+    "name:zh": "长安大学校本部北院",
+    "website": "https://www.chd.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 379492032,
+  "center": {
+    "lat": 34.2339347,
+    "lon": 108.9569458
+  },
+  "nodes": [
+    3827908459,
+    3827908466,
+    3827908467,
+    3827908468,
+    3827908469,
+    3827908471,
+    4084374563,
+    3827908472,
+    4039412859,
+    4084374562,
+    11902516376,
+    3827908458,
+    4084374559,
+    3827908474,
+    3827908475,
+    3827908476,
+    3827908477,
+    5303075772,
+    5303075774,
+    5303075776,
+    5303075778,
+    3827908459
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "58",
+    "addr:postcode": "710054",
+    "addr:province": "陕西省",
+    "addr:street": "雁塔路",
+    "amenity": "university",
+    "name": "西安科技大学北校区",
+    "name:en": "Xi'an University of Science and Technology North Campus",
+    "name:zh": "西安科技大学北校区",
+    "website": "https://www.xust.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 379517666,
+  "center": {
+    "lat": 34.2254887,
+    "lon": 108.9960520
+  },
+  "nodes": [
+    3828224191,
+    9549267511,
+    9558404923,
+    3828224192,
+    9556178261,
+    9556178262,
+    9556178263,
+    3740016233,
+    3740016241,
+    9566094536,
+    9566109164,
+    3828224193,
+    9566094547,
+    9566094546,
+    11869041657,
+    9556178245,
+    3828224191
+  ],
+  "tags": {
+    "amenity": "university",
+    "education": "university",
+    "name": "西安交通大学曲江校区",
+    "name:en": "Xian Jiaotong University Qujiang Campus",
+    "name:zh": "西安交通大学曲江校区",
+    "website": "https://www.xjtu.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 380699204,
+  "center": {
+    "lat": 34.2629206,
+    "lon": 108.9631290
+  },
+  "nodes": [
+    3840233289,
+    3840233290,
+    3840233291,
+    3840233292,
+    3840233289
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:street": "东一路",
+    "amenity": "school",
+    "name": "西安职业中等专业学校"
+  }
+},
+{
+  "type": "way",
+  "id": 382975537,
+  "center": {
+    "lat": 34.2391716,
+    "lon": 108.9309329
+  },
+  "nodes": [
+    3861781509,
+    11746262359,
+    11746262358,
+    3861781510,
+    3861781511,
+    11746262360,
+    3861781512,
+    3861781513,
+    3861781514,
+    3908897339,
+    3861781515,
+    3861781516,
+    3861781517,
+    3861781520,
+    3861781509
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "65",
+    "addr:postcode": "710068",
+    "addr:province": "陕西省",
+    "addr:street": "含光路",
+    "amenity": "university",
+    "name": "西安体育学院",
+    "name:en": "Xi'an Physical Education University",
+    "name:zh": "西安体育学院",
+    "website": "https://www.xaipe.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 387320565,
+  "center": {
+    "lat": 34.2217741,
+    "lon": 108.9102937
+  },
+  "nodes": [
+    3906236963,
+    3906236964,
+    3906236965,
+    3906236960,
+    3906236961,
+    2623484093,
+    3906236963
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "189",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "太白南路",
+    "amenity": "university",
+    "name": "西安铁路工程职工大学"
+  }
+},
+{
+  "type": "way",
+  "id": 387635813,
+  "center": {
+    "lat": 34.2370578,
+    "lon": 108.9830257
+  },
+  "nodes": [
+    3908898350,
+    3908898351,
+    3908898352,
+    9566253502,
+    9566253503,
+    2653315845,
+    3908898356,
+    3908898357,
+    9566253500,
+    3908898358,
+    3908898350
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "铁一中东校区"
+  }
+},
+{
+  "type": "way",
+  "id": 387664315,
+  "center": {
+    "lat": 34.2418917,
+    "lon": 108.9792623
+  },
+  "nodes": [
+    3908868385,
+    3908868384,
+    3908868387,
+    3908868386,
+    3908868385
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "国家法官学院陕西司法警察分院"
+  }
+},
+{
+  "type": "way",
+  "id": 387670010,
+  "center": {
+    "lat": 34.2286199,
+    "lon": 108.9527992
+  },
+  "nodes": [
+    3909159822,
+    3909159823,
+    3909159824,
+    3909159825,
+    3909159822
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "翠华路小学"
+  }
+},
+{
+  "type": "way",
+  "id": 391322289,
+  "center": {
+    "lat": 34.2302865,
+    "lon": 108.9377446
+  },
+  "nodes": [
+    3945269976,
+    3945269977,
+    8998836530,
+    8998836529,
+    8998836528,
+    8998836527,
+    8998836526,
+    3945269978,
+    3945269979,
+    3945269980,
+    3945269981,
+    3945269984,
+    8998836544,
+    8998836532,
+    8998836531,
+    3945269976
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "108",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "长安中路",
+    "amenity": "university",
+    "name": "西安音乐学院"
+  }
+},
+{
+  "type": "way",
+  "id": 391322437,
+  "center": {
+    "lat": 34.2352294,
+    "lon": 108.9326870
+  },
+  "nodes": [
+    3945271560,
+    12843407749,
+    9139508577,
+    3945271563,
+    3945271560
+  ],
+  "tags": {
+    "amenity": "university",
+    "landuse": "military",
+    "name": "中国人民解放军国防大学政治学院西安校区",
+    "operator": "中国人民解放军国防大学",
+    "operator:type": "military",
+    "wikidata": "Q10873114",
+    "wikipedia": "zh:中国人民解放军国防大学政治学院西安校区"
+  }
+},
+{
+  "type": "way",
+  "id": 391525055,
+  "center": {
+    "lat": 34.2494905,
+    "lon": 108.9953967
+  },
+  "nodes": [
+    3947328633,
+    3947328634,
+    3947328635,
+    3947328636,
+    9021958060,
+    9021958059,
+    3947328633
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "39",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "金花南路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市星光实验学校",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 391525057,
+  "center": {
+    "lat": 34.2536265,
+    "lon": 108.9943746
+  },
+  "nodes": [
+    3947328645,
+    3947328646,
+    11306452293,
+    11754124141,
+    11754124142,
+    3947328647,
+    3947328648,
+    11091581627,
+    11091581628,
+    11091581629,
+    11091581630,
+    3947328645
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第八十三中学",
+    "name:en": "Xi 'an No. 83 Middle School",
+    "name:zh": "西安市第八十三中学",
+    "religion": "no",
+    "website": "http://www.xa83zx.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 405787183,
+  "center": {
+    "lat": 34.2730394,
+    "lon": 108.9073361
+  },
+  "nodes": [
+    4079421535,
+    4079421536,
+    4079421537,
+    2640737384,
+    4079421535
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "219",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "大庆路",
+    "amenity": "university",
+    "name": "西安理工大学高等技术学院"
+  }
+},
+{
+  "type": "way",
+  "id": 405787185,
+  "center": {
+    "lat": 34.2681987,
+    "lon": 108.9031427
+  },
+  "nodes": [
+    4079421540,
+    4079421541,
+    4079421542,
+    4079421538,
+    4079421540
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "8",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "劳动西路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西电实验小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 447735821,
+  "center": {
+    "lat": 34.2580611,
+    "lon": 108.9327902
+  },
+  "nodes": [
+    4447994681,
+    4447994608,
+    4447994610,
+    4447994371,
+    4447994365,
+    4447994647,
+    4447994646,
+    4447994655,
+    4447994657,
+    4447994678,
+    4447994681
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第六中学",
+    "name:zh": "西安市第六中学"
+  }
+},
+{
+  "type": "way",
+  "id": 460976801,
+  "center": {
+    "lat": 34.2737989,
+    "lon": 108.9306622
+  },
+  "nodes": [
+    4565444968,
+    4565444967,
+    4565444966,
+    4565444965,
+    4565444964,
+    4565444963,
+    4565444962,
+    4565444961,
+    4565444960,
+    4565444959,
+    4565444958,
+    4565444957,
+    4565444968
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第四十四中学"
+  }
+},
+{
+  "type": "way",
+  "id": 474617459,
+  "center": {
+    "lat": 34.2756215,
+    "lon": 108.9370825
+  },
+  "nodes": [
+    4685312343,
+    4685312342,
+    4685312341,
+    4685312340,
+    4685312339,
+    4685312338,
+    11983725308,
+    11983725307,
+    4685312343
+  ],
+  "tags": {
+    "amenity": "school"
+  }
+},
+{
+  "type": "way",
+  "id": 474628555,
+  "center": {
+    "lat": 34.2655608,
+    "lon": 108.9317153
+  },
+  "nodes": [
+    4685401187,
+    4685401186,
+    4685401185,
+    4685401184,
+    4685401183,
+    4685401182,
+    4685401181,
+    4685401180,
+    11738114199,
+    11738114200,
+    6205578405,
+    11738114189,
+    4685401187
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第二十五中学",
+    "name:en": "Xi'an Number 25 Middle School"
+  }
+},
+{
+  "type": "way",
+  "id": 490769086,
+  "center": {
+    "lat": 34.2665776,
+    "lon": 108.9376124
+  },
+  "nodes": [
+    4829597508,
+    4829597507,
+    4829597506,
+    4829597505,
+    4829597508
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "莲湖区团结小学"
+  }
+},
+{
+  "type": "way",
+  "id": 490880681,
+  "center": {
+    "lat": 34.2644271,
+    "lon": 108.9398231
+  },
+  "nodes": [
+    4830558783,
+    4830558782,
+    4830558781,
+    4830558780,
+    4830558779,
+    4830558778,
+    4830558777,
+    4830558774,
+    4830558773,
+    4830558772,
+    4830558771,
+    4830558770,
+    4830558769,
+    4830558768,
+    4830558783
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市回民中学",
+    "name:en": "Xi'an Hui Middle School"
+  }
+},
+{
+  "type": "way",
+  "id": 497244580,
+  "center": {
+    "lat": 34.2691705,
+    "lon": 108.9700440
+  },
+  "nodes": [
+    4888344164,
+    4888344163,
+    4888344162,
+    11740532344,
+    11740532343,
+    4888344161,
+    4888344160,
+    4888344159,
+    11740514914,
+    4888344164
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "7",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "搪瓷南巷",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市新城区中兴路小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 504369003,
+  "center": {
+    "lat": 34.2668194,
+    "lon": 108.9943163
+  },
+  "nodes": [
+    4945387332,
+    11754124157,
+    4945387333,
+    4945387334,
+    4945387335,
+    4945387332
+  ],
+  "tags": {
+    "amenity": "university",
+    "name": "西安工业大学金花校区",
+    "name:en": "Xi'an Technological University Jinhua Campus",
+    "name:zh": "西安工业大学金花校区",
+    "website": "https://www.xatu.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 509232577,
+  "center": {
+    "lat": 34.2387950,
+    "lon": 108.9629037
+  },
+  "nodes": [
+    4984882366,
+    4984882367,
+    4984882368,
+    4984882369,
+    10538802810,
+    4984882370,
+    4984882371,
+    3059371844,
+    11918017465,
+    4039412848,
+    4039412849,
+    4039412845,
+    4984882366
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "13",
+    "addr:postcode": "710055",
+    "addr:province": "陕西省",
+    "addr:street": "雁塔路中段",
+    "amenity": "university",
+    "check_date": "2026-09-13",
+    "name": "西安建筑科技大学雁塔校区",
+    "name:en": "Xi'an University of Architecture and Technology Yanta Campus",
+    "name:zh": "西安建筑科技大学雁塔校区",
+    "website": "https://cn.xauat.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 878422928,
+  "center": {
+    "lat": 34.3172603,
+    "lon": 108.9994749
+  },
+  "nodes": [
+    11861520726,
+    11861520725,
+    11861520724,
+    11861520723,
+    11861520728,
+    11861520730,
+    11861520729,
+    11861520727,
+    11861520726
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "东元中学/浐灞第二中学",
+    "name:en": "Dongyuan High School/Chanba No 2 High School",
+    "name:zh": "东元中学/浐灞第二中学"
+  }
+},
+{
+  "type": "way",
+  "id": 878422929,
+  "center": {
+    "lat": 34.3099254,
+    "lon": 108.9855268
+  },
+  "nodes": [
+    8171988995,
+    8171988996,
+    8171988997,
+    8171988998,
+    8171988995
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "东元路学校",
+    "name:en": "Dongyuan Road School",
+    "name:zh": "东元路学校"
+  }
+},
+{
+  "type": "way",
+  "id": 878422934,
+  "center": {
+    "lat": 34.3066112,
+    "lon": 108.9829891
+  },
+  "nodes": [
+    8171989007,
+    8171989008,
+    9062331768,
+    9062331765,
+    8171989007
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "东前进小学"
+  }
+},
+{
+  "type": "way",
+  "id": 929222936,
+  "center": {
+    "lat": 34.2282869,
+    "lon": 108.9024689
+  },
+  "nodes": [
+    8617662714,
+    8617662715,
+    8617662716,
+    8617698117,
+    8617698119,
+    8617698120,
+    8617698121,
+    8617662714
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "199",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "博文路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安高新唐南中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 969219728,
+  "center": {
+    "lat": 34.2328401,
+    "lon": 108.9020012
+  },
+  "nodes": [
+    8968337852,
+    8968337853,
+    8968337854,
+    8968337855,
+    8968337852
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "23",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "科技路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "燎原小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 969443771,
+  "center": {
+    "lat": 34.2719200,
+    "lon": 108.9337344
+  },
+  "nodes": [
+    8971178997,
+    8971178998,
+    8971178999,
+    8971179000,
+    8971178997
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "91",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "莲湖路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "陕西省西安小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 969472287,
+  "center": {
+    "lat": 34.2721742,
+    "lon": 108.9996457
+  },
+  "nodes": [
+    8971520605,
+    8971520606,
+    8971520607,
+    8971520608,
+    8971520605
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "49",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "长乐中路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "昆仑中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970029675,
+  "center": {
+    "lat": 34.3200958,
+    "lon": 108.9356822
+  },
+  "nodes": [
+    8976602291,
+    8976602292,
+    8976602293,
+    8976602294,
+    8976602291
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:housenumber": "27",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "凤城二路",
+    "amenity": "school",
+    "name": "西安方正补习学校(一校区)",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970029679,
+  "center": {
+    "lat": 34.3184605,
+    "lon": 108.9209221
+  },
+  "nodes": [
+    8976602308,
+    8976602309,
+    8976602310,
+    8976602311,
+    8976602308
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:housenumber": "50",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "凤城二路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市凤城学校",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970029681,
+  "center": {
+    "lat": 34.3168650,
+    "lon": 108.9238059
+  },
+  "nodes": [
+    8976602320,
+    8976602321,
+    8976602322,
+    8976602323,
+    8976602320
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "明光路",
+    "amenity": "school",
+    "education": "school",
+    "grades": "7-12",
+    "name": "西安经开第一学校小学部",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970064636,
+  "center": {
+    "lat": 34.3204600,
+    "lon": 108.9549721
+  },
+  "nodes": [
+    8976936256,
+    8976936257,
+    8976936258,
+    8976936259,
+    8976936260,
+    8976936261,
+    8976936256
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "贞观路",
+    "amenity": "school",
+    "education": "school",
+    "grades": "1-6",
+    "name": "西安市未央区三星小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970096390,
+  "center": {
+    "lat": 34.3163786,
+    "lon": 108.9477208
+  },
+  "nodes": [
+    8977207405,
+    8977207406,
+    8977207407,
+    8977207408,
+    8977207405
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:housenumber": "1",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "凤城一路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安外国语学校"
+  }
+},
+{
+  "type": "way",
+  "id": 970118213,
+  "center": {
+    "lat": 34.3095531,
+    "lon": 108.9452196
+  },
+  "nodes": [
+    8977406964,
+    8977406965,
+    8977406966,
+    8977406967,
+    8977406964
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:housenumber": "111-6",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "未央路",
+    "amenity": "school",
+    "check_date": "2026-08-30",
+    "grades": "1-6",
+    "name": "西安市未央区南康村小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970118234,
+  "center": {
+    "lat": 34.3076417,
+    "lon": 108.9565544
+  },
+  "nodes": [
+    8977416392,
+    8977416393,
+    8977416394,
+    8977416395,
+    8977416396,
+    8977416392
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:housenumber": "69",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "玄武路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "陕西师大锦园小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970118235,
+  "center": {
+    "lat": 34.3078851,
+    "lon": 108.9613379
+  },
+  "nodes": [
+    8977416397,
+    8977416398,
+    8977416399,
+    8977416400,
+    8977416401,
+    8977416402,
+    8977416403,
+    8977416397
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:housenumber": "69",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "玄武路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "陕西师范大学锦园国际中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970671733,
+  "center": {
+    "lat": 34.2685762,
+    "lon": 108.9067759
+  },
+  "nodes": [
+    8983580698,
+    8983580699,
+    8983580700,
+    8983580701,
+    8983580698
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "26",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "西仪坊",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市莲湖区劳动路小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970676835,
+  "center": {
+    "lat": 34.2697605,
+    "lon": 108.9111858
+  },
+  "nodes": [
+    8983679665,
+    8983679666,
+    8983679667,
+    8983679668,
+    8983679669,
+    8983679670,
+    8983679665
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "198",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "大庆路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "莲湖区大庆路小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970788120,
+  "center": {
+    "lat": 34.2662779,
+    "lon": 108.9155105
+  },
+  "nodes": [
+    8984631874,
+    8984631875,
+    8984631876,
+    8984631877,
+    8984631878,
+    8984631879,
+    8984631874
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "19",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "铁塔寺路",
+    "amenity": "school",
+    "grades": "7-9",
+    "name": "西安益新中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970788125,
+  "center": {
+    "lat": 34.2647539,
+    "lon": 108.9136807
+  },
+  "nodes": [
+    8984631905,
+    8984631906,
+    8984631907,
+    8984631908,
+    8984631909,
+    8984631910,
+    8984631905
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "52",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "铁塔寺路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市莲湖区环城西路小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970864063,
+  "center": {
+    "lat": 34.2726569,
+    "lon": 108.9710433
+  },
+  "nodes": [
+    8985396615,
+    8985396616,
+    8985398317,
+    8985398318,
+    8985398319,
+    8985398320,
+    8985396615
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "39",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "搪瓷北巷",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市第三十九中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970892703,
+  "center": {
+    "lat": 34.2696707,
+    "lon": 108.9809582
+  },
+  "nodes": [
+    8985683315,
+    8985683316,
+    8985690317,
+    8985690318,
+    8985690319,
+    8985690320,
+    8985690321,
+    8985690322,
+    11746622458,
+    11746622459,
+    8985690323,
+    8985683315
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "180",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "长乐西路",
+    "amenity": "college",
+    "name": "西安电力高等专科学校"
+  }
+},
+{
+  "type": "way",
+  "id": 970892708,
+  "center": {
+    "lat": 34.2763572,
+    "lon": 108.9842415
+  },
+  "nodes": [
+    8985690347,
+    8985690348,
+    11765049829,
+    11765049830,
+    11765049831,
+    8985690349,
+    11765049828,
+    11765049827,
+    8985690350,
+    8985690347
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "38",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "四合窑",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市西光中学(汇文校区)",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 970892710,
+  "center": {
+    "lat": 34.2765353,
+    "lon": 108.9862801
+  },
+  "nodes": [
+    8985690355,
+    8985690356,
+    8985690357,
+    8985690358,
+    8985690355
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "29",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "四合窑",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市新城区建筑小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971103868,
+  "center": {
+    "lat": 34.2915397,
+    "lon": 108.9453572
+  },
+  "nodes": [
+    8987531727,
+    8987531728,
+    8987531729,
+    8987531730,
+    8987531731,
+    8987531727
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "10",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "龙首南路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市莲湖区龙首村小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971103874,
+  "center": {
+    "lat": 34.2929099,
+    "lon": 108.9498045
+  },
+  "nodes": [
+    8987531760,
+    8987531761,
+    8987531762,
+    8987531763,
+    8987531764,
+    8987531765,
+    8987531766,
+    8987531767,
+    8987531760
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "14",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "amenity": "college",
+    "name": "西安铁路职业技术学院(龙首校区)"
+  }
+},
+{
+  "type": "way",
+  "id": 971103887,
+  "center": {
+    "lat": 34.2887544,
+    "lon": 108.9473479
+  },
+  "nodes": [
+    8987536670,
+    8987536671,
+    8987536672,
+    8987536673,
+    8987536674,
+    11751716520,
+    11751716519,
+    8987536675,
+    8987536670
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "联志村小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971109613,
+  "center": {
+    "lat": 34.2867159,
+    "lon": 108.9462333
+  },
+  "nodes": [
+    8987580341,
+    8987580342,
+    8987580343,
+    8987580344,
+    8987580345,
+    8987580341
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "71",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "联志路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市新城区向荣巷小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971153573,
+  "center": {
+    "lat": 34.3028082,
+    "lon": 108.9406332
+  },
+  "nodes": [
+    8987983350,
+    8987983351,
+    8987983352,
+    8987983353,
+    8987983354,
+    8987983350
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:housenumber": "2-1",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "凤城南路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市未央区方新小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971602574,
+  "center": {
+    "lat": 34.2825092,
+    "lon": 108.9406861
+  },
+  "nodes": [
+    8992571694,
+    8992571695,
+    8992571696,
+    8992571697,
+    8992571698,
+    8992571699,
+    8992571700,
+    8992571701,
+    8992571694
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "23",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "自强西路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "莲湖区郝家巷小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971656132,
+  "center": {
+    "lat": 34.2869738,
+    "lon": 108.9392961
+  },
+  "nodes": [
+    8993129222,
+    8993129223,
+    8993129224,
+    8993129225,
+    8993129222
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "4",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "振华北路",
+    "amenity": "college",
+    "name": "陕西新华电脑软件学校"
+  }
+},
+{
+  "type": "way",
+  "id": 971663881,
+  "center": {
+    "lat": 34.2861537,
+    "lon": 108.9374687
+  },
+  "nodes": [
+    8993200148,
+    8993200149,
+    8993200150,
+    8993200151,
+    8993200152,
+    8993200153,
+    8993200154,
+    8993200155,
+    8993200148
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "95",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "振华路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市第十中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971663888,
+  "center": {
+    "lat": 34.2831678,
+    "lon": 108.9356231
+  },
+  "nodes": [
+    8993200200,
+    8993200201,
+    10172996508,
+    10172996507,
+    8993200202,
+    8993200203,
+    11749248388,
+    8993200204,
+    8993200205,
+    8993200200
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "133",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "自强西路",
+    "amenity": "college",
+    "name": "西安铁路职业技术学院(自强校区)"
+  }
+},
+{
+  "type": "way",
+  "id": 971670788,
+  "center": {
+    "lat": 34.2756412,
+    "lon": 108.9381634
+  },
+  "nodes": [
+    8993380905,
+    8993380906,
+    8993380907,
+    11983725304,
+    8993380908,
+    8993380909,
+    8993380910,
+    8993380905
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "莲湖区",
+    "addr:housenumber": "83",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "糖坊街",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "八一街小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 971987471,
+  "center": {
+    "lat": 34.2692142,
+    "lon": 108.9429544
+  },
+  "nodes": [
+    8996132559,
+    8996132560,
+    8996132561,
+    8996132562,
+    8996132563,
+    8996132564,
+    8996132565,
+    8996132566,
+    8996132559
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "新城区",
+    "addr:housenumber": "52",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "光辉巷",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "通济坊小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 972193877,
+  "center": {
+    "lat": 34.2455813,
+    "lon": 108.9429222
+  },
+  "nodes": [
+    8997961320,
+    8997961321,
+    8997961322,
+    8997961323,
+    8997961324,
+    8997961325,
+    8997961320
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "51",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "长安北路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "南门小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 973588638,
+  "center": {
+    "lat": 34.2324914,
+    "lon": 108.9074455
+  },
+  "nodes": [
+    9010710269,
+    9010710270,
+    9010710271,
+    9010710272,
+    9010710269
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "182",
+    "addr:postcode": "7100000",
+    "addr:province": "陕西",
+    "addr:street": "白沙路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市第五十三中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 973597013,
+  "center": {
+    "lat": 34.2272435,
+    "lon": 108.9050611
+  },
+  "nodes": [
+    9010794489,
+    9010794490,
+    9010794491,
+    9010794492,
+    9010794493,
+    9010794494,
+    9010794495,
+    9010794496,
+    9010794497,
+    9010794498,
+    9010794499,
+    9010794489
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "2",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "白沙路",
+    "amenity": "college",
+    "name": "西安培华学院(高新校区)"
+  }
+},
+{
+  "type": "way",
+  "id": 973899921,
+  "center": {
+    "lat": 34.2286454,
+    "lon": 108.9117740
+  },
+  "nodes": [
+    9012893114,
+    9012893115,
+    9012893116,
+    9012895817,
+    9012895818,
+    9012895819,
+    9012895820,
+    9012893114
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "39",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "科技路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安电子科技大学附属中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 973899929,
+  "center": {
+    "lat": 34.2251506,
+    "lon": 108.9137641
+  },
+  "nodes": [
+    9012895865,
+    9012895866,
+    9012895867,
+    9012895868,
+    9012895869,
+    9012895865
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "354",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "吉祥路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安电子科技大学附中",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 973937426,
+  "center": {
+    "lat": 34.2250787,
+    "lon": 108.9258835
+  },
+  "nodes": [
+    9013245474,
+    9013245475,
+    9013245476,
+    9013245477,
+    9013245474
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "21",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "吉祥路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "吉祥路小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 973955980,
+  "center": {
+    "lat": 34.2240021,
+    "lon": 108.9307590
+  },
+  "nodes": [
+    9013381716,
+    9013418117,
+    9013418118,
+    9013418119,
+    9013381716
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "196",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "小寨西路",
+    "amenity": "university",
+    "name": "西安交通大学继续教育学院-行政院区"
+  }
+},
+{
+  "type": "way",
+  "id": 974054923,
+  "center": {
+    "lat": 34.2307571,
+    "lon": 108.9229048
+  },
+  "nodes": [
+    9014309187,
+    9014309188,
+    9014309189,
+    9014309190,
+    9014309191,
+    9014309192,
+    9014309193,
+    9014309187
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "125",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "永松路",
+    "amenity": "college",
+    "name": "陕西省商贸学校"
+  }
+},
+{
+  "type": "way",
+  "id": 974069076,
+  "center": {
+    "lat": 34.2193595,
+    "lon": 108.9093494
+  },
+  "nodes": [
+    9014454665,
+    9014454666,
+    9014454667,
+    9014454668,
+    9014454669,
+    9014454670,
+    9014454671,
+    9014454672,
+    9014454673,
+    9014454665
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "18",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "电子一路",
+    "amenity": "college",
+    "name": "陕西银行学校"
+  }
+},
+{
+  "type": "way",
+  "id": 974069077,
+  "center": {
+    "lat": 34.2191406,
+    "lon": 108.9114898
+  },
+  "nodes": [
+    9014454674,
+    9014454675,
+    9014454676,
+    9014454677,
+    9014454674
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "251",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "电子一路",
+    "amenity": "college",
+    "name": "西北税务学校"
+  }
+},
+{
+  "type": "way",
+  "id": 974292581,
+  "center": {
+    "lat": 34.2275652,
+    "lon": 108.9333982
+  },
+  "nodes": [
+    9016723737,
+    9016723738,
+    9016723739,
+    9016723740,
+    9016723737
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "274",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "朱雀大街南段",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市第九十八中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 974383068,
+  "center": {
+    "lat": 34.2281401,
+    "lon": 108.9475318
+  },
+  "nodes": [
+    9017498658,
+    9017498659,
+    9017498660,
+    9017498661,
+    9017498662,
+    9017498663,
+    9017498658
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "69",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "兴善寺东街",
+    "amenity": "college",
+    "name": "陕西学前师范学院(雁塔校区)"
+  }
+},
+{
+  "type": "way",
+  "id": 974533472,
+  "center": {
+    "lat": 34.2301648,
+    "lon": 108.9432284
+  },
+  "nodes": [
+    9018944641,
+    9018944642,
+    9018944643,
+    9018944644,
+    9018944645,
+    9018944646,
+    9018944641
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "237",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "长安中路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "长安大学-附中",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 974552462,
+  "center": {
+    "lat": 34.2228156,
+    "lon": 108.9550315
+  },
+  "nodes": [
+    9019127234,
+    9019127235,
+    9019127236,
+    9019127237,
+    9019127234
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "64",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "小寨东路",
+    "amenity": "university",
+    "name": "西安财经大学(雁塔校区)"
+  }
+},
+{
+  "type": "way",
+  "id": 974583728,
+  "center": {
+    "lat": 34.2273512,
+    "lon": 108.9655492
+  },
+  "nodes": [
+    9019410691,
+    9019410692,
+    9019410693,
+    9019410694,
+    9019410691
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "后村南路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "雁塔区红星小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 974668569,
+  "center": {
+    "lat": 34.2245262,
+    "lon": 108.9751081
+  },
+  "nodes": [
+    9020166706,
+    9020166707,
+    9020166708,
+    9020166709,
+    9020166710,
+    9020166711,
+    9020166712,
+    9020166706
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "396",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "西影路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市第四十五中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 974668576,
+  "center": {
+    "lat": 34.2222155,
+    "lon": 108.9797883
+  },
+  "nodes": [
+    9020200960,
+    9020200961,
+    9020200962,
+    9020200963,
+    9020200964,
+    9020200960
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "346",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "北池头一路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "曲江第八小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 974691942,
+  "center": {
+    "lat": 34.2291690,
+    "lon": 108.9781780
+  },
+  "nodes": [
+    9020367424,
+    9020367425,
+    9020367426,
+    9020367427,
+    9020367428,
+    9020367429,
+    9020367430,
+    9020367431,
+    9020367432,
+    9020367433,
+    9020367434,
+    9020367435,
+    9020367424
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "289",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "西影路",
+    "amenity": "college",
+    "name": "西安工程技术学校"
+  }
+},
+{
+  "type": "way",
+  "id": 974864771,
+  "center": {
+    "lat": 34.2517232,
+    "lon": 108.9899171
+  },
+  "nodes": [
+    9021492994,
+    9021492995,
+    9021492996,
+    9021492997,
+    9021492994
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "28",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "咸宁西路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安交大-附小",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 974904026,
+  "center": {
+    "lat": 34.2502872,
+    "lon": 108.9978215
+  },
+  "nodes": [
+    9021958066,
+    9021958067,
+    9021958068,
+    9021958069,
+    9021958066
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "8",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "火炬路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安市新城区普天小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 974919724,
+  "center": {
+    "lat": 34.2580869,
+    "lon": 108.9885882
+  },
+  "nodes": [
+    9022100856,
+    9022100857,
+    9022100858,
+    9022100859,
+    9022100860,
+    9022100856
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "86",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "仁厚庄路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "碑林区仁厚庄小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 983268118,
+  "center": {
+    "lat": 34.3194823,
+    "lon": 108.9895157
+  },
+  "nodes": [
+    9091645018,
+    9091645019,
+    9091645020,
+    9091645021,
+    9091645022,
+    9091645018
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "未央区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "凤城二路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安经华小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 988872288,
+  "center": {
+    "lat": 34.2393247,
+    "lon": 108.9227420
+  },
+  "nodes": [
+    9139930261,
+    9139930262,
+    9139930263,
+    9139930264,
+    9139930265,
+    9139930266,
+    9139930261
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "46",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "水文巷",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "大学南路小学(分校)",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 988872296,
+  "center": {
+    "lat": 34.2351874,
+    "lon": 108.9232284
+  },
+  "nodes": [
+    9139930308,
+    9139930309,
+    9139930310,
+    9139930311,
+    9139930308
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "兴化东巷",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "碑林区何家村小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 988872297,
+  "center": {
+    "lat": 34.2418878,
+    "lon": 108.9220487
+  },
+  "nodes": [
+    9139930314,
+    9139930315,
+    9139930316,
+    9139930317,
+    9139930318,
+    9139930319,
+    11770262345,
+    9139930314
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "碑林区",
+    "addr:housenumber": "286",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "友谊西路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市第八十二中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 1003111174,
+  "center": {
+    "lat": 34.2392530,
+    "lon": 108.9054016
+  },
+  "nodes": [
+    9257228635,
+    9257228636,
+    9257228637,
+    9257228638,
+    9257228639,
+    9257228640,
+    9257228641,
+    9257228642,
+    9257228643,
+    9257228644,
+    9257228635
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "168",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "二环南路西段",
+    "amenity": "college",
+    "name": "西安医学院(高新校区)"
+  }
+},
+{
+  "type": "way",
+  "id": 1003111183,
+  "center": {
+    "lat": 34.2371280,
+    "lon": 108.9061420
+  },
+  "nodes": [
+    9257228709,
+    9257228710,
+    9257228711,
+    9257228712,
+    9257228713,
+    9257228714,
+    9257228709
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "25",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "高新路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "高新路小学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 1024589947,
+  "center": {
+    "lat": 34.2225831,
+    "lon": 108.9084244
+  },
+  "nodes": [
+    9447802132,
+    9010794506,
+    8617662708,
+    9447802136,
+    9447802133,
+    9447802134,
+    9457953089,
+    9447802135,
+    9447802132
+  ],
+  "tags": {
+    "amenity": "university",
+    "name": "西安文理学院（太白校区）"
+  }
+},
+{
+  "type": "way",
+  "id": 1037354493,
+  "center": {
+    "lat": 34.2196214,
+    "lon": 108.9938196
+  },
+  "nodes": [
+    9556178315,
+    9556178316,
+    9556178317,
+    9556178318,
+    9556178315
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "曲江第十小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1037357768,
+  "center": {
+    "lat": 34.2333045,
+    "lon": 109.0026235
+  },
+  "nodes": [
+    9556187211,
+    9556187212,
+    9556187213,
+    9556187214,
+    9556187211
+  ],
+  "tags": {
+    "amenity": "school"
+  }
+},
+{
+  "type": "way",
+  "id": 1037357770,
+  "center": {
+    "lat": 34.2341790,
+    "lon": 109.0046433
+  },
+  "nodes": [
+    9556200019,
+    9556200020,
+    9556200021,
+    9556200022,
+    9556200019
+  ],
+  "tags": {
+    "amenity": "school"
+  }
+},
+{
+  "type": "way",
+  "id": 1038762380,
+  "center": {
+    "lat": 34.2275553,
+    "lon": 108.9995617
+  },
+  "nodes": [
+    9566094551,
+    9566094552,
+    9566094553,
+    9566094554,
+    9566094551
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安交大附小金辉分校曲江分部"
+  }
+},
+{
+  "type": "way",
+  "id": 1039520221,
+  "center": {
+    "lat": 34.2294900,
+    "lon": 108.9544865
+  },
+  "nodes": [
+    9572381831,
+    9572381832,
+    9572381833,
+    9572381834,
+    9572381835,
+    9572381836,
+    9572381831
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "省委机关幼儿园"
+  }
+},
+{
+  "type": "way",
+  "id": 1205101951,
+  "center": {
+    "lat": 34.2782803,
+    "lon": 108.9888182
+  },
+  "nodes": [
+    11168589260,
+    11168589259,
+    11168589258,
+    11168589282,
+    11168589283,
+    11168589260
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第七十二中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1205101952,
+  "center": {
+    "lat": 34.2781707,
+    "lon": 108.9879127
+  },
+  "nodes": [
+    11168589283,
+    11168589284,
+    11168589285,
+    11168589286,
+    11168589283
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "长缨路小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1206539421,
+  "center": {
+    "lat": 34.2757719,
+    "lon": 108.9930258
+  },
+  "nodes": [
+    11180438794,
+    11180438795,
+    11906525279,
+    11906525280,
+    11906525281,
+    11180438812,
+    11180438796,
+    11180438802,
+    11180438797,
+    11180438794
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西光实验小学自达校区"
+  }
+},
+{
+  "type": "way",
+  "id": 1206539422,
+  "center": {
+    "lat": 34.2751200,
+    "lon": 108.9927179
+  },
+  "nodes": [
+    11180438797,
+    11180438805,
+    11180438798,
+    11180438799,
+    11180438802,
+    11180438797
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安电机厂子弟学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1206539453,
+  "center": {
+    "lat": 34.2860287,
+    "lon": 109.0034760
+  },
+  "nodes": [
+    11180449202,
+    11180449225,
+    11180449226,
+    11754592674,
+    11754592675,
+    11180449211,
+    11754592661,
+    11180449201,
+    11180449202
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "陕汽二校"
+  }
+},
+{
+  "type": "way",
+  "id": 1206539460,
+  "center": {
+    "lat": 34.2852532,
+    "lon": 109.0048417
+  },
+  "nodes": [
+    11180449205,
+    11180449246,
+    11180449247,
+    11180449248,
+    11180449205
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "陕汽幼儿园"
+  }
+},
+{
+  "type": "way",
+  "id": 1206539476,
+  "center": {
+    "lat": 34.2868161,
+    "lon": 108.9845432
+  },
+  "nodes": [
+    11180449307,
+    11180449311,
+    11180449309,
+    11180449310,
+    11180449307
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市新城区明志小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1208419221,
+  "center": {
+    "lat": 34.2928877,
+    "lon": 108.9532205
+  },
+  "nodes": [
+    1935057238,
+    11197114878,
+    11197114877,
+    11197114876,
+    11197114879,
+    11197114872,
+    11197114873,
+    11197114870,
+    1935057238
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市大明宫中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1213239216,
+  "center": {
+    "lat": 34.2847851,
+    "lon": 108.9686674
+  },
+  "nodes": [
+    11240619826,
+    11240619827,
+    11240619828,
+    11240619829,
+    11240619830,
+    11240619831,
+    11240619832,
+    11240619833,
+    11240619826
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "太华路小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1213239218,
+  "center": {
+    "lat": 34.2815737,
+    "lon": 108.9714654
+  },
+  "nodes": [
+    11240619844,
+    11240619845,
+    11240619846,
+    11240619847,
+    11240619849,
+    11240619850,
+    11240619851,
+    11240619852,
+    11240619844
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第八十九中学（分校）"
+  }
+},
+{
+  "type": "way",
+  "id": 1220172454,
+  "center": {
+    "lat": 34.2668625,
+    "lon": 108.9872658
+  },
+  "nodes": [
+    11306416276,
+    11306416277,
+    11306416278,
+    11306416279,
+    11306416276
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市体育运动学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1220176650,
+  "center": {
+    "lat": 34.2543160,
+    "lon": 108.9960758
+  },
+  "nodes": [
+    11306452293,
+    11306452292,
+    11306452294,
+    11306452290,
+    11306452293
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市残疾人艺术职业学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1220176652,
+  "center": {
+    "lat": 34.2552632,
+    "lon": 108.9937916
+  },
+  "nodes": [
+    11306452299,
+    11306452300,
+    11306452301,
+    11306452302,
+    11306452303,
+    11306452304,
+    11306452305,
+    11306452306,
+    11306452299
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安理工大学附属小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1220176654,
+  "center": {
+    "lat": 34.2577068,
+    "lon": 108.9932457
+  },
+  "nodes": [
+    11306452311,
+    11306452312,
+    11306452313,
+    1703846921,
+    11306452311
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市艺术学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1220176655,
+  "center": {
+    "lat": 34.2577036,
+    "lon": 108.9945134
+  },
+  "nodes": [
+    11306452312,
+    11306452314,
+    11306452315,
+    11306452313,
+    11306452312
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安开放大学"
+  }
+},
+{
+  "type": "way",
+  "id": 1220176661,
+  "center": {
+    "lat": 34.2545244,
+    "lon": 108.9986964
+  },
+  "nodes": [
+    11306452337,
+    11306452338,
+    11306452339,
+    11306452340,
+    11306452337
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安行知中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1220176669,
+  "center": {
+    "lat": 34.2655542,
+    "lon": 109.0039587
+  },
+  "nodes": [
+    11306452370,
+    11306452371,
+    11306452372,
+    11306452373,
+    11306452370
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市华山中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1220176670,
+  "center": {
+    "lat": 34.2686982,
+    "lon": 109.0032204
+  },
+  "nodes": [
+    11306452374,
+    11306452375,
+    11242852631,
+    11242852630,
+    11242852629,
+    11242852628,
+    11306452374
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安黄河小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1226009176,
+  "center": {
+    "lat": 34.2252332,
+    "lon": 109.0056310
+  },
+  "nodes": [
+    11369444000,
+    11369444001,
+    11369444002,
+    11369444003,
+    11369444004,
+    11369444005,
+    11369444000
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "曲江第三初级中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1227570114,
+  "center": {
+    "lat": 34.2415053,
+    "lon": 108.9358331
+  },
+  "nodes": [
+    11383598395,
+    11383598396,
+    11383598397,
+    11383598408,
+    11383598399,
+    11383598400,
+    11383598401,
+    11383598405,
+    11383598402,
+    11383598404,
+    11383598395
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "碑林区小雁塔小学",
+    "name:en": "Xiaoyanta Primary School, Beilin District"
+  }
+},
+{
+  "type": "way",
+  "id": 1229939770,
+  "center": {
+    "lat": 34.3196963,
+    "lon": 109.0014403
+  },
+  "nodes": [
+    11405782307,
+    11405782306,
+    11405782305,
+    11405782308,
+    11405782297,
+    11405782307
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市浐灞第一小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1230624565,
+  "center": {
+    "lat": 34.2749304,
+    "lon": 108.9883296
+  },
+  "nodes": [
+    11412758275,
+    11412758276,
+    11412758277,
+    11412758278,
+    11412758279,
+    11412758275
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "设计院幼儿园"
+  }
+},
+{
+  "type": "way",
+  "id": 1230624566,
+  "center": {
+    "lat": 34.2649626,
+    "lon": 108.9851541
+  },
+  "nodes": [
+    11412758280,
+    11412758281,
+    11412758282,
+    11412758283,
+    11412758280
+  ],
+  "tags": {
+    "amenity": "school"
+  }
+},
+{
+  "type": "way",
+  "id": 1232088994,
+  "center": {
+    "lat": 34.3021201,
+    "lon": 109.0008964
+  },
+  "nodes": [
+    11428163879,
+    11428163880,
+    11428163893,
+    11428163892,
+    11428163881,
+    11428163890,
+    11428163889,
+    11428163882,
+    11428163883,
+    11428163884,
+    11428163879
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安浐灞第三小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1232088995,
+  "center": {
+    "lat": 34.3022940,
+    "lon": 109.0032835
+  },
+  "nodes": [
+    11428163881,
+    11428163971,
+    11428163885,
+    11428163970,
+    11428163886,
+    11428163880,
+    11428163893,
+    11428163892,
+    11428163881
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "浐灞第三初级中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1246311052,
+  "center": {
+    "lat": 34.2667734,
+    "lon": 108.9441571
+  },
+  "nodes": [
+    11586899155,
+    11586899156,
+    11586899157,
+    11586899158,
+    11586899155
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第三十中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1246311086,
+  "center": {
+    "lat": 34.2736880,
+    "lon": 108.9501927
+  },
+  "nodes": [
+    11234068300,
+    11586949830,
+    11586949831,
+    11586949832,
+    11586949833,
+    11234068300
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "后宰门小学",
+    "name:zh": "后宰门小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1246311087,
+  "center": {
+    "lat": 34.2762885,
+    "lon": 108.9464423
+  },
+  "nodes": [
+    11586949834,
+    11586949835,
+    11586949836,
+    11586949837,
+    11586949838,
+    11586949839,
+    11586949840,
+    11586949841,
+    11586949842,
+    11586949843,
+    11586949844,
+    11586949845,
+    11586949834
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安爱知中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1246311089,
+  "center": {
+    "lat": 34.2758814,
+    "lon": 108.9491167
+  },
+  "nodes": [
+    11586949848,
+    11586949849,
+    11586949850,
+    11586949851,
+    11586949852,
+    11586949853,
+    11586949854,
+    11586949848
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安育英小学",
+    "name:zh": "西安育英小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1246311090,
+  "center": {
+    "lat": 34.2761276,
+    "lon": 108.9486016
+  },
+  "nodes": [
+    11586949848,
+    11586949855,
+    11586949857,
+    11586949858,
+    13438122790,
+    11586949852,
+    11586949853,
+    11586949854,
+    11586949848
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安新知小学",
+    "name:zh": "西安新知小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1247630832,
+  "center": {
+    "lat": 34.2573902,
+    "lon": 109.0085567
+  },
+  "nodes": [
+    11598189871,
+    11598189872,
+    11598189873,
+    11598189874,
+    11598189875,
+    11598189876,
+    11754124144,
+    11598189871
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市西光中学高中部",
+    "name:zh": "西安市西光中学高中部"
+  }
+},
+{
+  "type": "way",
+  "id": 1263416695,
+  "center": {
+    "lat": 34.2440097,
+    "lon": 108.9545641
+  },
+  "nodes": [
+    11738459493,
+    11738459494,
+    11738459495,
+    11738459519,
+    11738459518,
+    11738459496,
+    11738459497,
+    11738459500,
+    11969985485,
+    11969985484,
+    11738459493
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "陕西省人民警察培训学校",
+    "name:zh": "陕西省人民警察培训学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1263416696,
+  "center": {
+    "lat": 34.2436879,
+    "lon": 108.9530721
+  },
+  "nodes": [
+    11738459493,
+    11738459498,
+    11738459499,
+    11738459500,
+    11969985485,
+    11969985484,
+    11738459493
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第七十一中学",
+    "name:zh": "西安市第七十一中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1263416697,
+  "center": {
+    "lat": 34.2458085,
+    "lon": 108.9538456
+  },
+  "nodes": [
+    11738459501,
+    11738459502,
+    11738459503,
+    11738459506,
+    11738459507,
+    11738459501
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第八十六中学",
+    "name:zh": "西安市第八十六中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1263416698,
+  "center": {
+    "lat": 34.2461146,
+    "lon": 108.9549726
+  },
+  "nodes": [
+    11738459507,
+    11738459508,
+    11738459509,
+    11738459510,
+    11738459511,
+    11738459512,
+    11738459506,
+    11738459507
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市碑林区雁塔路小学",
+    "name:zh": "西安市碑林区雁塔路小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1263416727,
+  "center": {
+    "lat": 34.2446682,
+    "lon": 108.9481087
+  },
+  "nodes": [
+    11738459731,
+    11738459732,
+    11738459733,
+    11738459734,
+    11738459731
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "文艺路小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1263416728,
+  "center": {
+    "lat": 34.2440043,
+    "lon": 108.9464602
+  },
+  "nodes": [
+    11738459735,
+    11738459731,
+    11738459734,
+    11969986872,
+    11738459736,
+    11738459737,
+    11969986875,
+    11969985481,
+    11969986874,
+    11969986873,
+    11969985482,
+    11969985483,
+    11738459735
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市卫生学校",
+    "name:zh": "西安市卫生学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1267644574,
+  "center": {
+    "lat": 34.2387688,
+    "lon": 108.9912407
+  },
+  "nodes": [
+    11773215119,
+    11773215120,
+    11773259000,
+    11773215121,
+    11773259017,
+    11773259016,
+    11773259015,
+    11773259014,
+    11773259013,
+    11773215122,
+    11773259011,
+    11773215123,
+    11773215124,
+    11773259004,
+    11773215125,
+    11773258995,
+    11773258994,
+    11773215126,
+    11773215136,
+    11773215119
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市雁塔区第一小学",
+    "name:zh": "西安市雁塔区第一小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1267644575,
+  "center": {
+    "lat": 34.2395423,
+    "lon": 108.9930997
+  },
+  "nodes": [
+    11773215126,
+    11773215127,
+    11773259097,
+    11773215128,
+    11773215129,
+    11773215130,
+    11773259091,
+    11773259090,
+    11773215131,
+    11773215132,
+    11773215133,
+    11773215134,
+    11773215135,
+    11773215136,
+    11773215126
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市雁塔区第一中学",
+    "name:zh": "西安市雁塔区第一中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1267644622,
+  "center": {
+    "lat": 34.2494036,
+    "lon": 109.0076831
+  },
+  "nodes": [
+    11773259262,
+    11773259288,
+    11773259287,
+    11773259263,
+    11773259271,
+    11773259264,
+    11773259265,
+    11773259266,
+    11773259267,
+    11773259289,
+    11773259290,
+    11773259270,
+    11773259269,
+    11773259291,
+    11773259262
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "东方中学·东方小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1268564648,
+  "center": {
+    "lat": 34.3103923,
+    "lon": 108.9736132
+  },
+  "nodes": [
+    11782207660,
+    11782207661,
+    11782207662,
+    11782207663,
+    11782207664,
+    11782207665,
+    11782207660
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市未央区先锋小学",
+    "name:zh": "西安市未央区先锋小学"
+  }
+},
+{
+  "type": "way",
+  "id": 1272338185,
+  "center": {
+    "lat": 34.2965724,
+    "lon": 108.9679711
+  },
+  "nodes": [
+    11814774874,
+    11814774875,
+    11814774876,
+    11814774877,
+    11814774878,
+    11814774879,
+    11814774880,
+    11814774881,
+    11814774882,
+    11814774883,
+    11814774884,
+    11814774885,
+    11814774874
+  ],
+  "tags": {
+    "amenity": "university",
+    "name": "陕西科技大学（太华路校区）",
+    "name:en": "Shaanxi University Of Science & Technology(Taihua Road Campus)",
+    "name:zh": "陕西科技大学（太华路校区）"
+  }
+},
+{
+  "type": "way",
+  "id": 1272356491,
+  "center": {
+    "lat": 34.3021639,
+    "lon": 108.9861015
+  },
+  "nodes": [
+    11412757093,
+    11412757094,
+    11815118379,
+    11815118380,
+    11815118381,
+    11815118382,
+    11412757093
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市第四十八中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1272356495,
+  "center": {
+    "lat": 34.3036918,
+    "lon": 108.9898083
+  },
+  "nodes": [
+    11815118417,
+    11815118418,
+    11815118419,
+    11815118420,
+    11815118421,
+    11815118422,
+    11815118417
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市太元路学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1323172841,
+  "center": {
+    "lat": 34.2769925,
+    "lon": 108.9614121
+  },
+  "nodes": [
+    12244132755,
+    12244132756,
+    12244132757,
+    12244132758,
+    12244132755
+  ],
+  "tags": {
+    "amenity": "college",
+    "name": "西安职业中专"
+  }
+},
+{
+  "type": "way",
+  "id": 1341036246,
+  "center": {
+    "lat": 34.2487291,
+    "lon": 108.9266981
+  },
+  "nodes": [
+    12405031894,
+    12405031895,
+    12405031896,
+    12405031897,
+    12405031893,
+    12405031894
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西北工业大学附属中学含光校区"
+  }
+},
+{
+  "type": "way",
+  "id": 1341036247,
+  "center": {
+    "lat": 34.2482744,
+    "lon": 108.9256371
+  },
+  "nodes": [
+    12405031886,
+    12405031897,
+    12405031893,
+    12405031892,
+    12405031886
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安市启智学校",
+    "name:zh": "西安市启智学校"
+  }
+},
+{
+  "type": "way",
+  "id": 1342589480,
+  "center": {
+    "lat": 34.2936364,
+    "lon": 108.9052051
+  },
+  "nodes": [
+    12422097213,
+    12422097214,
+    12422097215,
+    12422097216,
+    12422097217,
+    12422097218,
+    12422097219,
+    12422097213
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "陕西师范大学大兴新区小学（北校区）"
+  }
+},
+{
+  "type": "way",
+  "id": 1344565383,
+  "center": {
+    "lat": 34.2183909,
+    "lon": 108.9792242
+  },
+  "nodes": [
+    12438882739,
+    12438882740,
+    12438882741,
+    12438882742,
+    12438882743,
+    12438882744,
+    12438882745,
+    4043052585,
+    5432589326,
+    2603001549,
+    2603001551,
+    12438882878,
+    4043052581,
+    12438882739
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "曲江第一中学",
+    "name:en": "Qujiang No.1 Middle School",
+    "name:zh": "曲江第一中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1416050880,
+  "center": {
+    "lat": 34.2243385,
+    "lon": 108.9648395
+  },
+  "nodes": [
+    13013256697,
+    13013248906,
+    13013248905,
+    13013248908,
+    13013251111,
+    13013264159,
+    13013251112,
+    13013251113,
+    13013248645,
+    13013248644,
+    13013197573,
+    13013256696,
+    13013256697
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "西影路",
+    "amenity": "college",
+    "name": "西安社会主义学院"
+  }
+},
+{
+  "type": "way",
+  "id": 1416050956,
+  "center": {
+    "lat": 34.2237694,
+    "lon": 108.9636128
+  },
+  "nodes": [
+    13013223377,
+    13013261319,
+    13013261320,
+    13013248293,
+    13013259403,
+    13013182900,
+    13013262039,
+    13013253701,
+    13013262038,
+    13013253702,
+    13013253703,
+    13013262037,
+    13013262036,
+    13013251112,
+    13013251113,
+    13013248646,
+    13013248643,
+    13013262035,
+    13013229929,
+    13013265514,
+    13013259283,
+    13013259247,
+    13013259248,
+    13013259249,
+    13013249144,
+    13013251931,
+    13013253511,
+    13013227352,
+    13013255373,
+    13013241276,
+    13013255374,
+    13013253181,
+    13013257532,
+    13013257531,
+    13013257537,
+    13013237788,
+    13013251412,
+    13013252102,
+    13013252101,
+    13013247875,
+    13013247876,
+    13013247873,
+    13013255822,
+    13013263884,
+    13013255820,
+    13013263886,
+    13013263887,
+    13013263890,
+    13013255818,
+    13013265174,
+    13013265173,
+    13013256212,
+    13013256211,
+    13013256210,
+    13013265171,
+    13013263891,
+    13013251145,
+    13013251146,
+    13013254340,
+    13013254341,
+    13013251978,
+    13013254342,
+    13013254343,
+    13013254344,
+    13013254345,
+    13013246046,
+    13013263361,
+    13013263360,
+    13013263359,
+    13013250758,
+    13013263080,
+    13013263353,
+    13013263352,
+    13013252003,
+    13013252002,
+    13013252001,
+    13013223376,
+    13013223377
+  ],
+  "tags": {
+    "amenity": "school",
+    "landuse": "education",
+    "name": "中共西安市委党校"
+  }
+},
+{
+  "type": "way",
+  "id": 1416050959,
+  "center": {
+    "lat": 34.2233384,
+    "lon": 108.9617968
+  },
+  "nodes": [
+    13013254173,
+    13013247933,
+    13013254172,
+    13013254171,
+    13013253179,
+    13013227351,
+    13013253181,
+    13013257532,
+    13013257531,
+    13013257537,
+    13013237788,
+    13013251412,
+    13013252102,
+    13013252101,
+    13013247875,
+    13013247876,
+    13013255823,
+    13013254155,
+    13013254154,
+    13013254153,
+    13013254178,
+    13013252595,
+    13013254174,
+    13013254173
+  ],
+  "tags": {
+    "amenity": "university",
+    "landuse": "education",
+    "name": "西安市社会科学院"
+  }
+},
+{
+  "type": "way",
+  "id": 1419575258,
+  "center": {
+    "lat": 34.2234958,
+    "lon": 108.9350616
+  },
+  "nodes": [
+    13045081784,
+    13045098410,
+    13045107708,
+    13045105541,
+    13045091331,
+    13045097515,
+    13045109038,
+    13045109037,
+    13045102840,
+    13045098421,
+    13045081784
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "小寨西路",
+    "amenity": "school",
+    "grades": "1-6",
+    "name": "西安交通大学附属小学(雁塔校区)"
+  }
+},
+{
+  "type": "way",
+  "id": 1419575279,
+  "center": {
+    "lat": 34.2256014,
+    "lon": 108.9441480
+  },
+  "nodes": [
+    13045068785,
+    13045098258,
+    13045098257,
+    13045098256,
+    13045098255,
+    13045098254,
+    13045090711,
+    13045090712,
+    13045090713,
+    13045098253,
+    13045090714,
+    13045086200,
+    13045091021,
+    13045101020,
+    13045101021,
+    13045091020,
+    13045091019,
+    13045087514,
+    13045088995,
+    13045091728,
+    13045080461,
+    13045080462,
+    13045100308,
+    13045100307,
+    13045090756,
+    13045090757,
+    13045090758,
+    13045088817,
+    13045088813,
+    13045109117,
+    13045090814,
+    13045109118,
+    13045089853,
+    13045089852,
+    13045089851,
+    13045089850,
+    13045098581,
+    13045098582,
+    13045098583,
+    13045098584,
+    13045098585,
+    13045098586,
+    13045098587,
+    13045103906,
+    13045081795,
+    13045103902,
+    13045068800,
+    13045101603,
+    13045068799,
+    13045068798,
+    13045087492,
+    13045087493,
+    13045068797,
+    13045068796,
+    13045087494,
+    13045087491,
+    13045088225,
+    13045088226,
+    13045068791,
+    13045068790,
+    13045068789,
+    13045104133,
+    13045088349,
+    13045088343,
+    13045090002,
+    13045090003,
+    13045068788,
+    13045080494,
+    13045080495,
+    13045068787,
+    13045100902,
+    13045068786,
+    13045068785
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "161",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "长安中路",
+    "alt_name": "长安大学校本部西院",
+    "amenity": "university",
+    "name": "长安大学小寨校区",
+    "name:en": "Chang'an University (Xiaozhai Campus)",
+    "name:zh": "长安大学小寨校区",
+    "website": "https://www.chd.edu.cn/"
+  }
+},
+{
+  "type": "way",
+  "id": 1419575298,
+  "center": {
+    "lat": 34.2222533,
+    "lon": 108.9500613
+  },
+  "nodes": [
+    13045082753,
+    13045088961,
+    13045109086,
+    13045089519,
+    13045088960,
+    13045089520,
+    13045100332,
+    13045100331,
+    13045091807,
+    13045100330,
+    13045082146,
+    13045100329,
+    13045100328,
+    13045100327,
+    13045107487,
+    13045107486,
+    13045090047,
+    13045091454,
+    13045090044,
+    13045104980,
+    13045104979,
+    13045104978,
+    13045104977,
+    13045104976,
+    13045098041,
+    13045100300,
+    13045099155,
+    13045099154,
+    13045099153,
+    13045099152,
+    13045099151,
+    13045088567,
+    13045073723,
+    13045097549,
+    13045073721,
+    13045086705,
+    13045082754,
+    13045086706,
+    13045099248,
+    13045082753
+  ],
+  "tags": {
+    "addr:city": "西安",
+    "addr:district": "雁塔区",
+    "addr:housenumber": "254",
+    "addr:postcode": "710000",
+    "addr:province": "陕西",
+    "addr:street": "翠华路",
+    "amenity": "school",
+    "grades": "7-12",
+    "name": "西安市第八十五中学",
+    "name:en": "Xi'an No.85 Middle School",
+    "name:zh": "西安市第八十五中学",
+    "religion": "none"
+  }
+},
+{
+  "type": "way",
+  "id": 1422414737,
+  "center": {
+    "lat": 34.2520315,
+    "lon": 108.9527628
+  },
+  "nodes": [
+    13071955696,
+    13071955695,
+    13071955694,
+    13071955693,
+    13071955696
+  ],
+  "tags": {
+    "addr:housenumber": "72",
+    "addr:street": "环城南路东段",
+    "amenity": "school",
+    "isced:level": "2",
+    "name": "西安市第二十六中学分校",
+    "operator": "碑林区教育局"
+  }
+},
+{
+  "type": "way",
+  "id": 1457934641,
+  "center": {
+    "lat": 34.2585350,
+    "lon": 108.9615601
+  },
+  "nodes": [
+    13370891527,
+    13370891528,
+    13370891529,
+    13370891530,
+    13370891541,
+    13370891531,
+    13370891532,
+    13370891533,
+    13370891534,
+    13370891527
+  ],
+  "tags": {
+    "amenity": "school",
+    "education": "school",
+    "name": "西安市第二十六中学"
+  }
+},
+{
+  "type": "way",
+  "id": 1457934642,
+  "center": {
+    "lat": 34.2576844,
+    "lon": 108.9616125
+  },
+  "nodes": [
+    13370891541,
+    13370891530,
+    13370891535,
+    13370891536,
+    13370891537,
+    13370891538,
+    13370891539,
+    13370891540,
+    13370891541
+  ],
+  "tags": {
+    "amenity": "school",
+    "education": "school",
+    "name": "西安市碑林区建国路小学"
+  }
+},
+{
+  "type": "relation",
+  "id": 17568632,
+  "center": {
+    "lat": 34.2473206,
+    "lon": 108.9809712
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 279973692,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 263595551,
+      "role": "outer"
+    }
+  ],
+  "tags": {
+    "addr:city": "西安市",
+    "addr:district": "碑林区",
+    "addr:housenumber": "28",
+    "addr:postcode": "710049",
+    "addr:province": "陕西省",
+    "addr:street": "咸宁西路",
+    "amenity": "university",
+    "internet_access": "yes",
+    "internet_access:fee": "yes",
+    "name": "西安交通大学兴庆校区",
+    "name:en": "Xian Jiaotong University (Xingqing Campus)",
+    "name:zh": "西安交通大学兴庆校区",
+    "operator": "中华人民共和国教育部",
+    "operator:type": "government",
+    "type": "multipolygon",
+    "website": "https://www.xjtu.edu.cn/"
+  }
+},
+{
+  "type": "relation",
+  "id": 17568633,
+  "center": {
+    "lat": 34.2233516,
+    "lon": 108.9891649
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 370292239,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 370292240,
+      "role": "outer"
+    }
+  ],
+  "tags": {
+    "amenity": "university",
+    "education": "university",
+    "name": "西安理工大学曲江校区",
+    "name:en": "Xi'an University of Technology Qujiang Campus",
+    "name:zh": "西安理工大学曲江校区",
+    "type": "multipolygon",
+    "website": "https://www.xaut.edu.cn/"
+  }
+},
+{
+  "type": "relation",
+  "id": 19339059,
+  "center": {
+    "lat": 34.2262976,
+    "lon": 108.9990615
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 781967169,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 781967166,
+      "role": "inner"
+    }
+  ],
+  "tags": {
+    "amenity": "school",
+    "name": "西安交通大学附属中学",
+    "type": "multipolygon"
+  }
+}
+
+  ]
+}

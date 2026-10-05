@@ -224,6 +224,7 @@ int main(void)
     ui_summary_page_set_active(true);
     lv_obj_update_layout(screen);
     assert(find_label(screen,"500000000.0") != NULL);
+    assert(find_label(screen,"骑行已结束，记录已保存"));
     lv_refr_now(display); assert(!s_memory_failed);
 
     assert(ui_summary_page_handle_input(UI_INPUT_ENCODER_PRESS));

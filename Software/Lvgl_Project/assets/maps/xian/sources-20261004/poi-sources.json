@@ -1,0 +1,30 @@
+{
+  "provider": "OpenStreetMap / Overpass",
+  "license": "ODbL-1.0",
+  "school_bbox": [
+    108.9,
+    34.22,
+    109.01,
+    34.32
+  ],
+  "landmark_bbox": [
+    108.78,
+    34.12,
+    109.15,
+    34.46
+  ],
+  "sources": [
+    {
+      "file": "xian-schools.osm.json",
+      "sha256": "71663bfa51ce480bfc30e6ab9388569f6d6bd71bc80e48cdd487e5db50a2fa89",
+      "timestamp": "2026-10-03T16:20:36Z",
+      "elements": 193
+    },
+    {
+      "file": "xian-landmarks.osm.json",
+      "sha256": "0f106dd141bf5e633d02a35a8336724ba3b5182c6a47e3c0c71b2453db2b1f49",
+      "timestamp": "2026-10-03T16:30:49Z",
+      "elements": 587
+    }
+  ]
+}

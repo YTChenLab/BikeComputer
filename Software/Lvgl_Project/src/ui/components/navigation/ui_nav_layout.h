@@ -4,18 +4,29 @@
 #include "../../design/ui_design_tokens.h"
 
 /* Navigation V2 uses the same product bottom edge as all other pages. */
-#define UI_NAV_PAGE_MARGIN       10
+#define UI_NAV_PAGE_MARGIN        8
 #define UI_NAV_MAP_TOP           62
-#define UI_NAV_MAP_WIDTH        460
-#define UI_NAV_MAP_HEIGHT       (UI_PAGE_CONTENT_BOTTOM - UI_NAV_MAP_TOP - UI_NAV_DATA_HEIGHT - UI_NAV_DOCK_HEIGHT - 2)
-#define UI_NAV_DATA_TOP         (UI_NAV_MAP_TOP + UI_NAV_MAP_HEIGHT)
+#define UI_NAV_MAP_WIDTH        464
+#define UI_NAV_FIXED_DOCK_HEIGHT UI_BOTTOM_SURFACE_NORMAL_HEIGHT
+#define UI_NAV_CARD_GAP           10
+#define UI_NAV_MAP_HEIGHT       (UI_PAGE_CONTENT_BOTTOM - UI_NAV_MAP_TOP - UI_NAV_FIXED_DOCK_HEIGHT - UI_NAV_CARD_GAP)
+#define UI_NAV_DATA_TOP         (UI_PAGE_CONTENT_BOTTOM - UI_NAV_FIXED_DOCK_HEIGHT)
 #define UI_NAV_DATA_WIDTH       UI_NAV_MAP_WIDTH
-#define UI_NAV_DATA_HEIGHT       92
+#define UI_NAV_DATA_HEIGHT       76
 #define UI_NAV_DOCK_REGION_TOP  (UI_NAV_DATA_TOP + UI_NAV_DATA_HEIGHT)
-#define UI_NAV_DOCK_X            10
-#define UI_NAV_DOCK_Y           (UI_NAV_DOCK_REGION_TOP + 2)
-#define UI_NAV_DOCK_WIDTH       460
-#define UI_NAV_DOCK_HEIGHT      188
+#define UI_NAV_DOCK_X             8
+#define UI_NAV_DOCK_Y           (UI_NAV_DOCK_REGION_TOP + 10)
+#define UI_NAV_DOCK_WIDTH       464
+#define UI_NAV_DOCK_HEIGHT      132
 #define UI_NAV_DOCK_BOTTOM      (UI_NAV_DOCK_Y + UI_NAV_DOCK_HEIGHT)
+
+/* The alphabet dock stays fixed. Valid POIs squeeze the map to the short view. */
+#define UI_NAV_SEARCH_MAP_TOP       128
+#define UI_NAV_SEARCH_MAP_HEIGHT    210
+#define UI_NAV_SEARCH_INPUT_HEIGHT  184
+#define UI_NAV_SEARCH_INPUT_TOP     (UI_PAGE_CONTENT_BOTTOM - UI_NAV_SEARCH_INPUT_HEIGHT)
+#define UI_NAV_SEARCH_MAP_IDLE_HEIGHT (UI_NAV_SEARCH_INPUT_TOP - 12 - UI_NAV_SEARCH_MAP_TOP)
+#define UI_NAV_SEARCH_LIST_TOP      (UI_NAV_SEARCH_MAP_TOP + UI_NAV_SEARCH_MAP_HEIGHT + UI_NAV_CARD_GAP)
+#define UI_NAV_SEARCH_LIST_HEIGHT   (UI_NAV_SEARCH_INPUT_TOP - UI_NAV_SEARCH_LIST_TOP - 12)
 
 #endif /* UI_NAV_LAYOUT_H */

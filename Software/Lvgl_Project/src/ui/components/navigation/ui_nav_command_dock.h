@@ -19,6 +19,8 @@ typedef struct
     lv_obj_t *action;
     lv_obj_t *special_detail;
     lv_obj_t *road;
+    lv_obj_t *next_row,*next_icon,*next_text,*next_divider;
+    nav_maneuver_t next_maneuver;
     nav_maneuver_t maneuver;
     nav_ui_state_t state;
     nav_ui_state_t previous_state;

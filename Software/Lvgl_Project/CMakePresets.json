@@ -2,6 +2,18 @@
     "version": 6,
     "configurePresets": [
         {
+            "name": "bike-ui",
+            "displayName": "Bike UI - portable GCC/Ninja",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
             "name": "bike-ui-ucrt64",
             "displayName": "Bike UI - Anaconda MSYS2 UCRT64",
             "generator": "Ninja",
@@ -20,11 +32,22 @@
     ],
     "buildPresets": [
         {
+            "name": "bike-ui",
+            "configurePreset": "bike-ui"
+        },
+        {
             "name": "bike-ui-ucrt64",
             "configurePreset": "bike-ui-ucrt64"
         }
     ],
     "testPresets": [
+        {
+            "name": "bike-ui",
+            "configurePreset": "bike-ui",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
         {
             "name": "bike-ui-ucrt64",
             "configurePreset": "bike-ui-ucrt64",

@@ -1,0 +1,187 @@
+{
+  "date": "2026-10-03",
+  "ctest_passed": 34,
+  "ctest_total": 34,
+  "menu_replay_cycles": 60,
+  "menu_replay_stable_heap_bytes": 28312,
+  "menu_replay_stable_timers": 6,
+  "render_pairs": [
+    {
+      "page": "nav_approach",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_arrival",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_center",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_cross_page",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_delete_confirm",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_destination",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_gps_weak",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_imminent",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_live",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_map_detail",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_map_unavailable",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_maps",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_menu",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_pick",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_places",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preparing",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_reroute_failed",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_roundabout",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_saved_preview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_saved_routes",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_stop_confirm",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    }
+  ],
+  "scope": "PC UI acceptance; synthetic map; no hardware FPS claim"
+}

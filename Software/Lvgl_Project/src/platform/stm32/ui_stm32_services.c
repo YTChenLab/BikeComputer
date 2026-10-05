@@ -11,6 +11,20 @@
 
 static ui_stm32_service_port_t s_port;
 static ui_hardware_input_t s_input;
+bool ui_stm32_services_register_navigation(const ui_nav_backend_t *navigation,
+    const ui_nav_map_backend_t *maps)
+{
+    return ui_nav_session_register_backend(navigation) && ui_nav_map_provider_register(maps);
+}
+bool ui_stm32_services_complete_navigation(const ui_nav_result_t *result)
+{
+    if(!result || (result->route.demo && !ui_navigation_service_demo_enabled())) return false;
+    return ui_nav_session_complete(result);
+}
+bool ui_stm32_services_submit_nav_session(const ui_nav_session_t *session)
+{ return session && (session->source!=UI_NAV_SOURCE_DEMO || ui_navigation_service_demo_enabled()) && ui_nav_session_submit(session); }
+bool ui_stm32_services_submit_map_frame(const ui_nav_map_frame_t *frame)
+{ return frame && (!frame->demo || ui_navigation_service_demo_enabled()) && ui_nav_map_provider_submit(frame); }
 
 bool ui_stm32_services_set_key_map(const ui_input_event_t shorts[UI_HW_KEY_COUNT],
                                   const ui_input_event_t longs[UI_HW_KEY_COUNT])

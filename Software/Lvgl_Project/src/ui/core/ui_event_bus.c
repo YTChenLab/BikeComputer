@@ -189,3 +189,16 @@ void ui_event_bus_clear(void)
 {
     s_bus.queue_count = 0;
 }
+uint8_t ui_event_bus_remove_source(uint32_t source_id)
+{
+    uint8_t kept=0,old=s_bus.queue_count;
+    for(uint8_t i=0;i<old;i++) if(s_bus.queue[i].event.source_id!=source_id) s_bus.queue[kept++]=s_bus.queue[i];
+    s_bus.queue_count=kept; return old-kept;
+}
+uint8_t ui_event_bus_remove_mask(uint64_t mask)
+{
+    uint8_t kept=0,old=s_bus.queue_count;
+    for(uint8_t i=0;i<old;i++) if(!(mask & UI_EVENT_MASK(s_bus.queue[i].event.type)))
+        s_bus.queue[kept++]=s_bus.queue[i];
+    s_bus.queue_count=kept;return old-kept;
+}

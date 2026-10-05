@@ -17,20 +17,16 @@ static bool has_glyph(const lv_font_t *font, uint32_t codepoint)
     return false;
 }
 
-bool ui_text_set_label(lv_obj_t *label, const char *text, uint16_t size)
+bool ui_text_prepare(const char *text,uint16_t size,char *result,size_t capacity,const lv_font_t **font_out)
 {
-    if(label == NULL || text == NULL) return false;
+    if(!text || !result || capacity<5) return false;
     const lv_font_t *font = size >= 24 ? s_font24 : s_font20;
-    if(font != NULL) lv_obj_set_style_text_font(label, font, 0);
-    else {
-        font = size >= 24 ? &ui_font_misans_ui_24 : &ui_font_misans_ui_20;
-        lv_obj_set_style_text_font(label, font, 0);
-    }
-    char result[256];
+    if(!font) font = size >= 24 ? &ui_font_misans_ui_24 : &ui_font_misans_ui_20;
+    if(font_out) *font_out=font;
     size_t output = 0;
     bool complete = true;
     const unsigned char *input = (const unsigned char *)text;
-    while(*input && output + 4 < sizeof(result)) {
+    while(*input && output + 4 < capacity) {
         uint32_t codepoint = *input;
         size_t length = codepoint < 0x80 ? 1 : (codepoint & 0xE0) == 0xC0 ? 2 :
                         (codepoint & 0xF0) == 0xE0 ? 3 : (codepoint & 0xF8) == 0xF0 ? 4 : 0;
@@ -54,6 +50,14 @@ bool ui_text_set_label(lv_obj_t *label, const char *text, uint16_t size)
     }
     if(*input) complete = false;
     result[output] = '\0';
-    if(strcmp(lv_label_get_text(label), result) != 0) lv_label_set_text(label, result);
+    return complete;
+}
+bool ui_text_set_label(lv_obj_t *label, const char *text, uint16_t size)
+{
+    if(!label || !text) return false;
+    char result[256]; const lv_font_t *font=NULL;
+    bool complete=ui_text_prepare(text,size,result,sizeof(result),&font);
+    lv_obj_set_style_text_font(label,font,0);
+    if(strcmp(lv_label_get_text(label),result)!=0) lv_label_set_text(label,result);
     return complete;
 }

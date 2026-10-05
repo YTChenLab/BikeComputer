@@ -19,6 +19,16 @@ typedef enum
     UI_DEVICE_SPEED_CADENCE,
     UI_DEVICE_COUNT
 } ui_device_kind_t;
+/* Nonblocking UI-thread requests. Genuine connection state is supplied through
+ * set_status; accepting a request never changes a row to "connected". */
+typedef struct {
+    bool (*scan)(void *context);
+    bool (*connect)(ui_device_kind_t kind,void *context);
+    void *context;
+} ui_device_connection_port_t;
+void ui_devices_page_register_connection_port(const ui_device_connection_port_t *port);
+bool ui_devices_page_request_scan(void);
+bool ui_devices_page_request_selected(void);
 
 lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
                                  void *user_data);

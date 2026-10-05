@@ -70,6 +70,8 @@ typedef struct
     bool (*dispatch)(const ui_command_t *command, void *context);
     void (*tick)(uint32_t elapsed_ms, void *context);
     void *context;
+    /* Optional transport cancellation for an abandoned GNSS acquisition. */
+    void (*cancel)(uint32_t command_id, void *context);
 } ui_command_backend_t;
 
 typedef void (*ui_command_observer_cb_t)(const ui_command_result_t *result,
@@ -83,6 +85,8 @@ void ui_command_service_reset_backend(void);
 /* Thread-safe producer APIs. A zero id means the queue rejected the command. */
 uint32_t ui_command_service_submit(ui_command_type_t type, int32_t value,
                                    uint32_t timeout_ms);
+/* Only GNSS acquisition is abortable. Recording commands require an ACK. */
+bool ui_command_service_cancel_fix(uint32_t command_id);
 bool ui_command_service_complete(uint32_t command_id,
                                  ui_command_status_t status,
                                  int32_t error_code);

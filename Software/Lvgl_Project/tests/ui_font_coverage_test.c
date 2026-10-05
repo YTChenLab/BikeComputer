@@ -21,6 +21,8 @@ int main(void)
         }
     }
     lv_font_glyph_dsc_t navigation_descriptor;
+    for(uint32_t letter='A';letter<='Z';++letter)
+        assert(lv_font_get_glyph_dsc(&ui_font_misans_nav_letter_40,&navigation_descriptor,letter,0));
     for(const char *text="Z12345-";*text;++text)
         assert(lv_font_get_glyph_dsc(&ui_font_misans_zone_24,&navigation_descriptor,(uint8_t)*text,0));
     assert(lv_font_get_glyph_dsc(UI_FONT_NAV_STRIP_VALUE,

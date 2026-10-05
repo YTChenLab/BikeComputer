@@ -1,3 +1,4 @@
+#include "ui_pc_navigation.h"
 #include "ui_pc_services.h"
 #include "ui_pc_ride_history_storage.h"
 #include "ui_pc_preferences.h"
@@ -32,10 +33,7 @@ typedef struct
     ui_ride_data_t ride_data;
     uint32_t command_remaining_ms;
     uint32_t weather_remaining_ms;
-    uint32_t navigation_remaining_ms;
-    uint32_t navigation_tick;
     uint32_t ride_rng_state;
-    nav_model_t navigation;
     ui_command_t command;
     ui_state_adapter_snapshot_t device_state;
     bool gnss_busy;
@@ -201,23 +199,6 @@ static void publish_weather(ui_pc_services_context_t *pc)
     (void)ui_weather_model_submit(&weather);
 }
 
-static void publish_navigation(ui_pc_services_context_t *pc)
-{
-    nav_model_t *model = &pc->navigation;
-    pc->navigation_tick++;
-    model->speed = 25.0f +
-                   (float)(pc->navigation_tick % 47U) / 10.0f;
-    if(model->distance > 0.02f) model->distance -= 0.02f;
-    model->heading += 7.0f;
-    if(model->heading >= 360.0f) model->heading -= 360.0f;
-    model->latitude += 0.000015f;
-    model->longitude += 0.000010f;
-    if(model->ui_state < NAV_UI_REROUTING &&
-       model->direction_distance > 10U) {
-        model->direction_distance -= 5U;
-    }
-    ui_navigation_service_submit(model);
-}
 
 static bool request_gnss_fix(void *context)
 {
@@ -257,6 +238,14 @@ static bool dispatch_command(const ui_command_t *command, void *context)
     else
         pc->command_remaining_ms = UI_PC_COMMAND_DELAY_MS;
     return true;
+}
+
+static void cancel_command(uint32_t id,void *context)
+{
+    ui_pc_services_context_t *pc=context;
+    if(pc&&pc->command_busy&&pc->command.id==id&&pc->command.type==UI_COMMAND_GNSS_ACQUIRE_FIX){
+        pc->command_busy=false;pc->command_remaining_ms=0;
+    }
 }
 
 static void apply_command_state(ui_pc_services_context_t *pc)
@@ -457,12 +446,6 @@ static void tick(uint32_t elapsed_ms, void *context)
     }
     else pc->weather_remaining_ms -= elapsed_ms;
 
-    if(elapsed_ms >= pc->navigation_remaining_ms) {
-        publish_navigation(pc);
-        pc->navigation_remaining_ms = 900U;
-    }
-    else pc->navigation_remaining_ms -= elapsed_ms;
-
     bool gnss_result = pc->next_gnss_success;
     bool storage_result = pc->next_storage_success;
     bool gnss_was_busy = pc->gnss_busy;
@@ -484,6 +467,7 @@ static void tick(uint32_t elapsed_ms, void *context)
 void ui_pc_services_register(void)
 {
     ui_pc_preferences_register();
+    ui_pc_navigation_register();
     (void)ui_ride_history_repository_register_page_worker(request_page_worker,NULL);
     ui_navigation_service_set_demo_enabled(true);
     memset(&s_pc, 0, sizeof(s_pc));
@@ -492,7 +476,6 @@ void ui_pc_services_register(void)
     s_pc.next_command_success = true;
     s_pc.ride_data_remaining_ms = 1U;
     s_pc.weather_remaining_ms = 1U;
-    s_pc.navigation_remaining_ms = 1U;
     s_pc.ride_rng_state = (uint32_t)time(NULL) ^
                           (uint32_t)(uintptr_t)&s_pc;
     s_pc.device_state.gps_enabled = true;
@@ -503,22 +486,7 @@ void ui_pc_services_register(void)
     s_pc.device_state.bluetooth_connected = true;
     s_pc.device_state.sound_level = 62U;
     s_pc.device_state.brightness_level = 75U;
-    s_pc.navigation = (nav_model_t){
-        .demo = true,
-        .speed = 28.6f,
-        .distance = 12.6f,
-        .remaining_ascent_m = 156U,
-        .eta_hour = 11U,
-        .eta_min = 5U,
-        .latitude = 34.3416f,
-        .longitude = 108.9398f,
-        .heading = 36.0f,
-        .zoom = 14U,
-        .direction = NAV_DIRECTION_RIGHT,
-        .direction_distance = 420U,
-        .ui_state = NAV_UI_CRUISE,
-        .road_name = "科技二路"
-    };
+
     snprintf(s_pc.device_state.wifi_name,
              sizeof(s_pc.device_state.wifi_name), "%s", "Bike-SpeedView");
     snprintf(s_pc.device_state.bluetooth_name,
@@ -542,6 +510,7 @@ void ui_pc_services_register(void)
     ui_command_service_init();
     const ui_command_backend_t command_backend = {
         .dispatch = dispatch_command,
+        .cancel = cancel_command,
         .tick = command_tick,
         .context = &s_pc
     };

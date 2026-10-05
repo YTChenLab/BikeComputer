@@ -1,0 +1,254 @@
+{
+  "frames": [
+    {
+      "page": "nav_capsule_switch",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_capsule_reverse",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_standby",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_recent_empty",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_routes",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_resources_capsule_switch",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_resources_capsule_reverse",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_resources_refreshed",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preparing",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_starting",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_guidance",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_approach",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_near",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_cross_page",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_quick_actions",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_overview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_confirm",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_maps",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_storage",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_map_detail",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_roundabout",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_reroute_failed",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_rerouting",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_reroute_success",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_gnss_lost",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_arrival",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_arrival_map",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_saved_routes",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_transfer_unavailable",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    }
+  ],
+  "protected_sources": {
+    "src/ui/pages/ui_boot_motion.c": true,
+    "src/ui/pages/ui_boot_motion.h": true,
+    "src/ui/pages/ui_boot_page.c": true,
+    "src/ui/pages/ui_boot_page.h": true,
+    "src/ui/pages/ui_boot_prts_assets.c": true,
+    "src/ui/pages/ui_boot_prts_assets.h": true,
+    "src/ui/pages/ui_home_page.c": true,
+    "src/ui/pages/ui_profile_page.c": true
+  }
+}

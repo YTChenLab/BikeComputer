@@ -17,6 +17,7 @@ METRIC_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_met
 ZONE_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_zone_24.c"
 NUMBER_68_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_num_68.c"
 NAV_METRIC_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_nav_metric_40.c"
+NAV_LETTER_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_nav_letter_40.c"
 NAV_ACTION_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_nav_action_32.c"
 NAV_UNIT_OUTPUT_PATH = PROJECT_ROOT / "src" / "ui" / "fonts" / "ui_font_misans_nav_unit_16.c"
 UI_SOURCE_DIR = PROJECT_ROOT / "src" / "ui"
@@ -35,10 +36,10 @@ NAV_ACTION_FONT_SIZE = 32
 NAV_UNIT_FONT_NAME = "ui_font_misans_nav_unit_16"
 NAV_UNIT_FONT_SIZE = 16
 METRIC_SYMBOLS = "0123456789.-"
-NAV_METRIC_SYMBOLS = "0123456789.:-"
+NAV_METRIC_SYMBOLS = "0123456789.:-+"
 NAV_ACTION_SYMBOLS = (
     "左右转直行掉头轻微急进入环岛继续现在导航完成"
-    "已偏离路线正在重新规划信号较弱定位到达目的地本次"
+    "已偏离路线正在重新规划信号较弱定位到达目的地本次靠分叉出"
 )
 NAV_UNIT_SYMBOLS = "km/h"
 ASCII_SYMBOLS = "".join(chr(codepoint) for codepoint in range(32, 127))
@@ -63,7 +64,7 @@ def collect_runtime_ui_symbols() -> str:
     """Keep the font in sync with actual C string literals, not only a manual list."""
     literals = []
     for pattern in ("*.c", "*.h"):
-        for source_path in UI_SOURCE_DIR.rglob(pattern):
+        for source_path in (source_path for directory in (UI_SOURCE_DIR, PROJECT_ROOT / "src" / "services", PROJECT_ROOT / "src" / "platform") for source_path in directory.rglob(pattern)):
             if "fonts" in source_path.parts:
                 continue
             source = source_path.read_text(encoding="utf-8")
@@ -268,6 +269,8 @@ def main() -> None:
     generate_font(METRIC_FONT_PATH, NAV_METRIC_OUTPUT_PATH,
                   NAV_METRIC_FONT_NAME, NAV_METRIC_FONT_SIZE,
                   NAV_METRIC_SYMBOLS)
+    generate_font(METRIC_FONT_PATH, NAV_LETTER_OUTPUT_PATH,
+                  "ui_font_misans_nav_letter_40", 40, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     generate_font(FONT_PATH, NAV_ACTION_OUTPUT_PATH,
                   NAV_ACTION_FONT_NAME, NAV_ACTION_FONT_SIZE,
                   NAV_ACTION_SYMBOLS, fallback_name="ui_font_misans_ui_20")

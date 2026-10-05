@@ -55,6 +55,10 @@
 #define UI_PAGE_FOOTNOTE_Y                  (UI_PAGE_CONTENT_BOTTOM - UI_PAGE_FOOTNOTE_HEIGHT)
 #define UI_PAGE_LIST_WITH_FOOTNOTE_BOTTOM   (UI_PAGE_FOOTNOTE_Y - UI_TOKEN_SPACE_12)
 
+/* Five spacious rows fill the main settings/devices viewport. */
+#define UI_TOKEN_LIST_LARGE_ROW_HEIGHT     114
+#define UI_TOKEN_LIST_LARGE_ROW_GAP         12
+
 /* Shared Bottom Interaction Surface geometry. */
 #define UI_BOTTOM_SURFACE_X                 8
 #define UI_BOTTOM_SURFACE_BOTTOM_MARGIN    UI_PAGE_BOTTOM_MARGIN

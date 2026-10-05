@@ -99,7 +99,7 @@ static uint8_t focus_count(const ui_dock_template_t *view)
     if(view->type == UI_DOCK_TYPE_CONFIRM) return 2U;
     if(view->type == UI_DOCK_TYPE_MEDIA) return 4U;
     if(view->type == UI_DOCK_TYPE_ACTION ||
-       view->type == UI_DOCK_TYPE_NAVIGATION) return 1U;
+       view->type == UI_DOCK_TYPE_NAVIGATION) return view->type==UI_DOCK_TYPE_ACTION&&!lv_obj_has_flag(view->secondary_button,LV_OBJ_FLAG_HIDDEN)?2U:1U;
     return 0U;
 }
 
@@ -109,7 +109,7 @@ static lv_obj_t *focus_object(ui_dock_template_t *view, uint8_t index)
     if(view->type == UI_DOCK_TYPE_CONFIRM)
         return index == 0U ? view->secondary_button : view->primary_button;
     if(view->type == UI_DOCK_TYPE_ACTION ||
-       view->type == UI_DOCK_TYPE_NAVIGATION) return view->primary_button;
+       view->type == UI_DOCK_TYPE_NAVIGATION) return index==1?view->secondary_button:view->primary_button;
     if(view->type == UI_DOCK_TYPE_MEDIA) {
         if(index == 0U) return view->decrement_button;
         if(index == 1U) return view->toggle_button;
@@ -125,6 +125,7 @@ static ui_dock_interaction_t focus_interaction(const ui_dock_template_t *view,
     if(view->type == UI_DOCK_TYPE_CONFIRM)
         return index == 0U ? UI_DOCK_INTERACTION_SECONDARY :
                              UI_DOCK_INTERACTION_PRIMARY;
+    if(view->type==UI_DOCK_TYPE_ACTION&&index==1)return UI_DOCK_INTERACTION_SECONDARY;
     if(view->type == UI_DOCK_TYPE_MEDIA) {
         if(index == 0U) return UI_DOCK_INTERACTION_DECREMENT;
         if(index == 1U) return UI_DOCK_INTERACTION_TOGGLE;
@@ -137,6 +138,12 @@ static ui_dock_interaction_t focus_interaction(const ui_dock_template_t *view,
 static void apply_focus(ui_dock_template_t *view)
 {
     uint8_t count = focus_count(view);
+    if(s_view.focus_index>=count)s_view.focus_index=0;
+    if(count==2&&lv_obj_has_state(focus_object(view,s_view.focus_index),LV_STATE_DISABLED))s_view.focus_index=1-s_view.focus_index;
+    if(view->liquid.initialized){
+        for(unsigned i=0;i<count;i++)lv_obj_set_style_border_width(focus_object(view,i),0,0);
+        view->liquid.active=true;ui_liquid_selection_select(&view->liquid,s_view.focus_index,true);return;
+    }
     for(uint8_t i = 0; i < count; i++) {
         lv_obj_t *object = focus_object(view, i);
         if(object == NULL) continue;
@@ -166,6 +173,7 @@ static void control_event_cb(lv_event_t *event)
         return;
     }
     if(code != LV_EVENT_CLICKED && code != LV_EVENT_VALUE_CHANGED) return;
+    if(lv_obj_has_state(target,LV_STATE_DISABLED))return;
 
     const ui_dock_card_t *card = ui_dock_current();
     if(card == NULL) return;
@@ -360,6 +368,7 @@ bool ui_dock_view_handle_input(ui_input_event_t input)
         return true;
     }
     if(input == UI_INPUT_ENCODER_PRESS) {
+        if(lv_obj_has_state(focus_object(view,s_view.focus_index),LV_STATE_DISABLED))return true;
         (void)ui_dock_invoke(card->id,
                              focus_interaction(view, s_view.focus_index),
                              card->value);

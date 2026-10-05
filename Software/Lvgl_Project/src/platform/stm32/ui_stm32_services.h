@@ -8,6 +8,8 @@
 #include "ui/models/ui_weather_model.h"
 #include "services/ui_command_service.h"
 #include "services/ui_navigation_service.h"
+#include "services/ui_nav_session.h"
+#include "services/ui_nav_map_provider.h"
 #include "services/ui_ride_history_repository.h"
 #include "services/ui_state_adapter.h"
 #include "services/ui_preferences.h"
@@ -49,6 +51,12 @@ bool ui_stm32_services_submit_state(
     const ui_state_adapter_snapshot_t *snapshot,
     ui_state_adapter_mask_t fields);
 bool ui_stm32_services_submit_input(const ui_input_message_t *message);
+/* Register task-owned async navigation/map ports before ui_app_init(). */
+bool ui_stm32_services_register_navigation(const ui_nav_backend_t *navigation,
+    const ui_nav_map_backend_t *maps);
+bool ui_stm32_services_complete_navigation(const ui_nav_result_t *result);
+bool ui_stm32_services_submit_nav_session(const ui_nav_session_t *session);
+bool ui_stm32_services_submit_map_frame(const ui_nav_map_frame_t *frame);
 void ui_stm32_services_sample_inputs(uint32_t pressed_mask, int32_t encoder_delta,
                                     uint32_t now_ms);
 /* Input-task setup only. Set entries to UI_INPUT_COUNT to disable them. */

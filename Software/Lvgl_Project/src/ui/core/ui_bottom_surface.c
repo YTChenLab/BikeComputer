@@ -20,6 +20,8 @@ typedef struct
     lv_obj_t *slot;
     lv_obj_t *dynamic_host;
     lv_obj_t *interaction_host;
+    lv_obj_t *page_host;
+    int32_t page_height;
     ui_bottom_surface_entry_t current;
     ui_bottom_surface_entry_t restore[UI_BOTTOM_SURFACE_STACK_MAX];
     ui_bottom_surface_observer_cb_t observer;
@@ -140,9 +142,13 @@ static void apply_hosts(bool animated)
     }
     lv_obj_t *next =
         s_surface.current.mode == UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE ?
-        s_surface.dynamic_host : s_surface.interaction_host;
-    lv_obj_t *previous = next == s_surface.dynamic_host ?
-                         s_surface.interaction_host : s_surface.dynamic_host;
+        (s_surface.page_height?s_surface.page_host:s_surface.dynamic_host) : s_surface.interaction_host;
+    lv_obj_t *previous = next == s_surface.interaction_host ? s_surface.dynamic_host : s_surface.interaction_host;
+    if(s_surface.page_host) {
+        if(next==s_surface.page_host)lv_obj_clear_flag(s_surface.page_host,LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_add_flag(s_surface.page_host,LV_OBJ_FLAG_HIDDEN);
+    }
+    if(next==s_surface.page_host)lv_obj_add_flag(s_surface.dynamic_host,LV_OBJ_FLAG_HIDDEN);
     /* Never cross-fade these full-size hosts. LVGL promotes opacity and
      * transform effects to an ARGB8888 draw layer; a 441 x 206 host alone
      * costs about 355 KiB and exhausts the MCU-sized heap. Geometry motion
@@ -195,8 +201,10 @@ static void apply_geometry(bool animated)
     ui_bottom_surface_size_t visual_size = s_surface.current.size;
     if(s_surface.mounted && visual_size == UI_BOTTOM_SURFACE_SIZE_MINI)
         visual_size = UI_BOTTOM_SURFACE_SIZE_NORMAL;
-    int32_t height = surface_height(visual_size);
-    int32_t y = UI_BOTTOM_SURFACE_NORMAL_HEIGHT - height;
+    int32_t height = s_surface.current.mode==UI_BOTTOM_SURFACE_DYNAMIC_CARD_MODE && s_surface.page_height ? s_surface.page_height : surface_height(visual_size);
+    if(s_surface.mounted&&s_surface.slot)lv_obj_update_layout(s_surface.slot);
+    int32_t slot_height=s_surface.mounted&&s_surface.slot?lv_obj_get_height(s_surface.slot):UI_BOTTOM_SURFACE_NORMAL_HEIGHT;
+    int32_t y = slot_height - height;
     bool visible = should_be_visible();
     if(!visible) {
         if(animated &&
@@ -266,6 +274,7 @@ static void apply_state(bool animated)
 {
     apply_hosts(animated);
     apply_dynamic_focus();
+    lv_obj_set_style_radius(s_surface.root,s_surface.page_height?24:UI_TOKEN_RADIUS_SURFACE,0);
     apply_geometry(animated);
     emit_state();
 }
@@ -315,6 +324,24 @@ bool ui_bottom_surface_create(lv_obj_t *parent)
     s_surface.created = true;
     lv_obj_add_flag(s_surface.root, LV_OBJ_FLAG_HIDDEN);
     return true;
+}
+
+bool ui_bottom_surface_set_page_content(lv_obj_t *content,int32_t height,bool animated)
+{
+    if(!s_surface.created)return false;
+    if(content && (height<96 || height>600 || !lv_obj_is_valid(content)))return false;
+    if(content&&!s_surface.page_host){
+        s_surface.page_host=lv_obj_create(s_surface.root);lv_obj_remove_style_all(s_surface.page_host);
+        lv_obj_set_size(s_surface.page_host,LV_PCT(100),LV_PCT(100));
+        lv_obj_clear_flag(s_surface.page_host,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    }
+    if(!content&&s_surface.page_host)lv_obj_add_flag(s_surface.page_host,LV_OBJ_FLAG_HIDDEN);
+    s_surface.page_height=content?height:0;s_surface.dynamic_content_visible=content!=NULL;
+    if(content) {
+        if(lv_obj_get_parent(content)!=s_surface.page_host)lv_obj_set_parent(content,s_surface.page_host);
+        lv_obj_set_pos(content,0,0);lv_obj_set_size(content,LV_PCT(100),LV_PCT(100));
+    }
+    apply_state(animated);return true;
 }
 
 bool ui_bottom_surface_is_created(void)

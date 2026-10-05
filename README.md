@@ -15,19 +15,21 @@ BikeComputer/
 
 ## 当前版本
 
-- BikeComputer LVGL UI 工程版本：`v1.4.0`
+- BikeComputer LVGL UI 工程版本：`v1.5.0`
 - 内置 LVGL 源码版本：`9.3.0-dev`
 - PC 构建环境：Anaconda/MSYS2 UCRT64 + GCC + Ninja + CMake
 
-工程版本与 LVGL 库版本是两个不同概念。仓库标签用于标识 BikeComputer 产品工程版本。
+工程版本与 LVGL 库版本是两个不同概念。当前 `v1.x` 标签用于归档 LVGL UI 软件版本，不表示 STM32 固件、硬件和整机已经完成相同版本的验收。
 
 ## 版本规则
 
 - 小型修复：`1.0.0 -> 1.0.1 -> 1.0.2`
 - 向后兼容的较大功能更新：`1.0.x -> 1.1.0 -> 1.2.0 -> 1.3.0`
-- 整套 UI 架构或视觉系统升级：`1.x -> 2.0.0`
+- 不兼容的接口或数据格式变更：`1.x -> 2.0.0`；视觉调整本身不必升级主版本
 - Git 标签统一使用 `vMAJOR.MINOR.PATCH`，例如 `v1.0.0`
 
 LVGL UI 的构建、运行、输入映射和目录说明见 [Software/Lvgl_Project/README.md](Software/Lvgl_Project/README.md)。
 
-当前版本迭代日志与验证边界见 [v1.4.0 发布记录](Software/Lvgl_Project/docs/V1.4.0_RELEASE_NOTES.md)。
+当前版本迭代日志与验证边界见 [v1.5.0 发布记录](Software/Lvgl_Project/docs/V1.5.0_RELEASE_NOTES.md)。
+
+开发、主分支集成、Git LFS 地图资源和标签发布流程见 [版本发布流程](Software/Lvgl_Project/docs/RELEASE_WORKFLOW.md)。

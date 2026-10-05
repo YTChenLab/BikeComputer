@@ -1,0 +1,111 @@
+{
+  "format": "BTIL0002",
+  "name": "西安彩色离线地图",
+  "bbox_lon_lat": [
+    108.78,
+    34.12,
+    109.15,
+    34.46
+  ],
+  "detail_bbox_lon_lat": [
+    108.87,
+    34.2,
+    109.05,
+    34.37
+  ],
+  "levels_mpp": [
+    0.375,
+    0.75,
+    1.5,
+    3.0,
+    6.0,
+    12.0,
+    24.0,
+    48.0,
+    96.0
+  ],
+  "tile_size": 256,
+  "tiles": 8331,
+  "bytes": 89284362,
+  "palette": {
+    "background": "#1B272C",
+    "building": "#3C505A",
+    "building_edge": "#526874",
+    "commercial": "#554D3D",
+    "industrial": "#494555",
+    "park": "#285B44",
+    "forest": "#244D39",
+    "grass": "#345E42",
+    "water": "#235B79",
+    "water_edge": "#367697",
+    "major": "#D4C49A",
+    "secondary": "#AFBFC4",
+    "street": "#80989F",
+    "cycleway": "#53C8B1",
+    "path": "#608A7F",
+    "casing": "#162125",
+    "label": "#F3F4ED",
+    "muted": "#A9BABB"
+  },
+  "graph": {
+    "nodes": 126871,
+    "directed_edges": 213230,
+    "names": 2133,
+    "bytes": 5544128,
+    "profile": "conservative bicycle access; no turn-restriction engine"
+  },
+  "source_sha256": "95b5bc401cb16ec369cab2981492a4dd3577627e13be753be0c5b8e5d80741f4",
+  "detail_sha256": "2076a0b3d7d96803d4ce8a796ef2fe117f887bd2f246bb360615dba6038c9375",
+  "osm_timestamp": [
+    "2026-07-24T11:04:51Z",
+    "2026-06-01T08:52:28Z",
+    "2026-10-03T16:30:49Z"
+  ],
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "build_seconds": 57.99,
+  "limitations": [
+    "Original OSM completeness varies; no invented lane or traffic-light data.",
+    "Highest-resolution tiles cover the detail rectangle; other areas use next level.",
+    "Routing is conservative road-graph navigation, not a certified commercial engine."
+  ],
+  "coordinate_system": "WGS84",
+  "highest_resolution_bbox_lon_lat": [
+    108.92,
+    34.25,
+    108.98,
+    34.28
+  ],
+  "poi_source_sha256": "775225ec42155fbd284b195f0d2a2754b7a6581dbe3e9ef670186fcebfe6538c",
+  "named_poi_count": 907,
+  "poi_kind_counts": {
+    "4": 196,
+    "5": 97,
+    "6": 252,
+    "3": 191,
+    "7": 14,
+    "1": 157
+  },
+  "resolution_1_5_bbox_lon_lat": [
+    108.87,
+    34.2,
+    109.05,
+    34.37
+  ],
+  "base_building_data_bbox_lon_lat": [
+    108.92,
+    34.25,
+    108.98,
+    34.28
+  ],
+  "supplemental_source_bbox_lon_lat": [
+    108.87,
+    34.2,
+    108.93,
+    34.256667
+  ],
+  "label_layer": "upright cached labels, screen-space collision avoidance",
+  "polygon_layer": "closed ways and multipolygon outer rings with holes",
+  "package_sha256": "1dab02f8525599a7d86373833d3cb7fc533bd3ff22552fdc6d371f103d94d9fd",
+  "graph_sha256": "b5e75e69c50646c4527aeb3f515efd74c324299ed7b6630f3fd3400691df5cd4"
+}

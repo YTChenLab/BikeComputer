@@ -7,14 +7,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NAV_DATA_COLUMN_W       153
-#define NAV_DATA_VALUE_TOP        5
-#define NAV_DATA_VALUE_H         47
-#define NAV_DATA_TITLE_TOP       58
-#define NAV_DATA_TITLE_H         28
+#define NAV_DATA_COLUMN_W       154
+#define NAV_DATA_VALUE_TOP       28
+#define NAV_DATA_VALUE_H         42
+#define NAV_DATA_TITLE_TOP        4
+#define NAV_DATA_TITLE_H         24
 #define NAV_DATA_UNIT_GAP         4
 #define NAV_DATA_DIVIDER_TOP     14
-#define NAV_DATA_DIVIDER_H       64
+#define NAV_DATA_DIVIDER_H       52
 
 static lv_obj_t *plain_obj(lv_obj_t *parent)
 {
@@ -77,14 +77,12 @@ void ui_nav_data_strip_create(ui_nav_data_strip_t *strip, lv_obj_t *parent)
     strip->root = plain_obj(parent);
     lv_obj_set_pos(strip->root, UI_NAV_PAGE_MARGIN, UI_NAV_DATA_TOP);
     lv_obj_set_size(strip->root, UI_NAV_DATA_WIDTH, UI_NAV_DATA_HEIGHT);
-    lv_obj_set_style_bg_color(strip->root, lv_color_hex(0x050706), 0);
+    lv_obj_set_style_bg_color(strip->root, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(strip->root, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(strip->root, lv_color_hex(0x303431), 0);
     lv_obj_set_style_border_opa(strip->root, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(strip->root, 1, 0);
-    lv_obj_set_style_border_side(strip->root,
-                                 LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM,
-                                 0);
+    lv_obj_set_style_radius(strip->root,12,0);
 
     create_group(strip, 0, 0, NAV_DATA_COLUMN_W, "实时速度", "km/h");
     create_group(strip, 1, NAV_DATA_COLUMN_W, NAV_DATA_COLUMN_W + 1,
@@ -109,9 +107,12 @@ void ui_nav_data_strip_update(ui_nav_data_strip_t *strip,
                               const nav_model_t *model)
 {
     if(strip == NULL || strip->root == NULL || model == NULL) return;
-    lv_label_set_text_fmt(strip->values[0], "%.1f", (double)model->speed);
-    lv_label_set_text_fmt(strip->values[1], "%.1f", (double)model->distance);
-    lv_label_set_text_fmt(strip->values[2], "%02u:%02u",
+    if(!model->session_bound||model->speed_valid) lv_label_set_text_fmt(strip->values[0], "%.1f", (double)model->speed);
+    else lv_label_set_text(strip->values[0],"--");
+    if(!model->session_bound||model->distance_valid) lv_label_set_text_fmt(strip->values[1], "%.1f", (double)model->distance);
+    else lv_label_set_text(strip->values[1],"--");
+    if(!model->session_bound||model->eta_valid) lv_label_set_text_fmt(strip->values[2], "%02u:%02u",
                           (unsigned)model->eta_hour,
                           (unsigned)model->eta_min);
+    else lv_label_set_text(strip->values[2],"--:--");
 }

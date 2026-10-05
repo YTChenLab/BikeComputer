@@ -2,6 +2,8 @@
 #include "../core/ui_text.h"
 #include "../core/ui_sound.h"
 #include "../core/ui_motion.h"
+#include "../components/ui_liquid_selection.h"
+#include "../components/navigation/ui_nav_visual.h"
 
 #include "ui_page_common.h"
 #include "../core/ui_colors.h"
@@ -14,7 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define HOME_ACTION_COUNT 11
+#define HOME_ACTION_COUNT 9
 #define HOME_ENTER_COMPONENT_COUNT 10
 #define HOME_ENTER_DURATION_MS 360U
 #define HOME_ENTER_STEP_MS 60U
@@ -22,6 +24,7 @@
 typedef struct
 {
     lv_obj_t *screen;
+    ui_liquid_selection_t selection;lv_obj_t *refresh_icon;
     ui_status_bar_t status;
     lv_obj_t *actions[HOME_ACTION_COUNT];
     ui_page_action_t action_ids[HOME_ACTION_COUNT];
@@ -44,7 +47,7 @@ typedef struct
     void *user_data;
     int32_t model_subscription;
     int8_t focus_index;
-    bool active;
+    bool active, refreshing;
     lv_obj_t *enter_components[HOME_ENTER_COMPONENT_COUNT];
     uint8_t enter_groups[HOME_ENTER_COMPONENT_COUNT];
     uint8_t enter_count;
@@ -53,6 +56,20 @@ typedef struct
 } ui_home_context_t;
 
 static ui_home_context_t s_home;
+static void update_focus(void);
+static void refresh_rotation(void *object,int32_t value){lv_obj_set_style_transform_rotation(object,value,0);}
+static void refresh_done(lv_anim_t *animation)
+{
+    (void)animation;s_home.refreshing=false;
+    lv_obj_remove_state(s_home.actions[1],LV_STATE_DISABLED);
+}
+bool ui_home_page_refresh_feedback(void)
+{
+    if(s_home.refreshing)return false;
+    s_home.refreshing=true;lv_obj_add_state(s_home.actions[1],LV_STATE_DISABLED);
+    ui_motion_value(s_home.refresh_icon,refresh_rotation,0,3600,480,lv_anim_path_ease_in_out,refresh_done,NULL);
+    return true;
+}
 
 static void register_enter_component(lv_obj_t *object, uint8_t group)
 {
@@ -154,17 +171,6 @@ static lv_obj_t *home_card(lv_obj_t *parent, int32_t x, int32_t y,
     return card;
 }
 
-static lv_obj_t *home_hit(lv_obj_t *parent, int32_t x, int32_t y,
-                          int32_t width, int32_t height)
-{
-    lv_obj_t *hit = ui_page_box(parent, x, y, width, height,
-                                 UI_TOKEN_COLOR_SURFACE_OUTLINE, 0);
-    lv_obj_set_style_bg_opa(hit, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(hit, 0, 0);
-    lv_obj_set_style_border_opa(hit, LV_OPA_TRANSP, 0);
-    return hit;
-}
-
 static lv_obj_t *home_line(lv_obj_t *parent,
                            const lv_point_precise_t *points,
                            uint32_t count, lv_color_t color,
@@ -184,13 +190,11 @@ static void home_action_event(lv_event_t *event)
     if(s_home.entering) return;
     lv_obj_t *object = lv_event_get_target(event);
     lv_event_code_t code = lv_event_get_code(event);
-    if(code == LV_EVENT_PRESSED) { ui_motion_button_press(object); return; }
-    if(code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
-        ui_motion_button_release(object); return;
-    }
-    if(code != LV_EVENT_CLICKED || s_home.callback == NULL) return;
+    if(code == LV_EVENT_PRESSED) return;
+    if(code != LV_EVENT_CLICKED || s_home.callback == NULL || lv_obj_has_state(object,LV_STATE_DISABLED)) return;
     ui_page_action_t action = (ui_page_action_t)(uintptr_t)
                               lv_event_get_user_data(event);
+    for(unsigned i=0;i<HOME_ACTION_COUNT;i++)if(s_home.actions[i]==object){s_home.focus_index=i;update_focus();break;}
     ui_sound_play(UI_SFX_PRESS);
     s_home.callback(action, s_home.user_data);
 }
@@ -209,21 +213,7 @@ static void make_action(lv_obj_t *object, uint8_t index,
 
 static void update_focus(void)
 {
-    for(uint8_t index = 0; index < HOME_ACTION_COUNT; index++) {
-        bool focused = s_home.active && s_home.focus_index == (int8_t)index;
-        lv_obj_set_style_border_color(s_home.actions[index],
-                                      focused ? UI_TOKEN_COLOR_ACCENT :
-                                                UI_TOKEN_COLOR_SURFACE_OUTLINE, 0);
-        lv_obj_set_style_border_width(s_home.actions[index],
-                                      focused ? UI_TOKEN_BORDER_FOCUS :
-                                                UI_TOKEN_BORDER_THIN, 0);
-        lv_obj_set_style_shadow_color(s_home.actions[index],
-                                      UI_TOKEN_COLOR_ACCENT, 0);
-        lv_obj_set_style_shadow_width(s_home.actions[index],
-                                      focused ? 8 : 0, 0);
-        lv_obj_set_style_shadow_opa(s_home.actions[index],
-                                    focused ? LV_OPA_30 : LV_OPA_TRANSP, 0);
-    }
+    if(s_home.focus_index>=0)ui_liquid_selection_select(&s_home.selection,s_home.focus_index,true);
 }
 
 static void create_avatar(lv_obj_t *card)
@@ -240,10 +230,11 @@ static void create_avatar(lv_obj_t *card)
 
 static void create_bike_icon(lv_obj_t *parent)
 {
+    lv_obj_t *plate=home_card(parent,10,12,64,64);lv_obj_set_style_bg_color(plate,lv_color_hex(0x282828),0);parent=plate;
     lv_obj_t *left = ui_page_box(parent, 15, 31, 19, 19,
-                                 UI_TOKEN_COLOR_CANVAS, 2);
+                                 UI_TOKEN_COLOR_ACCENT, 2);
     lv_obj_t *right = ui_page_box(parent, 46, 31, 19, 19,
-                                  UI_TOKEN_COLOR_CANVAS, 2);
+                                  UI_TOKEN_COLOR_ACCENT, 2);
     lv_obj_set_style_radius(left, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_radius(right, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(left, LV_OPA_TRANSP, 0);
@@ -251,8 +242,8 @@ static void create_bike_icon(lv_obj_t *parent)
     lv_obj_t *frame = home_line(parent, s_bike_frame_points,
                                 sizeof(s_bike_frame_points) /
                                 sizeof(s_bike_frame_points[0]),
-                                UI_TOKEN_COLOR_CANVAS, 3, LV_OPA_COVER);
-    lv_obj_set_pos(frame, 19, 18);
+                                UI_TOKEN_COLOR_ACCENT, 3, LV_OPA_COVER);
+    lv_obj_set_pos(left,5,25);lv_obj_set_pos(right,36,25);lv_obj_set_pos(frame,9,12);
 }
 
 static void create_lifetime_decoration(lv_obj_t *card)
@@ -448,6 +439,12 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
     home_label(lifetime, 354, 17, 92, "LIFETIME",
                &lv_font_montserrat_12, UI_TOKEN_COLOR_TEXT_SECONDARY,
                LV_TEXT_ALIGN_RIGHT);
+    lv_obj_t *refresh=home_card(lifetime,390,47,56,48);
+    lv_obj_set_style_radius(refresh,24,0);
+    s_home.refresh_icon=home_label(refresh,0,0,56,LV_SYMBOL_REFRESH,&lv_font_montserrat_22,UI_TOKEN_COLOR_TEXT_PRIMARY,LV_TEXT_ALIGN_CENTER);
+    ui_align_label_center(s_home.refresh_icon);lv_obj_set_style_transform_pivot_x(s_home.refresh_icon,28,0);
+    lv_obj_set_style_transform_pivot_y(s_home.refresh_icon,11,0);
+    make_action(refresh,1,UI_PAGE_ACTION_HOME_REFRESH);
     s_home.total_distance = home_label(lifetime, 18, 43, 264, "",
                                        &ui_font_misans_metric_60,
                                        UI_TOKEN_COLOR_TEXT_PRIMARY,
@@ -457,9 +454,7 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
     home_label(lifetime, 52, 129, 100, "TOTAL TIME",
                &lv_font_montserrat_12, UI_TOKEN_COLOR_TEXT_SECONDARY,
                LV_TEXT_ALIGN_LEFT);
-    home_label(lifetime, 18, 126, 28, LV_SYMBOL_REFRESH,
-               &lv_font_montserrat_22, UI_TOKEN_COLOR_TEXT_SECONDARY,
-               LV_TEXT_ALIGN_CENTER);
+    ui_nav_icon(lifetime,18,126,28,NAV_ICON_CLOCK,0xAAAAAA);
     s_home.total_time = home_label(lifetime, 52, 147, 128, "",
                                    &lv_font_montserrat_16,
                                    UI_TOKEN_COLOR_TEXT_PRIMARY,
@@ -477,33 +472,23 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
                                      UI_TOKEN_COLOR_TEXT_PRIMARY,
                                      LV_TEXT_ALIGN_LEFT);
 
-    /* Keep the three lifetime affordances independent for touch and encoder
-     * routing while leaving the reference layout unchanged. */
-    lv_obj_t *lifetime_hit = home_hit(lifetime, 8, 8, 300, 112);
-    make_action(lifetime_hit, 1, UI_PAGE_ACTION_HISTORY);
-    lv_obj_t *time_hit = home_hit(lifetime, 8, 120, 184, 54);
-    make_action(time_hit, 2, UI_PAGE_ACTION_HISTORY);
-    lv_obj_t *ascent_hit = home_hit(lifetime, 196, 120, 250, 54);
-    make_action(ascent_hit, 3, UI_PAGE_ACTION_HISTORY);
-
-
     lv_obj_t *start = ui_page_box(s_home.screen, 8, 350, 250, 88,
                                   UI_TOKEN_COLOR_ACCENT, 0);
     lv_obj_set_style_radius(start, UI_TOKEN_RADIUS_SMALL, 0);
-    lv_obj_set_style_bg_color(start, UI_TOKEN_COLOR_ACCENT, 0);
+    lv_obj_set_style_bg_color(start, UI_TOKEN_COLOR_SURFACE, 0);
     lv_obj_set_style_bg_opa(start, LV_OPA_COVER, 0);
     create_bike_icon(start);
     lv_obj_t *start_title = home_label(start, 82, 22, 130, "开始骑行", UI_FONT_PAGE_TEXT,
-               UI_TOKEN_COLOR_CANVAS, LV_TEXT_ALIGN_LEFT);
+               UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
     lv_obj_t *start_subtitle = home_label(start, 82, 52, 132, "START RIDE",
-               &lv_font_montserrat_12, UI_TOKEN_COLOR_CANVAS,
+               &lv_font_montserrat_12, UI_TOKEN_COLOR_TEXT_SECONDARY,
                LV_TEXT_ALIGN_LEFT);
     ui_align_text_pair(start, start_title, start_subtitle, 82, 130, 4);
     lv_obj_t *start_arrow = home_label(start, 218, 29, 24, LV_SYMBOL_RIGHT,
-               &lv_font_montserrat_22, UI_TOKEN_COLOR_CANVAS,
+               &lv_font_montserrat_22, UI_TOKEN_COLOR_TEXT_PRIMARY,
                LV_TEXT_ALIGN_CENTER);
     ui_align_center_y(start_arrow, 218);
-    make_action(start, 4, UI_PAGE_ACTION_START_RIDE);
+    make_action(start, 2, UI_PAGE_ACTION_START_RIDE);
     register_enter_component(start, 3);
 
     lv_obj_t *navigation = home_card(s_home.screen, 266, 350, 206, 88);
@@ -511,7 +496,7 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
                &lv_font_montserrat_28, UI_TOKEN_COLOR_ACCENT,
                LV_TEXT_ALIGN_CENTER);
     ui_align_center_y(nav_icon, 16);
-    lv_obj_t *nav_title = home_label(navigation, 64, 22, 112, "开始导航", UI_FONT_PAGE_TEXT,
+    lv_obj_t *nav_title = home_label(navigation, 64, 22, 112, "导航", UI_FONT_PAGE_TEXT,
                UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
     lv_obj_t *nav_subtitle = home_label(navigation, 64, 52, 120, "NAVIGATION",
                &lv_font_montserrat_12, UI_TOKEN_COLOR_TEXT_SECONDARY,
@@ -521,7 +506,7 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
                &lv_font_montserrat_22, UI_TOKEN_COLOR_TEXT_PRIMARY,
                LV_TEXT_ALIGN_CENTER);
     ui_align_center_y(nav_arrow, 174);
-    make_action(navigation, 5, UI_PAGE_ACTION_START_NAVIGATION);
+    make_action(navigation, 3, UI_PAGE_ACTION_START_NAVIGATION);
     register_enter_component(navigation, 3);
 
     lv_obj_t *recent = home_card(s_home.screen, 8, 448, 464, 126);
@@ -560,25 +545,27 @@ lv_obj_t *ui_home_page_create(ui_page_action_cb_t callback,
                                      UI_FONT_PAGE_TEXT,
                                      UI_TOKEN_COLOR_TEXT_PRIMARY,
                                      LV_TEXT_ALIGN_LEFT);
-    make_action(recent, 6, UI_PAGE_ACTION_RECENT_RIDE_DETAIL);
+    make_action(recent, 4, UI_PAGE_ACTION_RECENT_RIDE_DETAIL);
 
     register_enter_component(create_menu_row(s_home.screen, 584, LV_SYMBOL_LIST,
-                    "历史记录", "RIDE HISTORY", 7,
+                    "历史记录", "RIDE HISTORY", 5,
                     UI_PAGE_ACTION_HISTORY), 5);
     register_enter_component(create_menu_row(s_home.screen, 644, LV_SYMBOL_WIFI,
-                    "设备与传感器", "DEVICES & SENSORS", 8,
+                    "设备与传感器", "DEVICES & SENSORS", 6,
                     UI_PAGE_ACTION_DEVICES), 6);
     register_enter_component(create_menu_row(s_home.screen, 704, "STAR",
-                    "收藏路线", "SAVED ROUTES", 9,
+                    "收藏路线", "SAVED ROUTES", 7,
                     UI_PAGE_ACTION_SAVED_ROUTES), 7);
     register_enter_component(create_menu_row(s_home.screen, UI_PAGE_ACTION_Y, LV_SYMBOL_SETTINGS,
-                    "系统设置", "SYSTEM SETTINGS", 10,
+                    "系统设置", "SYSTEM SETTINGS", 8,
                     UI_PAGE_ACTION_SETTINGS), 8);
 
     ui_home_data_t data;
     if(ui_home_data_model_get(&data)) update_data(&data);
     s_home.model_subscription = ui_home_data_model_subscribe(
         home_data_changed, NULL);
+    ui_liquid_selection_init(&s_home.selection,s_home.screen,false,NULL);
+    for(unsigned i=0;i<HOME_ACTION_COUNT;i++)ui_liquid_selection_add(&s_home.selection,s_home.actions[i]);
     update_focus();
     return s_home.screen;
 }
@@ -588,6 +575,7 @@ void ui_home_page_set_active(bool active)
     if(!active) ui_home_page_cancel_enter();
     s_home.active = active;
     s_home.focus_index = active ? 0 : -1;
+    ui_liquid_selection_set_active(&s_home.selection,active);
     update_focus();
 }
 
@@ -609,7 +597,7 @@ bool ui_home_page_handle_input(ui_input_event_t input)
     }
     if(input == UI_INPUT_ENCODER_PRESS && s_home.focus_index >= 0 &&
        s_home.focus_index < HOME_ACTION_COUNT) {
-        if(s_home.callback != NULL) {
+        if(s_home.callback != NULL && !lv_obj_has_state(s_home.actions[s_home.focus_index],LV_STATE_DISABLED)) {
             ui_sound_play(UI_SFX_PRESS);
             s_home.callback(s_home.action_ids[s_home.focus_index],
                             s_home.user_data);

@@ -66,6 +66,7 @@ LV_FONT_DECLARE(ui_font_misans_ui_20);
 LV_FONT_DECLARE(ui_font_misans_ui_24);
 LV_FONT_DECLARE(ui_font_misans_zone_24);
 LV_FONT_DECLARE(ui_font_misans_nav_metric_40);
+LV_FONT_DECLARE(ui_font_misans_nav_letter_40);
 LV_FONT_DECLARE(ui_font_misans_nav_action_32);
 LV_FONT_DECLARE(ui_font_misans_nav_unit_16);
 

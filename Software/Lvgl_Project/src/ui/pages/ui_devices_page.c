@@ -6,9 +6,11 @@
 #include "../core/ui_sound.h"
 #include "../core/ui_text.h"
 #include "../core/ui_theme.h"
+#include "../components/ui_liquid_selection.h"
 #include "../design/ui_design_tokens.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 #define DEVICE_ROW_COUNT (UI_DEVICE_COUNT + 1U) /* scan + five device types */
 #define DEVICE_SCAN_ROW  0U
@@ -20,6 +22,8 @@ typedef struct
     lv_obj_t *feedback;
     lv_obj_t *rows[DEVICE_ROW_COUNT];
     lv_obj_t *status[UI_DEVICE_COUNT];
+    lv_obj_t *pairs[DEVICE_ROW_COUNT],*trailing[DEVICE_ROW_COUNT],*icons[DEVICE_ROW_COUNT];
+    ui_liquid_selection_t liquid;bool touch_scrolling;
     ui_status_bar_t status_bar;
     ui_page_action_cb_t callback;
     void *user_data;
@@ -28,6 +32,21 @@ typedef struct
 } devices_context_t;
 
 static devices_context_t s_devices;
+static ui_device_connection_port_t s_connection;
+void ui_devices_page_register_connection_port(const ui_device_connection_port_t *port)
+{s_connection=port?*port:(ui_device_connection_port_t){0};}
+bool ui_devices_page_request_scan(void)
+{return s_connection.scan&&s_connection.scan(s_connection.context);}
+bool ui_devices_page_request_selected(void)
+{unsigned kind=ui_devices_page_selected_device();return kind<UI_DEVICE_COUNT&&s_connection.connect&&s_connection.connect((ui_device_kind_t)kind,s_connection.context);}
+static void device_layout(lv_obj_t *object,int width,int height)
+{
+    (void)height;unsigned i=(unsigned)(uintptr_t)lv_obj_get_user_data(object);
+    if(i>=DEVICE_ROW_COUNT)return;
+    if(s_devices.pairs[i])lv_obj_set_width(s_devices.pairs[i],width-(i?202:164));
+    if(i){ui_align_center_y(s_devices.status[i-1],width-124);ui_align_center_y(s_devices.trailing[i],width-22);}
+    else ui_align_center_y(s_devices.trailing[i],width-78);
+}
 
 static const char *s_titles[UI_DEVICE_COUNT] = {
     "手机", "心率带", "手表", "功率计", "速度 / 踏频"
@@ -73,34 +92,19 @@ static lv_obj_t *card(lv_obj_t *parent, int32_t x, int32_t y,
 
 static void update_focus(void)
 {
-    for(unsigned i = 0U; i < DEVICE_ROW_COUNT; ++i) {
-        if(s_devices.rows[i] == NULL) continue;
-        bool focused = s_devices.active && s_devices.selected == (int32_t)i;
-        lv_obj_set_style_border_color(s_devices.rows[i],
-            focused ? UI_TOKEN_COLOR_ACCENT : UI_TOKEN_COLOR_SURFACE_OUTLINE, 0);
-        lv_obj_set_style_border_width(s_devices.rows[i],
-            focused ? UI_TOKEN_BORDER_FOCUS : UI_TOKEN_BORDER_THIN, 0);
-        lv_obj_set_style_shadow_color(s_devices.rows[i], UI_TOKEN_COLOR_ACCENT, 0);
-        lv_obj_set_style_shadow_width(s_devices.rows[i], focused ? 8 : 0, 0);
-        lv_obj_set_style_shadow_opa(s_devices.rows[i],
-            focused ? LV_OPA_30 : LV_OPA_TRANSP, 0);
-    }
+    ui_liquid_selection_select(&s_devices.liquid,s_devices.selected,true);
 }
 
 static void row_event(lv_event_t *event)
 {
     unsigned index = (unsigned)(uintptr_t)lv_event_get_user_data(event);
     if(index >= DEVICE_ROW_COUNT) return;
-    lv_obj_t *object = lv_event_get_target(event);
     switch(lv_event_get_code(event)) {
-        case LV_EVENT_PRESSED: ui_motion_button_press(object); break;
-        case LV_EVENT_RELEASED:
-        case LV_EVENT_PRESS_LOST: ui_motion_button_release(object); break;
         case LV_EVENT_CLICKED:
             s_devices.selected = (int32_t)index;
             update_focus();
             if(s_devices.callback != NULL)
-                s_devices.callback(UI_PAGE_ACTION_DEVICE_SCAN,
+                s_devices.callback(index==DEVICE_SCAN_ROW?UI_PAGE_ACTION_DEVICE_SCAN:UI_PAGE_ACTION_DEVICE_SELECT,
                                    s_devices.user_data);
             break;
         default: break;
@@ -116,7 +120,15 @@ static void back_event(lv_event_t *event)
 
 static void list_scrolled(lv_event_t *event)
 {
-    (void)event;
+    lv_event_code_t code=lv_event_get_code(event);
+    if(code==LV_EVENT_SCROLL_BEGIN){lv_indev_t *input=lv_indev_active();
+        s_devices.touch_scrolling=input&&lv_indev_get_type(input)==LV_INDEV_TYPE_POINTER&&
+            lv_indev_get_state(input)==LV_INDEV_STATE_PRESSED&&lv_indev_get_scroll_obj(input)==s_devices.list;}
+    if(code==LV_EVENT_SCROLL_END&&s_devices.touch_scrolling){s_devices.touch_scrolling=false;
+        int center=lv_obj_get_scroll_y(s_devices.list)+lv_obj_get_height(s_devices.list)/2,best=INT32_MAX;
+        for(unsigned i=0;i<DEVICE_ROW_COUNT;i++){int d=abs(s_devices.liquid.items[i].y+UI_TOKEN_LIST_LARGE_ROW_HEIGHT/2-center);if(d<best){best=d;s_devices.selected=i;}}
+        update_focus();
+    }
 }
 
 lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
@@ -148,11 +160,8 @@ lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
 
     s_devices.list = lv_obj_create(s_devices.screen);
     lv_obj_remove_style_all(s_devices.list);
-    lv_obj_set_pos(s_devices.list, 20, 156);
-    lv_obj_set_size(s_devices.list, 440, UI_PAGE_LIST_WITH_FOOTNOTE_BOTTOM - 156);
-    lv_obj_set_flex_flow(s_devices.list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(s_devices.list, 8, 0);
-    lv_obj_set_style_pad_right(s_devices.list, 10, 0);
+    lv_obj_set_pos(s_devices.list, 8, 156);
+    lv_obj_set_size(s_devices.list, 464, UI_PAGE_LIST_WITH_FOOTNOTE_BOTTOM - 156);
     lv_obj_set_scroll_dir(s_devices.list, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(s_devices.list, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_set_style_width(s_devices.list, 4, LV_PART_SCROLLBAR);
@@ -161,9 +170,12 @@ lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
     lv_obj_set_style_bg_opa(s_devices.list, LV_OPA_70, LV_PART_SCROLLBAR);
     lv_obj_set_style_radius(s_devices.list, LV_RADIUS_CIRCLE,
                             LV_PART_SCROLLBAR);
-    lv_obj_add_event_cb(s_devices.list, list_scrolled, LV_EVENT_SCROLL, NULL);
+    lv_obj_add_event_cb(s_devices.list, list_scrolled, LV_EVENT_ALL, NULL);
+    lv_obj_clear_flag(s_devices.list,LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    ui_liquid_selection_init(&s_devices.liquid,s_devices.list,true,device_layout);
+    ui_liquid_selection_set_wide_focus(&s_devices.liquid,true);
 
-    lv_obj_t *scan = card(s_devices.list, 0, 0, 426, 82);
+    lv_obj_t *scan = card(s_devices.list, 28,12,408,UI_TOKEN_LIST_LARGE_ROW_HEIGHT);lv_obj_set_user_data(scan,(void *)(uintptr_t)0);
     s_devices.rows[DEVICE_SCAN_ROW] = scan;
     lv_obj_t *scan_icon = label(scan, 16, 0, 48, 54, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_28,
           UI_TOKEN_COLOR_ACCENT, LV_TEXT_ALIGN_CENTER);
@@ -172,16 +184,18 @@ lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
           UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
     lv_obj_t *scan_subtitle = label(scan, 80, 43, 250, 22, "扫描并配对蓝牙外设", &ui_font_misans_ui_20,
           UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
-    ui_align_text_pair(scan, scan_title, scan_subtitle, 80, 240, 4);
+    s_devices.pairs[0]=ui_align_text_pair(scan, scan_title, scan_subtitle, 80, 240, 8);
     lv_obj_t *scan_value = label(scan, 330, 0, 70, 24, "扫描", &ui_font_misans_ui_20,
           UI_TOKEN_COLOR_ACCENT, LV_TEXT_ALIGN_CENTER);
     ui_align_center_y(scan_value, 330);
+    s_devices.trailing[0]=scan_value;
     lv_obj_add_event_cb(scan, row_event, LV_EVENT_ALL,
                         (void *)(uintptr_t)DEVICE_SCAN_ROW);
 
     for(unsigned i = 0U; i < UI_DEVICE_COUNT; ++i) {
-        lv_obj_t *row = card(s_devices.list, 0, 0, 426, 82);
+        lv_obj_t *row = card(s_devices.list,28,12+(i+1)*(UI_TOKEN_LIST_LARGE_ROW_HEIGHT+UI_TOKEN_LIST_LARGE_ROW_GAP),408,UI_TOKEN_LIST_LARGE_ROW_HEIGHT);
         unsigned row_index = i + 1U;
+        lv_obj_set_user_data(row,(void *)(uintptr_t)row_index);
         s_devices.rows[row_index] = row;
         lv_obj_t *icon = ui_page_box(row, 14, 14, 52, 52,
                                      UI_TOKEN_COLOR_SURFACE_OUTLINE, 0);
@@ -195,7 +209,7 @@ lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
               UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_LEFT);
         lv_obj_t *subtitle = label(row, 82, 44, 210, 22, s_subtitles[i], &lv_font_montserrat_12,
               UI_TOKEN_COLOR_TEXT_SECONDARY, LV_TEXT_ALIGN_LEFT);
-        ui_align_text_pair(row, title, subtitle, 82, 200, 4);
+        s_devices.pairs[row_index]=ui_align_text_pair(row, title, subtitle, 82, 200, 8);
         s_devices.status[i] = label(row, 292, 20, 98, 24, "未连接",
                                     &ui_font_misans_ui_20,
                                     UI_TOKEN_COLOR_TEXT_SECONDARY,
@@ -204,6 +218,7 @@ lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
         lv_obj_t *arrow = label(row, 398, 0, 18, 26, LV_SYMBOL_RIGHT, &lv_font_montserrat_20,
               UI_TOKEN_COLOR_TEXT_PRIMARY, LV_TEXT_ALIGN_CENTER);
         ui_align_center_y(arrow, 398);
+        s_devices.trailing[row_index]=arrow;
         lv_obj_add_event_cb(row, row_event, LV_EVENT_ALL,
                             (void *)(uintptr_t)row_index);
     }
@@ -212,6 +227,7 @@ lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
           "支持手机与骑行传感器",
           &ui_font_misans_ui_20, UI_TOKEN_COLOR_TEXT_TERTIARY,
           LV_TEXT_ALIGN_CENTER);
+    for(unsigned i=0;i<DEVICE_ROW_COUNT;i++)ui_liquid_selection_add(&s_devices.liquid,s_devices.rows[i]);
     update_focus();
     return s_devices.screen;
 }
@@ -219,7 +235,7 @@ lv_obj_t *ui_devices_page_create(ui_page_action_cb_t callback,
 void ui_devices_page_set_active(bool active)
 {
     s_devices.active = active;
-    if(active) s_devices.selected = 0;
+    ui_liquid_selection_set_active(&s_devices.liquid,active);
     update_focus();
 }
 
@@ -229,18 +245,15 @@ bool ui_devices_page_handle_input(ui_input_event_t input)
     if(input == UI_INPUT_ENCODER_CW || input == UI_INPUT_ENCODER_CCW) {
         int32_t next = s_devices.selected +
             (input == UI_INPUT_ENCODER_CW ? 1 : -1);
-        if(next < 0) next = DEVICE_ROW_COUNT - 1;
-        if(next >= (int32_t)DEVICE_ROW_COUNT) next = 0;
+        next=LV_CLAMP(0,next,(int32_t)DEVICE_ROW_COUNT-1);
         s_devices.selected = next;
         update_focus();
-        if(s_devices.rows[next] != NULL)
-            lv_obj_scroll_to_view(s_devices.rows[next], ui_motion_scroll_mode());
         ui_sound_play(UI_SFX_FOCUS);
         return true;
     }
     if(input == UI_INPUT_ENCODER_PRESS && s_devices.selected >= 0) {
         if(s_devices.callback != NULL)
-            s_devices.callback(UI_PAGE_ACTION_DEVICE_SCAN,
+            s_devices.callback(s_devices.selected==DEVICE_SCAN_ROW?UI_PAGE_ACTION_DEVICE_SCAN:UI_PAGE_ACTION_DEVICE_SELECT,
                                s_devices.user_data);
         ui_sound_play(UI_SFX_PRESS);
         return true;
@@ -267,7 +280,7 @@ void ui_devices_page_set_status(ui_device_kind_t kind, const char *status,
     if(kind >= UI_DEVICE_COUNT || s_devices.status[kind] == NULL ||
        status == NULL) return;
     (void)ui_text_set_label(s_devices.status[kind], status, 20);
-    lv_obj_set_style_text_color(s_devices.status[kind], lv_color_hex(color), 0);
+    ui_liquid_selection_color(&s_devices.liquid,s_devices.status[kind],lv_color_hex(color));
 }
 
 void ui_devices_page_set_feedback(const char *message)

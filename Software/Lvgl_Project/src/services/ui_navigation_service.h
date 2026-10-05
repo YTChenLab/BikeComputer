@@ -18,6 +18,8 @@ typedef enum
     NAV_MANEUVER_U_TURN,
     NAV_MANEUVER_ROUNDABOUT,
     NAV_MANEUVER_ARRIVE,
+    NAV_MANEUVER_KEEP_LEFT,NAV_MANEUVER_KEEP_RIGHT,NAV_MANEUVER_EXIT_ROUNDABOUT,
+    NAV_MANEUVER_FORK_LEFT,NAV_MANEUVER_FORK_RIGHT,
     NAV_MANEUVER_COUNT
 } nav_maneuver_t;
 
@@ -37,6 +39,7 @@ typedef enum
     NAV_UI_REROUTING,
     NAV_UI_GPS_WEAK,
     NAV_UI_ARRIVED,
+    NAV_UI_PASSED,
     NAV_UI_STATE_COUNT
 } nav_ui_state_t;
 
@@ -45,6 +48,7 @@ typedef enum
     NAV_FOLLOW = 0,
     NAV_EXPLORE,
     NAV_RECENTER
+    ,NAV_OVERVIEW, NAV_FOLLOW_USER_ZOOM
 } nav_state_t;
 
 typedef struct
@@ -54,8 +58,8 @@ typedef struct
     uint32_t remaining_ascent_m;
     uint8_t eta_hour;
     uint8_t eta_min;
-    float latitude;
-    float longitude;
+    double latitude;
+    double longitude;
     float heading;
     uint8_t zoom;
     nav_direction_t direction;
@@ -72,6 +76,17 @@ typedef struct
     float meters_per_pixel;
     uint8_t route_point_count;
     double route_latitude[16], route_longitude[16];
+    /* New producers set session_bound. Legacy component fixtures remain usable. */
+    bool session_bound, guidance_valid, speed_valid, distance_valid, eta_valid, heading_valid;
+    uint32_t session_id, route_id, route_revision, step_id;
+    uint8_t coordinate_system;
+    bool junction_valid, next_valid, exit_valid, off_route, reroute_failed;
+    bool exit_position_valid;
+    double exit_latitude,exit_longitude;
+    double junction_latitude, junction_longitude;
+    nav_maneuver_t next_direction;
+    uint32_t next_distance_m;
+    uint8_t roundabout_exit;
 } nav_model_t;
 
 typedef void (*ui_navigation_observer_cb_t)(const nav_model_t *model,
@@ -79,8 +94,13 @@ typedef void (*ui_navigation_observer_cb_t)(const nav_model_t *model,
                                              void *user_data);
 
 void ui_navigation_service_init(void);
+/* Board audio task reads this preference; UI never performs audio I/O. */
+void ui_navigation_service_set_prompts_enabled(bool enabled);
+bool ui_navigation_service_prompts_enabled(void);
 void ui_navigation_service_set_demo_enabled(bool enabled);
 bool ui_navigation_service_demo_enabled(void);
+void ui_navigation_service_register_demo_step(void (*callback)(void));
+bool ui_navigation_service_demo_step(void);
 int32_t ui_navigation_service_subscribe(ui_navigation_observer_cb_t callback,
                                         void *user_data);
 bool ui_navigation_service_unsubscribe(int32_t subscription_id);

@@ -5,3 +5,4 @@ CMakeUserPresets.json
 *.log
 *.tmp
 runtime/
+dist/

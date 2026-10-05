@@ -104,6 +104,8 @@ static void dock_action(uint32_t card_id, ui_dock_interaction_t interaction,
                        UI_EVENT_RIDE_GO_REQUESTED : UI_EVENT_GPS_SEARCHING,
                        UI_EVENT_PRIORITY_P2_RIDE_STATE, card_id, 0);
     }
+    else if(card_id==DOCK_ID_GPS && interaction==UI_DOCK_INTERACTION_SECONDARY)
+        publish_action(UI_EVENT_RIDE_PREPARE_CANCELLED,UI_EVENT_PRIORITY_P2_RIDE_STATE,card_id,0);
     else if(card_id == DOCK_ID_RIDE && origin == UI_EVENT_RIDE_FINISH_REQUESTED) {
         if(interaction == UI_DOCK_INTERACTION_PRIMARY) {
             publish_action(UI_EVENT_RIDE_FINISH_CONFIRMED,
@@ -199,11 +201,13 @@ static void map_event(const ui_event_t *event, void *user_data)
     uint32_t timeout = event->timeout_ms;
     switch(event->type) {
         case UI_EVENT_GPS_SEARCHING:
-            card = base_card(event, DOCK_ID_GPS, UI_DOCK_TYPE_INFO);
+            card = base_card(event, DOCK_ID_GPS, UI_DOCK_TYPE_ACTION);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             copy_text(card.title, sizeof(card.title), event->title, "GPS 正在定位");
             copy_text(card.message, sizeof(card.message), event->message, "正在搜索卫星信号");
             card.dismissible = false;
+            copy_text(card.primary_action,sizeof(card.primary_action),NULL,"定位中");
+            copy_text(card.secondary_action,sizeof(card.secondary_action),NULL,"取消");
             (void)present(&card, timeout);
             break;
         case UI_EVENT_GPS_READY:
@@ -213,6 +217,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             copy_text(card.message, sizeof(card.message), event->message, "定位良好，可以开始骑行");
             copy_text(card.primary_action, sizeof(card.primary_action),
                       event->primary_action, "GO");
+            copy_text(card.secondary_action,sizeof(card.secondary_action),NULL,"取消");
             card.dismissible = false;
             (void)present(&card, timeout);
             break;
@@ -223,6 +228,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             copy_text(card.message, sizeof(card.message), event->message, "请移动到开阔区域后重试");
             copy_text(card.primary_action, sizeof(card.primary_action),
                       event->primary_action, "重试");
+            copy_text(card.secondary_action,sizeof(card.secondary_action),NULL,"取消");
             (void)present(&card, timeout);
             break;
         case UI_EVENT_SENSOR_DISCONNECTED:
@@ -415,6 +421,14 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 6000);
             break;
         case UI_EVENT_RIDE_GO_REQUESTED:
+            card=base_card(event,DOCK_ID_GPS,UI_DOCK_TYPE_INFO);
+            card.priority=UI_DOCK_PRIORITY_P2_RIDE_STATE;card.dismissible=false;
+            copy_text(card.title,sizeof(card.title),NULL,"正在开始骑行");
+            copy_text(card.message,sizeof(card.message),NULL,"正在确认记录启动");
+            (void)present(&card,0);
+            break;
+        case UI_EVENT_RIDE_PREPARE_CANCELLED:
+            clear_timeout(DOCK_ID_GPS);(void)ui_dock_hide(DOCK_ID_GPS);
             break;
         case UI_EVENT_RIDE_GO:
             clear_timeout(DOCK_ID_GPS);
@@ -494,3 +508,5 @@ bool ui_dock_controller_hide_command_feedback(void)
     clear_timeout(DOCK_ID_COMMAND);
     return ui_dock_hide(DOCK_ID_COMMAND);
 }
+void ui_dock_controller_hide_navigation(void)
+{ clear_timeout(DOCK_ID_NAVIGATION); (void)ui_dock_hide(DOCK_ID_NAVIGATION); }

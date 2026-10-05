@@ -1,8 +1,13 @@
+#include "services/ui_nav_session.h"
+#include "services/ui_nav_map_provider.h"
+#include "ui/pages/navigation/ui_nav_workspace.h"
 #include "services/ui_navigation_service.h"
 #include "ui/components/navigation/ui_nav_command_dock.h"
 #include "ui/components/navigation/ui_nav_data_strip.h"
 #include "ui/components/navigation/ui_nav_layout.h"
 #include "ui/components/navigation/ui_nav_map.h"
+#include "ui/components/navigation/ui_nav_capsule_row.h"
+#include "ui/components/navigation/ui_nav_visual.h"
 #include "ui/core/ui_event_bus.h"
 #include "ui/core/ui_theme.h"
 #include "ui/core/ui_motion.h"
@@ -154,7 +159,58 @@ static void test_map_controls(lv_obj_t *screen)
     nav_map_update_position(&map, 34.3416f, 108.9398f, -721, false);
     assert(map.heading >= 0 && map.heading < 360);
     finish_animations();
+    ui_nav_map_frame_t frame={.status=UI_NAV_OK,.map_revision=1,.origin={34.3416,108.9398,UI_NAV_COORD_WGS84},.meters_per_pixel=3};
+    ui_nav_map_apply_frame(&map,&frame);
+    live.session_bound=true; live.guidance_valid=live.heading_valid=live.position_valid=live.junction_valid=true;
+    live.speed=20; live.step_id=4; live.route_revision=1; live.ui_state=NAV_UI_APPROACH;
+    live.junction_latitude=live.latitude+0.001; live.junction_longitude=live.longitude;
+    ui_nav_map_handle_input(&map,0,true); finish_animations();
+    ui_nav_map_camera(&map,&live,lv_tick_get()); finish_animations(); assert(map.auto_scale>256);
+    ui_nav_map_handle_input(&map,1,false); finish_animations();
+    int32_t scale=map.render_scale; assert(map.state==NAV_FOLLOW_USER_ZOOM);
+    live.junction_latitude=live.latitude+0.01; ui_nav_map_camera(&map,&live,lv_tick_get()); finish_animations();
+    assert(map.render_scale<scale); /* User zoom retains tracking and junction fitting. */
+    scale=map.render_scale;ui_nav_map_handle_input(&map,0,true); finish_animations();
+    live.heading_valid=false; ui_nav_map_camera(&map,&live,lv_tick_get()); finish_animations();
+    assert(map.render_scale==scale);
+    map.render_scale=128; map.render_rotation=450;
+    ui_nav_map_request_t window={.meters_per_pixel=3};
+    ui_nav_map_request_coverage(&map,&window);
+    /* A rotated, zoomed-out viewport needs more than the original screen-sized window. */
+    assert(window.width>UI_NAV_MAP_WIDTH*2 && window.height>UI_NAV_MAP_HEIGHT*2);
+    ui_nav_point_t center=ui_nav_map_view_center(&map);
+    assert(window.center.latitude==center.latitude && window.center.longitude==center.longitude);
     lv_obj_delete(map.root);
+}
+
+static void test_resource_capsule(lv_obj_t *screen)
+{
+    unsigned springs_before=ui_motion_springs_running();
+    for(unsigned cycle=0;cycle<30;cycle++) {
+        ui_nav_capsule_row_t row={0};
+        lv_obj_t *buttons[3];
+        for(unsigned i=0;i<3;i++)buttons[i]=ui_nav_button(screen,0,0,144,72,"刷新",false,false);
+        ui_nav_capsule_row_create(&row,screen,16,UI_NAV_DATA_TOP,432,72,buttons,3);
+        ui_nav_capsule_row_focus(&row,buttons[2],true,true);
+        lv_tick_inc(45);lv_timer_handler();
+        ui_nav_capsule_row_focus(&row,buttons[0],true,true);
+        lv_tick_inc(30);lv_timer_handler();
+        lv_obj_update_layout(row.root);
+        assert(lv_obj_get_x(row.capsule)>=0);
+        assert(lv_obj_get_x(row.capsule)+lv_obj_get_width(row.capsule)<=432);
+        /* Delete while reversing: object deletion must release both edges. */
+        lv_obj_delete(row.root);
+        assert(ui_motion_springs_running()==springs_before);
+    }
+    ui_nav_capsule_row_t row={0};lv_obj_t *buttons[2];
+    for(unsigned i=0;i<2;i++)buttons[i]=ui_nav_button(screen,0,0,216,72,"返回",false,false);
+    ui_nav_capsule_row_create(&row,screen,16,UI_NAV_DATA_TOP,432,72,buttons,2);
+    ui_motion_set_reduced(true);ui_nav_capsule_row_focus(&row,buttons[1],true,true);
+    lv_obj_update_layout(row.root);assert(lv_obj_get_x(row.capsule)==216&&lv_obj_get_width(row.capsule)==216);
+    assert(ui_motion_springs_running()==springs_before);
+    lv_obj_add_state(buttons[0],LV_STATE_DISABLED);ui_nav_capsule_row_focus(&row,buttons[0],true,true);
+    assert(lv_obj_has_flag(row.capsule,LV_OBJ_FLAG_HIDDEN));
+    ui_motion_set_reduced(false);lv_obj_delete(row.root);
 }
 
 static void test_data_strip(lv_obj_t *screen)
@@ -204,7 +260,7 @@ static void test_command_dock_states(lv_obj_t *screen)
     assert(strcmp(lv_label_get_text(dock.distance_value), "420") == 0);
     assert(strcmp(lv_label_get_text(dock.distance_unit), "m") == 0);
     assert(strcmp(lv_label_get_text(dock.action), "左转") == 0);
-    assert(strcmp(lv_label_get_text(dock.road), "环城南路") == 0);
+    assert(strcmp(lv_label_get_text(dock.road), "进入环城南路") == 0);
     assert(lv_obj_get_parent(dock.action) == dock.distance_row);
     assert(lv_obj_get_style_text_font(dock.action, 0) == UI_FONT_NAV_ACTION);
 
@@ -218,10 +274,13 @@ static void test_command_dock_states(lv_obj_t *screen)
     model.ui_state = NAV_UI_IMMINENT;
     model.direction = NAV_MANEUVER_RIGHT;
     model.direction_distance = 35U;
+    model.next_valid=true;model.next_distance_m=85;model.next_direction=NAV_MANEUVER_RIGHT;
     ui_nav_command_dock_update(&dock, &model, true);
     assert(lv_obj_has_flag(dock.prefix, LV_OBJ_FLAG_HIDDEN));
-    assert(lv_obj_has_flag(dock.road, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(dock.road, LV_OBJ_FLAG_HIDDEN));
     assert(!lv_obj_has_flag(dock.distance_row, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(dock.next_row,LV_OBJ_FLAG_HIDDEN));
+    assert(strcmp(lv_label_get_text(dock.next_text),"随后 85 m 再右转")==0);
     ui_motion_set_reduced(true);
     ui_nav_command_dock_update(&dock, &model, true);
     assert(dock.icon_scale == 100);
@@ -230,7 +289,7 @@ static void test_command_dock_states(lv_obj_t *screen)
 
     model.ui_state = NAV_UI_NOW;
     ui_nav_command_dock_update(&dock, &model, false);
-    assert(strcmp(lv_label_get_text(dock.headline), "现在") == 0);
+    assert(strcmp(lv_label_get_text(dock.headline), "现在右转") == 0);
     assert(!lv_obj_has_flag(dock.headline, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(dock.distance_row, LV_OBJ_FLAG_HIDDEN));
 
@@ -266,26 +325,28 @@ static void test_navigation_page(lv_obj_t *screen)
     ui_navigation_create(screen);
     ui_navigation_set_active(true);
     lv_obj_update_layout(screen);
-    assert(lv_obj_get_child_count(screen) == 3U);
+    assert(ui_nav_workspace_view()==UI_NAV_VIEW_CENTER);
+    assert(!ui_nav_session_active());
+    const ui_nav_map_t *persistent=ui_navigation_map();lv_obj_t *map_root=persistent->root;
+    assert(lv_obj_get_y(map_root)==UI_NAV_MAP_TOP&&lv_obj_get_height(map_root)==UI_NAV_MAP_HEIGHT);
+    assert(persistent->safe_height==UI_NAV_MAP_HEIGHT);
+    lv_obj_t *content=ui_nav_workspace_root();assert(lv_obj_get_parent(content)!=screen);
+    ui_navigation_open_menu();assert(ui_navigation_map()->root==map_root);
 
-    lv_obj_t *map_root = lv_obj_get_child(screen, 0);
-    lv_obj_t *strip_root = lv_obj_get_child(screen, 1);
-    lv_obj_t *dock_root = lv_obj_get_child(screen, 2);
-    assert(lv_obj_get_y(map_root) == UI_NAV_MAP_TOP);
-    assert(lv_obj_get_height(map_root) == UI_NAV_MAP_HEIGHT);
-    assert(lv_obj_get_y(strip_root) == UI_NAV_DATA_TOP);
-    assert(lv_obj_get_height(strip_root) == UI_NAV_DATA_HEIGHT);
-    assert(lv_obj_get_y(dock_root) == UI_NAV_DOCK_Y);
-    assert(lv_obj_get_height(dock_root) == UI_NAV_DOCK_HEIGHT);
-
+    ui_nav_session_init(); ui_nav_map_provider_init();
+    ui_nav_session_t session={.id=1,.version=1,.state=UI_NAV_SESSION_ACTIVE,
+        .route={.id=7,.revision=2,.start_allowed=true}};
+    assert(ui_nav_session_submit(&session)); ui_nav_session_tick(lv_tick_get());
     nav_model_t turn = test_model();
+    turn.session_bound=true; turn.session_id=1; turn.route_id=7; turn.route_revision=2;
+    turn.step_id=1; turn.guidance_valid=true; turn.ui_state=NAV_UI_APPROACH;
     ui_navigation_service_submit(&turn);
     assert(ui_navigation_service_process());
     assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 0U);
     assert(s_event_count == 0U);
 
     ui_navigation_set_active(false);
-    turn.direction = NAV_MANEUVER_RIGHT;
+    turn.direction = NAV_MANEUVER_RIGHT; turn.step_id=2;
     ui_navigation_service_submit(&turn);
     assert(ui_navigation_service_process());
     assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX) == 1U);
@@ -293,9 +354,45 @@ static void test_navigation_page(lv_obj_t *screen)
     assert(s_last_event.type == UI_EVENT_NAVIGATION_TURN);
     assert(s_last_event.value == UI_NAVIGATION_TURN_RIGHT);
     assert(strstr(s_last_event.message, "420 m") != NULL);
-    finish_animations();
-    lv_refr_now(lv_display_get_default());
-    assert(!s_layer_failure);
+    turn.direction_distance=90; ui_navigation_service_submit(&turn); ui_navigation_service_process();
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX)==0);
+    turn.step_id=3; ui_navigation_service_submit(&turn); ui_navigation_service_process();
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX)==1 && s_event_count==2);
+    turn.route_revision=1; turn.step_id=4; ui_navigation_service_submit(&turn); ui_navigation_service_process();
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX)==0);
+    turn.route_revision=2;turn.step_id=5;turn.direction=NAV_MANEUVER_FORK_LEFT;
+    ui_navigation_service_submit(&turn);ui_navigation_service_process();
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX)==1&&s_last_event.value==UI_NAVIGATION_TURN_LEFT);
+    turn.step_id=6;turn.direction=NAV_MANEUVER_ROUNDABOUT;ui_navigation_service_submit(&turn);ui_navigation_service_process();
+    assert(ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX)==1&&s_last_event.value==UI_NAVIGATION_TURN_ROUNDABOUT);
+    finish_animations(); lv_refr_now(lv_display_get_default()); assert(!s_layer_failure);
+
+    ui_navigation_set_active(true); finish_animations();
+    ui_navigation_open_menu(); finish_animations();
+    ui_navigation_open_menu(); finish_animations();
+    assert(ui_nav_workspace_view()==UI_NAV_VIEW_LIVE);
+    lv_mem_monitor_t before,after; lv_mem_monitor(&before);
+    uint16_t animations=lv_anim_count_running(); unsigned timers_before=0,timers_after=0;
+    for(lv_timer_t *timer=lv_timer_get_next(NULL);timer;timer=lv_timer_get_next(timer)) timers_before++;
+    for(unsigned cycle=0;cycle<60;cycle++) {
+        ui_navigation_open_menu();
+        assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU);
+        lv_tick_inc(25); lv_timer_handler(); /* Reverse while the spring is still moving. */
+        ui_navigation_open_menu(); finish_animations();
+        assert(ui_nav_workspace_view()==UI_NAV_VIEW_LIVE && ui_nav_session_active());
+    }
+    lv_mem_monitor(&after);
+    for(lv_timer_t *timer=lv_timer_get_next(NULL);timer;timer=lv_timer_get_next(timer)) timers_after++;
+    /* A second identical batch distinguishes allocator/cache warm-up from a leak. */
+    lv_mem_monitor_t warmed=after;
+    for(unsigned cycle=0;cycle<60;cycle++){
+        ui_navigation_open_menu();lv_tick_inc(25);lv_timer_handler();ui_navigation_open_menu();finish_animations();
+    }
+    lv_mem_monitor(&after);
+    assert(after.used_cnt==warmed.used_cnt && after.free_size==warmed.free_size);
+    assert(timers_after==timers_before && lv_anim_count_running()==animations);
+    assert(lv_mem_test()==LV_RESULT_OK && !s_layer_failure);
+    printf("navigation menu replay: 120 cycles, stable heap=%zu, timers=%u\n",after.total_size-after.free_size,timers_after);
 }
 
 int main(void)
@@ -312,6 +409,7 @@ int main(void)
 
     lv_obj_t *component_screen = make_screen();
     test_map_controls(component_screen);
+    test_resource_capsule(component_screen);
     test_data_strip(component_screen);
     test_command_dock_states(component_screen);
 

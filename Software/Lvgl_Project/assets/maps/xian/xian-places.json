@@ -1,0 +1,52 @@
+{
+  "format": "BPOI0001",
+  "coordinate_system": "WGS84",
+  "bbox_lon_lat": [
+    108.78,
+    34.12,
+    109.15,
+    34.46
+  ],
+  "places": 5348,
+  "kinds": {
+    "4": 193,
+    "5": 97,
+    "6": 252,
+    "3": 191,
+    "7": 14,
+    "0": 4444,
+    "1": 157
+  },
+  "keys": 91205,
+  "bytes": 7057748,
+  "sha256": "9b9a8ed6b52a56e97cdf8f8fd1013f39d5774d458cc338cbc0c47a9f85951fcd",
+  "sources": [
+    {
+      "file": "xian-layered.osm.json",
+      "sha256": "95b5bc401cb16ec369cab2981492a4dd3577627e13be753be0c5b8e5d80741f4",
+      "timestamp": "2026-07-24T11:04:51Z"
+    },
+    {
+      "file": "detail-0-0.json",
+      "sha256": "2076a0b3d7d96803d4ce8a796ef2fe117f887bd2f246bb360615dba6038c9375",
+      "timestamp": "2026-06-01T08:52:28Z"
+    },
+    {
+      "file": "xian-poi.osm.json",
+      "sha256": "775225ec42155fbd284b195f0d2a2754b7a6581dbe3e9ef670186fcebfe6538c",
+      "timestamp": "2026-10-03T16:30:49Z"
+    }
+  ],
+  "pronunciation_source": {
+    "url": "https://www.unicode.org/Public/17.0.0/ucd/Unihan.zip",
+    "sha256": "f7a48b2b545acfaa77b2d607ae28747404ce02baefee16396c5d2d7a8ef34b5e",
+    "version": "17.0.0"
+  },
+  "unsupported_reading_characters": [],
+  "limitations": [
+    "OSM named places and roads, not complete street-address geocoding.",
+    "Anchors are not verified public entrances.",
+    "Common polyphonic alternatives limited to eight variants per name."
+  ],
+  "license": "OSM ODbL-1.0; Unihan Unicode-3.0"
+}

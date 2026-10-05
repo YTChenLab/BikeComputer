@@ -575,14 +575,11 @@ static void test_async_pc_services(void)
     assert(ui_pc_services_toggle_stationary());
     ui_system_services_tick(1U);
     assert(ui_ride_data_model_process());
-    assert(ui_navigation_service_process());
-    nav_model_t pc_navigation;
-    uint32_t pc_navigation_version = 0U;
-    assert(ui_navigation_service_get(&pc_navigation,
-                                     &pc_navigation_version));
-    assert(pc_navigation_version == 1U);
-    assert(pc_navigation.zoom == 14U);
-    assert(strcmp(pc_navigation.road_name, "科技二路") == 0);
+    /* PC navigation must remain idle until a destination is confirmed. */
+    assert(!ui_navigation_service_process());
+    nav_model_t pc_navigation; uint32_t pc_navigation_version=99;
+    assert(ui_navigation_service_get(&pc_navigation,&pc_navigation_version));
+    assert(pc_navigation_version==0);
     ui_ride_data_t stopped_data;
     assert(ui_ride_data_model_get(&stopped_data, NULL));
     assert(stopped_data.speed == 0.0f);
@@ -720,7 +717,8 @@ static void test_ride_event_workflow(void)
     publish_and_process(UI_EVENT_RIDE_START_REQUESTED);
     assert(ui_state_machine_state() == UI_RIDE_STATE_PRE_RIDE);
     assert(ui_dock_current() != NULL);
-    assert(ui_dock_current()->type == UI_DOCK_TYPE_INFO);
+    assert(ui_dock_current()->type == UI_DOCK_TYPE_ACTION);
+    assert(strcmp(ui_dock_current()->secondary_action,"取消")==0);
 
     publish_and_process(UI_EVENT_GPS_FAILED);
     assert(ui_state_machine_state() == UI_RIDE_STATE_PRE_RIDE);
@@ -729,7 +727,7 @@ static void test_ride_event_workflow(void)
                           UI_DOCK_INTERACTION_PRIMARY, 0));
     (void)ui_event_bus_process(UI_EVENT_BUS_QUEUE_MAX);
     assert(ui_dock_current() != NULL);
-    assert(ui_dock_current()->type == UI_DOCK_TYPE_INFO);
+    assert(ui_dock_current()->type == UI_DOCK_TYPE_ACTION);
 
     publish_and_process(UI_EVENT_GPS_READY);
     assert(ui_state_machine_state() == UI_RIDE_STATE_GPS_READY);

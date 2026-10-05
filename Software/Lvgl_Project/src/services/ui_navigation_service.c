@@ -3,6 +3,7 @@
 #include "ui/core/ui_concurrency.h"
 
 #include <stddef.h>
+#include <math.h>
 #include <string.h>
 
 typedef struct
@@ -20,11 +21,15 @@ typedef struct
     uint8_t observer_count;
     int32_t next_observer_id;
     uint32_t version;
-    bool pending_valid;
+    bool pending_valid, prompts_enabled;
 } ui_navigation_service_context_t;
 
 static ui_navigation_service_context_t s_navigation_service;
 static bool s_demo_enabled = true;
+static void (*s_demo_step)(void);
+void ui_navigation_service_register_demo_step(void (*callback)(void)) { s_demo_step=callback; }
+bool ui_navigation_service_demo_step(void)
+{ if(!s_demo_enabled||!s_demo_step) return false; s_demo_step(); return true; }
 void ui_navigation_service_set_demo_enabled(bool enabled) { s_demo_enabled = enabled; }
 bool ui_navigation_service_demo_enabled(void) { return s_demo_enabled; }
 
@@ -33,8 +38,14 @@ void ui_navigation_service_init(void)
     ui_concurrency_lock();
     memset(&s_navigation_service, 0, sizeof(s_navigation_service));
     s_navigation_service.next_observer_id = 1;
+    s_navigation_service.prompts_enabled = true;
     ui_concurrency_unlock();
 }
+
+void ui_navigation_service_set_prompts_enabled(bool enabled)
+{ ui_concurrency_lock(); s_navigation_service.prompts_enabled=enabled; ui_concurrency_unlock(); }
+bool ui_navigation_service_prompts_enabled(void)
+{ ui_concurrency_lock(); bool enabled=s_navigation_service.prompts_enabled; ui_concurrency_unlock(); return enabled; }
 
 int32_t ui_navigation_service_subscribe(ui_navigation_observer_cb_t callback,
                                         void *user_data)
@@ -79,7 +90,26 @@ void ui_navigation_service_submit(const nav_model_t *model)
 {
     if(model == NULL) return;
     if(model->route_point_count > 16 || (model->demo && !s_demo_enabled)) return;
+    if(model->session_bound && (!model->session_id || !model->route_id || !model->route_revision ||
+        model->coordinate_system>1 || model->ui_state>=NAV_UI_STATE_COUNT ||
+        (model->position_valid && (!isfinite(model->latitude)||!isfinite(model->longitude)||fabs(model->latitude)>90||fabs(model->longitude)>180)) ||
+        (model->heading_valid && !isfinite(model->heading)) ||
+        (model->speed_valid && (!isfinite(model->speed)||model->speed<0)) ||
+        (model->distance_valid && (!isfinite(model->distance)||model->distance<0)) ||
+        (model->eta_valid && (model->eta_hour>23||model->eta_min>59)) ||
+        (model->guidance_valid && (!model->step_id||model->direction>=NAV_MANEUVER_COUNT)) ||
+        (model->next_valid && model->next_direction>=NAV_MANEUVER_COUNT) ||
+        (model->exit_valid && !model->roundabout_exit) ||
+        (model->exit_position_valid && (!isfinite(model->exit_latitude)||!isfinite(model->exit_longitude)||fabs(model->exit_latitude)>90||fabs(model->exit_longitude)>180)) ||
+        (model->junction_valid && (!isfinite(model->junction_latitude)||!isfinite(model->junction_longitude)||fabs(model->junction_latitude)>90||fabs(model->junction_longitude)>180)))) return;
     ui_concurrency_lock();
+    const nav_model_t *latest=s_navigation_service.pending_valid?&s_navigation_service.pending:&s_navigation_service.current;
+    if(model->session_bound&&latest->session_bound&&model->session_id==latest->session_id&&model->route_id==latest->route_id&&
+       (model->route_revision<latest->route_revision ||
+        (model->route_revision==latest->route_revision && (model->step_id<latest->step_id ||
+         (model->sampled_at_ms&&latest->sampled_at_ms&&(int32_t)(model->sampled_at_ms-latest->sampled_at_ms)<0))))) {
+        ui_concurrency_unlock();return;
+    }
     s_navigation_service.pending = *model;
     s_navigation_service.pending.road_name[sizeof(model->road_name) - 1] = '\0';
     s_navigation_service.pending_valid = true;
@@ -129,10 +159,11 @@ bool ui_navigation_service_expire(uint32_t now_ms)
 {
     ui_concurrency_lock();
     nav_model_t model = s_navigation_service.current;
-    bool expired = !model.demo && model.position_valid && model.stale_after_ms &&
+    bool expired = model.position_valid && model.stale_after_ms &&
         (uint32_t)(now_ms - model.sampled_at_ms) > model.stale_after_ms;
     if(expired && !s_navigation_service.pending_valid) {
         model.position_valid = false;
+        if(model.session_bound) model.guidance_valid=model.heading_valid=model.eta_valid=model.speed_valid=false;
         model.ui_state = NAV_UI_GPS_WEAK;
         s_navigation_service.pending = model;
         s_navigation_service.pending_valid = true;

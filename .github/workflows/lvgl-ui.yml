@@ -1,0 +1,80 @@
+name: LVGL UI 构建与发布
+
+on:
+  push:
+    branches: [main, 'feature/**', 'release/**']
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: msys2 {0}
+        working-directory: Software/Lvgl_Project
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: true
+          fetch-depth: 0
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-python
+            mingw-w64-ucrt-x86_64-python-pillow
+      - name: 检查版本和地图资源
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          python -c 'from pathlib import Path; import os; v=Path("VERSION").read_text().strip(); h=Path("src/ui/core/ui_version.h").read_text(); assert "\"v"+v+"\"" in h; ref=os.environ["RELEASE_REF"]; assert not ref.startswith("refs/tags/") or ref == "refs/tags/v"+v'
+          (cd assets/maps/xian && sha256sum -c SHA256SUMS.txt)
+      - name: 构建
+        run: |
+          cmake --preset bike-ui
+          cmake --build --preset bike-ui --parallel 4
+      - name: 回归测试
+        run: ctest --preset bike-ui
+      - name: 打包 Windows PC 模拟器
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: python tools/package_windows_release.py --output dist --toolchain-bin "$(cygpath -m /ucrt64/bin)"
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: windows-pc-release
+          path: Software/Lvgl_Project/dist/*
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-pc-release
+          path: dist
+      - name: 创建 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          notes="Software/Lvgl_Project/docs/V${RELEASE_TAG#v}_RELEASE_NOTES.md"
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --latest \
+            --title "BikeComputer LVGL UI $RELEASE_TAG" --notes-file "$notes"

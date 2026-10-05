@@ -13,17 +13,17 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NAV_DOCK_BG              UI_TOKEN_COLOR_SURFACE
+#define NAV_DOCK_BG              lv_color_hex(0x181818)
 #define NAV_DOCK_BORDER          UI_TOKEN_COLOR_SURFACE_OUTLINE
 #define NAV_DOCK_DIVIDER         UI_TOKEN_COLOR_DIVIDER
-#define NAV_DOCK_YELLOW          UI_TOKEN_COLOR_ACCENT
+#define NAV_DOCK_YELLOW          lv_color_hex(0xFFD900)
 #define NAV_DOCK_ICON_X          10
-#define NAV_DOCK_ICON_Y          14
-#define NAV_DOCK_ICON_W         170
-#define NAV_DOCK_ICON_H         160
-#define NAV_DOCK_DIVIDER_X      184
-#define NAV_DOCK_INFO_X         194
-#define NAV_DOCK_INFO_W         252
+#define NAV_DOCK_ICON_Y          10
+#define NAV_DOCK_ICON_W         134
+#define NAV_DOCK_ICON_H         112
+#define NAV_DOCK_DIVIDER_X      154
+#define NAV_DOCK_INFO_X         174
+#define NAV_DOCK_INFO_W         272
 
 static lv_obj_t *plain_obj(lv_obj_t *parent)
 {
@@ -85,10 +85,10 @@ static lv_point_precise_t icon_point(int32_t cx, int32_t cy,
 static void draw_arrow_icon(lv_layer_t *layer, int32_t cx, int32_t cy,
                             nav_maneuver_t maneuver, int32_t scale)
 {
-    const int32_t width = LV_MAX(12, (18 * scale) / 100);
+    const int32_t width = LV_MAX(3, (18 * scale) / 100);
     int32_t sign = (maneuver == NAV_MANEUVER_RIGHT ||
                     maneuver == NAV_MANEUVER_SLIGHT_RIGHT ||
-                    maneuver == NAV_MANEUVER_SHARP_RIGHT) ? 1 : -1;
+                    maneuver == NAV_MANEUVER_SHARP_RIGHT || maneuver==NAV_MANEUVER_KEEP_RIGHT || maneuver==NAV_MANEUVER_FORK_RIGHT) ? 1 : -1;
 
     if(maneuver == NAV_MANEUVER_LEFT || maneuver == NAV_MANEUVER_RIGHT) {
         int32_t stem_x = -sign * 34;
@@ -103,7 +103,7 @@ static void draw_arrow_icon(lv_layer_t *layer, int32_t cx, int32_t cy,
     }
 
     if(maneuver == NAV_MANEUVER_SLIGHT_LEFT ||
-       maneuver == NAV_MANEUVER_SLIGHT_RIGHT) {
+       maneuver == NAV_MANEUVER_SLIGHT_RIGHT || maneuver==NAV_MANEUVER_KEEP_LEFT || maneuver==NAV_MANEUVER_KEEP_RIGHT || maneuver==NAV_MANEUVER_FORK_LEFT || maneuver==NAV_MANEUVER_FORK_RIGHT) {
         draw_line(layer, icon_point(cx, cy, -sign * 27, 60, scale),
                   icon_point(cx, cy, -sign * 27, 12, scale), width);
         draw_line(layer, icon_point(cx, cy, -sign * 27, 12, scale),
@@ -148,7 +148,7 @@ static void draw_arrow_icon(lv_layer_t *layer, int32_t cx, int32_t cy,
         return;
     }
 
-    if(maneuver == NAV_MANEUVER_ROUNDABOUT) {
+    if(maneuver == NAV_MANEUVER_ROUNDABOUT || maneuver==NAV_MANEUVER_EXIT_ROUNDABOUT) {
         lv_draw_arc_dsc_t arc;
         lv_draw_arc_dsc_init(&arc);
         arc.center = (lv_point_t){cx, cy};
@@ -238,10 +238,10 @@ static void icon_draw_cb(lv_event_t *event)
        dock->state == NAV_UI_GPS_WEAK ||
        dock->state == NAV_UI_ARRIVED)
         draw_status_icon(lv_event_get_layer(event), cx, cy, dock->state,
-                         dock->icon_scale);
+                         dock->icon_scale * NAV_DOCK_ICON_H / 160);
     else
         draw_arrow_icon(lv_event_get_layer(event), cx, cy, dock->maneuver,
-                        dock->icon_scale);
+                        dock->icon_scale * NAV_DOCK_ICON_H / 160);
 }
 
 static const char *maneuver_name(nav_maneuver_t maneuver)
@@ -256,8 +256,19 @@ static const char *maneuver_name(nav_maneuver_t maneuver)
         case NAV_MANEUVER_U_TURN: return "掉头";
         case NAV_MANEUVER_ROUNDABOUT: return "进入环岛";
         case NAV_MANEUVER_ARRIVE: return "到达目的地";
+        case NAV_MANEUVER_KEEP_LEFT:return "靠左";
+        case NAV_MANEUVER_KEEP_RIGHT:return "靠右";
+        case NAV_MANEUVER_FORK_LEFT:return "左侧分叉";
+        case NAV_MANEUVER_FORK_RIGHT:return "右侧分叉";
+        case NAV_MANEUVER_EXIT_ROUNDABOUT:return "出环岛";
         default: return "直行";
     }
+}
+
+static void next_icon_draw(lv_event_t *event)
+{
+    ui_nav_command_dock_t *dock=lv_event_get_user_data(event);lv_area_t area;lv_obj_get_coords(lv_event_get_target(event),&area);
+    draw_arrow_icon(lv_event_get_layer(event),(area.x1+area.x2)/2,(area.y1+area.y2)/2,dock->next_maneuver,18);
 }
 
 static void set_icon_scale(void *target, int32_t value)
@@ -329,6 +340,8 @@ void ui_nav_command_dock_create(ui_nav_command_dock_t *dock,
     lv_obj_set_pos(dock->root, UI_NAV_DOCK_X, UI_NAV_DOCK_Y);
     lv_obj_set_size(dock->root, UI_NAV_DOCK_WIDTH, UI_NAV_DOCK_HEIGHT);
     lv_obj_set_style_bg_color(dock->root, NAV_DOCK_BG, 0);
+    lv_obj_set_style_bg_grad_color(dock->root,lv_color_hex(0x101010),0);
+    lv_obj_set_style_bg_grad_dir(dock->root,LV_GRAD_DIR_NONE,0);
     lv_obj_set_style_bg_opa(dock->root, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(dock->root, NAV_DOCK_BORDER, 0);
     lv_obj_set_style_border_opa(dock->root, LV_OPA_COVER, 0);
@@ -339,7 +352,7 @@ void ui_nav_command_dock_create(ui_nav_command_dock_t *dock,
     dock->accent = plain_obj(dock->root);
     lv_obj_set_pos(dock->accent, 4, 15);
     lv_obj_set_size(dock->accent, 4, UI_NAV_DOCK_HEIGHT - 30);
-    lv_obj_set_style_bg_color(dock->accent, NAV_DOCK_YELLOW, 0);
+    lv_obj_set_style_bg_color(dock->accent, UI_COLOR_WHITE, 0);
     lv_obj_set_style_bg_opa(dock->accent, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(dock->accent, LV_RADIUS_CIRCLE, 0);
 
@@ -349,15 +362,15 @@ void ui_nav_command_dock_create(ui_nav_command_dock_t *dock,
     lv_obj_add_event_cb(dock->icon, icon_draw_cb, LV_EVENT_DRAW_MAIN, dock);
 
     dock->divider = plain_obj(dock->root);
-    lv_obj_set_pos(dock->divider, NAV_DOCK_DIVIDER_X, 23);
-    lv_obj_set_size(dock->divider, 1, UI_NAV_DOCK_HEIGHT - 46);
+    lv_obj_set_pos(dock->divider, NAV_DOCK_DIVIDER_X, 8);
+    lv_obj_set_size(dock->divider, 1, UI_NAV_DOCK_HEIGHT - 16);
     lv_obj_set_style_bg_color(dock->divider, NAV_DOCK_DIVIDER, 0);
     lv_obj_set_style_bg_opa(dock->divider, LV_OPA_COVER, 0);
 
     dock->info = plain_obj(dock->root);
-    lv_obj_set_pos(dock->info, NAV_DOCK_INFO_X, 10);
+    lv_obj_set_pos(dock->info, NAV_DOCK_INFO_X, 6);
     lv_obj_set_size(dock->info, NAV_DOCK_INFO_W,
-                    UI_NAV_DOCK_HEIGHT - 20);
+                    UI_NAV_DOCK_HEIGHT - 12);
 
     dock->prefix = make_label(dock->info, "前方", UI_FONT_PAGE_TEXT,
                               UI_TOKEN_COLOR_TEXT_SECONDARY,
@@ -366,42 +379,50 @@ void ui_nav_command_dock_create(ui_nav_command_dock_t *dock,
     lv_obj_set_size(dock->prefix, NAV_DOCK_INFO_W, 28);
 
     dock->distance_row = plain_obj(dock->info);
-    lv_obj_set_pos(dock->distance_row, 0, 38);
-    lv_obj_set_size(dock->distance_row, NAV_DOCK_INFO_W, 65);
+    lv_obj_set_pos(dock->distance_row, 0, 0);
+    lv_obj_set_size(dock->distance_row, NAV_DOCK_INFO_W, 44);
     lv_obj_set_layout(dock->distance_row, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(dock->distance_row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(dock->distance_row, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(dock->distance_row, 5, 0);
     dock->distance_value = make_label(dock->distance_row, "420",
-                                      UI_FONT_METRIC_VALUE_SMALL,
+                                      UI_FONT_NAV_STRIP_VALUE,
                                       UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
     dock->distance_unit = make_label(dock->distance_row, "m",
                                      UI_FONT_SURFACE_TITLE,
                                      UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
     dock->action = make_label(dock->distance_row, "直行",
                               UI_FONT_NAV_ACTION,
-                              NAV_DOCK_YELLOW, LV_TEXT_ALIGN_CENTER);
+                              UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
 
     dock->headline = make_label(dock->info, "", UI_FONT_NAV_ACTION,
                                 UI_COLOR_WHITE, LV_TEXT_ALIGN_CENTER);
-    lv_obj_set_pos(dock->headline, 0, 43);
-    lv_obj_set_size(dock->headline, NAV_DOCK_INFO_W, 42);
+    lv_obj_set_pos(dock->headline, 0, 16);
+    lv_obj_set_size(dock->headline, NAV_DOCK_INFO_W, 32);
+    lv_obj_set_style_text_font(dock->headline, UI_FONT_SURFACE_TITLE, 0);
     lv_obj_add_flag(dock->headline, LV_OBJ_FLAG_HIDDEN);
 
     dock->special_detail = make_label(dock->info, "", UI_FONT_PAGE_TEXT,
                                       UI_TOKEN_COLOR_TEXT_SECONDARY,
                                       LV_TEXT_ALIGN_CENTER);
-    lv_obj_set_pos(dock->special_detail, 0, 96);
-    lv_obj_set_size(dock->special_detail, NAV_DOCK_INFO_W, 38);
+    lv_obj_set_pos(dock->special_detail, 0, 62);
+    lv_obj_set_size(dock->special_detail, NAV_DOCK_INFO_W, 48);
     lv_obj_add_flag(dock->special_detail, LV_OBJ_FLAG_HIDDEN);
 
     dock->road = make_label(dock->info, "环城南路", UI_FONT_PAGE_TEXT,
                             UI_TOKEN_COLOR_TEXT_PRIMARY,
                             LV_TEXT_ALIGN_CENTER);
-    lv_obj_set_pos(dock->road, 8, 123);
-    lv_obj_set_size(dock->road, NAV_DOCK_INFO_W - 16, 30);
+    lv_obj_set_pos(dock->road, 0, 50);
+    lv_obj_set_size(dock->road, NAV_DOCK_INFO_W, 26);
     lv_label_set_long_mode(dock->road, LV_LABEL_LONG_DOT);
+    lv_obj_add_flag(dock->prefix,LV_OBJ_FLAG_HIDDEN);
+    dock->next_divider=plain_obj(dock->info);lv_obj_set_pos(dock->next_divider,0,82);lv_obj_set_size(dock->next_divider,NAV_DOCK_INFO_W,1);
+    lv_obj_set_style_bg_color(dock->next_divider,NAV_DOCK_DIVIDER,0);lv_obj_set_style_bg_opa(dock->next_divider,LV_OPA_COVER,0);
+    dock->next_row=plain_obj(dock->info);lv_obj_set_pos(dock->next_row,0,90);lv_obj_set_size(dock->next_row,NAV_DOCK_INFO_W,28);
+    dock->next_icon=plain_obj(dock->next_row);lv_obj_set_pos(dock->next_icon,0,0);lv_obj_set_size(dock->next_icon,26,30);lv_obj_add_event_cb(dock->next_icon,next_icon_draw,LV_EVENT_DRAW_MAIN,dock);
+    dock->next_text=make_label(dock->next_row,"",UI_FONT_PAGE_TEXT,UI_TOKEN_COLOR_TEXT_PRIMARY,LV_TEXT_ALIGN_LEFT);
+    lv_obj_set_pos(dock->next_text,30,0);lv_obj_set_size(dock->next_text,NAV_DOCK_INFO_W-30,28);lv_label_set_long_mode(dock->next_text,LV_LABEL_LONG_DOT);
 }
 
 void ui_nav_command_dock_update(ui_nav_command_dock_t *dock,
@@ -419,12 +440,22 @@ void ui_nav_command_dock_update(ui_nav_command_dock_t *dock,
                      model->direction : NAV_MANEUVER_STRAIGHT;
 
     lv_obj_set_style_text_color(dock->distance_value,
-        dock->state == NAV_UI_IMMINENT ? NAV_DOCK_YELLOW : UI_COLOR_WHITE, 0);
+        UI_COLOR_WHITE, 0);
+    lv_obj_add_flag(dock->next_row,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(dock->next_divider,LV_OBJ_FLAG_HIDDEN);
 
+    if(model->session_bound && !model->guidance_valid && dock->state!=NAV_UI_GPS_WEAK && dock->state!=NAV_UI_REROUTING) {
+        set_normal_visibility(dock,false);
+        ui_text_set_label(dock->headline,"等待有效导航数据",24);
+        ui_text_set_label(dock->special_detail,"等待有效转向指令",20);
+        lv_obj_clear_flag(dock->special_detail,LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(dock->icon,LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    lv_obj_clear_flag(dock->icon,LV_OBJ_FLAG_HIDDEN);
     if(dock->state == NAV_UI_REROUTING) {
         set_normal_visibility(dock, false);
         lv_label_set_text(dock->headline, "已偏离路线");
-        lv_label_set_text(dock->special_detail, "正在重新规划…");
+        ui_text_set_label(dock->special_detail, model->reroute_failed?"重新规划失败":"正在重新规划…",20);
         lv_obj_clear_flag(dock->special_detail, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_text_font(dock->special_detail, UI_FONT_PAGE_TEXT, 0);
         lv_obj_set_style_text_color(dock->special_detail,
@@ -449,10 +480,20 @@ void ui_nav_command_dock_update(ui_nav_command_dock_t *dock,
                                     UI_TOKEN_COLOR_TEXT_SECONDARY, 0);
     } else {
         set_normal_visibility(dock, true);
-        lv_obj_set_style_text_color(dock->action, NAV_DOCK_YELLOW, 0);
+        lv_obj_set_style_text_color(dock->action, UI_COLOR_WHITE, 0);
         lv_label_set_text(dock->action, maneuver_name(dock->maneuver));
-        (void)ui_text_set_label(dock->road,
-                          model->road_name[0] != '\0' ? model->road_name : "当前道路", 20);
+        if(strlen(maneuver_name(dock->maneuver))>6)ui_text_set_label(dock->action,maneuver_name(dock->maneuver),24);
+        else lv_obj_set_style_text_font(dock->action,UI_FONT_NAV_ACTION,0);
+        char road_text[96];snprintf(road_text,sizeof(road_text),model->road_name[0]?"进入%s":"沿路线继续",model->road_name);
+        (void)ui_text_set_label(dock->road,road_text,20);
+        if(model->direction==NAV_MANEUVER_ROUNDABOUT && model->exit_valid) {
+            char exit_text[64]; snprintf(exit_text,sizeof(exit_text),"第 %u 个出口",model->roundabout_exit);
+            ui_text_set_label(dock->road,exit_text,20);
+        }
+        if(model->next_valid){char next[96];snprintf(next,sizeof(next),"随后 %lu m %s%s",(unsigned long)model->next_distance_m,model->next_direction==model->direction?"再":"",maneuver_name(model->next_direction));
+            ui_text_set_label(dock->next_text,next,20);dock->next_maneuver=model->next_direction;lv_obj_invalidate(dock->next_icon);
+            lv_obj_clear_flag(dock->next_row,LV_OBJ_FLAG_HIDDEN);lv_obj_clear_flag(dock->next_divider,LV_OBJ_FLAG_HIDDEN);}
+        lv_obj_add_flag(dock->prefix,LV_OBJ_FLAG_HIDDEN);
         if(model->direction_distance >= 1000U) {
             lv_label_set_text_fmt(dock->distance_value, "%.1f",
                                   (double)model->direction_distance / 1000.0);
@@ -466,18 +507,11 @@ void ui_nav_command_dock_update(ui_nav_command_dock_t *dock,
             lv_obj_add_flag(dock->prefix, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(dock->distance_row, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(dock->headline, LV_OBJ_FLAG_HIDDEN);
-            lv_label_set_text(dock->headline, "现在");
-            lv_label_set_text(dock->special_detail,
-                              maneuver_name(dock->maneuver));
-            lv_obj_clear_flag(dock->special_detail, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_set_style_text_font(dock->special_detail,
-                                       UI_FONT_NAV_ACTION, 0);
-            lv_obj_set_style_text_color(dock->special_detail,
-                                        NAV_DOCK_YELLOW, 0);
-            lv_obj_add_flag(dock->road, LV_OBJ_FLAG_HIDDEN);
-        } else if(dock->state == NAV_UI_IMMINENT) {
-            lv_obj_add_flag(dock->prefix, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(dock->road, LV_OBJ_FLAG_HIDDEN);
+            char now[64];snprintf(now,sizeof(now),"现在%s",maneuver_name(dock->maneuver));
+            ui_text_set_label(dock->headline,now,24);
+            lv_obj_set_pos(dock->headline,0,18);
+            lv_obj_add_flag(dock->special_detail, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(dock->road, LV_OBJ_FLAG_HIDDEN);
         }
     }
 

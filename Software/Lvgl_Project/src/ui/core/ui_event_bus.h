@@ -34,5 +34,7 @@ uint8_t ui_event_bus_process(uint8_t max_events);
 uint8_t ui_event_bus_pending_count(void);
 uint32_t ui_event_bus_dropped_count(void);
 void ui_event_bus_clear(void);
+uint8_t ui_event_bus_remove_source(uint32_t source_id);
+uint8_t ui_event_bus_remove_mask(uint64_t mask);
 
 #endif /* UI_EVENT_BUS_H */

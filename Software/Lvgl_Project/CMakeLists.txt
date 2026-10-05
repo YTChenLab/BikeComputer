@@ -11,6 +11,36 @@ endif()
 project(lvgl C CXX)
 
 include(CTest)
+if(BUILD_TESTING)
+    add_executable(ui_offline_places_test tests/ui_offline_places_test.c src/services/ui_offline_places.c
+        src/services/ui_nav_search.c src/ui/core/ui_concurrency.c)
+    target_include_directories(ui_offline_places_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(NOT MSVC)
+        target_link_libraries(ui_offline_places_test m)
+    endif()
+    add_test(NAME ui_offline_places_test COMMAND ui_offline_places_test)
+    set_tests_properties(ui_offline_places_test PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    add_executable(ui_nav_raster_test tests/ui_nav_raster_test.c
+        src/services/ui_nav_raster.c src/ui/core/ui_concurrency.c)
+    target_include_directories(ui_nav_raster_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    add_test(NAME ui_nav_raster_test COMMAND ui_nav_raster_test)
+    add_executable(ui_offline_color_test tests/ui_offline_color_test.c
+        src/services/ui_offline_tiles.c src/services/ui_offline_graph.c)
+    target_include_directories(ui_offline_color_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(NOT MSVC)
+        target_link_libraries(ui_offline_color_test m)
+    endif()
+    add_test(NAME ui_offline_color_test COMMAND ui_offline_color_test)
+    set_tests_properties(ui_offline_color_test PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    add_executable(ui_offline_map_test tests/ui_offline_map_test.c
+        src/services/ui_offline_map.c src/services/ui_offline_route.c)
+    target_include_directories(ui_offline_map_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(NOT MSVC)
+        target_link_libraries(ui_offline_map_test m)
+    endif()
+    add_test(NAME ui_offline_map_test COMMAND ui_offline_map_test)
+    set_tests_properties(ui_offline_map_test PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+endif()
 
 # Set the correct FreeRTOS port for your system (e.g., Posix for WSL)
 set(FREERTOS_PORT GCC_POSIX CACHE STRING "Port for FreeRTOS on Posix environment")
@@ -75,6 +105,12 @@ add_compile_definitions($<$<BOOL:${LV_USE_FFMPEG}>:LV_USE_FFMPEG=1>)
 
 # Add LVGL subdirectory
 add_subdirectory(lvgl)
+option(UI_PC_FAST_MAP_RENDERING "Optimize software drawing while retaining debug symbols and assertions" ON)
+if(UI_PC_FAST_MAP_RENDERING AND NOT MSVC)
+    target_compile_options(lvgl PRIVATE -O2)
+    set_source_files_properties(src/services/ui_offline_tiles.c src/services/ui_offline_graph.c
+        PROPERTIES COMPILE_OPTIONS "-O2")
+endif()
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
 
 set(
@@ -106,6 +142,7 @@ list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_zone_24\\.c$")
 list(APPEND UI_SOURCES "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_zone_24.c")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_num_68\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_metric_40\\.c$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_letter_40\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_action_32\\.c$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "/ui_font_misans_nav_unit_16\\.c$")
 # Navigation V2 replaces the legacy 2 x 2 card implementation. Keep the old
@@ -118,6 +155,10 @@ file(
     CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/src/ui/*.c"
     "${PROJECT_SOURCE_DIR}/src/ui/*.h"
+    "${PROJECT_SOURCE_DIR}/src/services/*.c"
+    "${PROJECT_SOURCE_DIR}/src/services/*.h"
+    "${PROJECT_SOURCE_DIR}/src/platform/*.c"
+    "${PROJECT_SOURCE_DIR}/src/platform/*.h"
 )
 list(FILTER UI_RUNTIME_TEXT_SOURCES EXCLUDE REGEX "/src/ui/fonts/")
 
@@ -129,6 +170,7 @@ set(UI_FONT_GENERATED_FILES
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_zone_24.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_num_68.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_metric_40.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_letter_40.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_action_32.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_unit_16.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_runtime_codepoints.h"
@@ -166,6 +208,7 @@ list(
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_metric_60.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_num_68.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_metric_40.c"
+    "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_letter_40.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_action_32.c"
     "${PROJECT_SOURCE_DIR}/src/ui/fonts/ui_font_misans_nav_unit_16.c"
     ${SERVICE_SOURCES}
@@ -277,12 +320,17 @@ if(BUILD_TESTING)
     set_tests_properties(simulator_view_test PROPERTIES
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/simulator_view_test_work"
         ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+    add_library(ui_navigation_adapter_example OBJECT docs/examples/ui_navigation_adapter_example.c)
+    target_include_directories(ui_navigation_adapter_example PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR})
+    target_compile_definitions(ui_navigation_adapter_example PRIVATE LV_CONF_INCLUDE_SIMPLE)
+    target_link_libraries(ui_navigation_adapter_example lvgl)
     add_library(ui_board_adapter_example OBJECT docs/examples/ui_board_adapter_example.c)
     target_include_directories(ui_board_adapter_example PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR})
     target_compile_definitions(ui_board_adapter_example PRIVATE LV_CONF_INCLUDE_SIMPLE)
     target_link_libraries(ui_board_adapter_example lvgl)
     add_executable(ui_app_integration_test tests/ui_app_integration_test.c
         ${UI_SOURCES} ${SERVICE_SOURCES}
+        src/platform/pc/ui_pc_navigation.c
         ${UI_FONT_GENERATED_FILES})
     target_include_directories(ui_app_integration_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR})
     target_compile_definitions(ui_app_integration_test PRIVATE LV_CONF_INCLUDE_SIMPLE)
@@ -292,6 +340,10 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME ui_app_integration_test COMMAND ui_app_integration_test)
     add_test(NAME ui_app_partial_render_test COMMAND ui_app_integration_test --partial)
+    add_test(NAME ui_offline_navigation_integration COMMAND ui_app_integration_test --offline)
+    add_test(NAME ui_offline_navigation_partial COMMAND ui_app_integration_test --offline-partial)
+    set_tests_properties(ui_offline_navigation_integration ui_offline_navigation_partial
+        PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     set_tests_properties(ui_app_partial_render_test PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     set_tests_properties(ui_app_integration_test PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     add_executable(ui_hardware_input_test tests/ui_hardware_input_test.c src/ui/core/ui_hardware_input.c)
@@ -311,6 +363,7 @@ if(BUILD_TESTING)
         src/ui/fonts/ui_font_misans_ui_24.c
         src/ui/fonts/ui_font_misans_zone_24.c
         src/ui/fonts/ui_font_misans_nav_metric_40.c
+        src/ui/fonts/ui_font_misans_nav_letter_40.c
         src/ui/fonts/ui_font_misans_nav_action_32.c
         src/ui/fonts/ui_font_misans_nav_unit_16.c
         src/ui/fonts/ui_font_misans_en_16.c
@@ -400,6 +453,10 @@ if(BUILD_TESTING)
         src/services/ui_navigation_service.c
         src/services/ui_ride_history_repository.c
         src/platform/pc/ui_pc_services.c
+        src/platform/pc/ui_pc_navigation.c
+        src/services/ui_nav_session.c
+        src/services/ui_nav_store.c
+        src/services/ui_nav_map_provider.c
         src/platform/pc/ui_pc_ride_history_storage.c
         src/ui/models/ui_ride_data_model.c
         src/ui/models/ui_ride_history_model.c
@@ -426,6 +483,7 @@ if(BUILD_TESTING)
     add_executable(ui_dock_view_test
         tests/ui_dock_view_test.c
         src/ui/components/dock/ui_dock_templates.c
+        src/ui/components/ui_liquid_selection.c
         src/ui/components/dock/ui_dock_view.c
         src/ui/core/ui_bottom_surface.c
         src/ui/core/ui_dock.c
@@ -510,10 +568,37 @@ if(BUILD_TESTING)
     add_test(NAME ui_capsule_motion_logic_test
              COMMAND ui_capsule_motion_logic_test)
 
+    add_executable(ui_nav_session_test tests/ui_nav_session_test.c
+        src/services/ui_nav_session.c src/services/ui_nav_map_provider.c src/ui/core/ui_concurrency.c)
+    target_include_directories(ui_nav_session_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(NOT MSVC)
+        target_link_libraries(ui_nav_session_test m pthread)
+    endif()
+    add_test(NAME ui_nav_session_test COMMAND ui_nav_session_test)
+    add_executable(ui_nav_store_test tests/ui_nav_store_test.c
+        src/services/ui_nav_store.c src/services/ui_nav_session.c
+        src/services/ui_navigation_service.c src/ui/core/ui_concurrency.c)
+    target_include_directories(ui_nav_store_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    if(NOT MSVC)
+        target_link_libraries(ui_nav_store_test m pthread)
+    endif()
+    add_test(NAME ui_nav_store_test COMMAND ui_nav_store_test)
     add_executable(ui_navigation_test
         tests/ui_navigation_test.c
+        src/services/ui_nav_search.c
+        src/ui/components/navigation/ui_nav_search_panel.c
         src/ui/pages/navigation/ui_navigation.c
+        src/ui/pages/navigation/ui_nav_workspace.c
+        src/services/ui_nav_store.c
+        src/ui/core/ui_bottom_surface.c
+        src/ui/design/ui_component_style.c
+        src/services/ui_nav_session.c
+        src/services/ui_nav_map_provider.c
+        src/services/ui_nav_raster.c
+        src/ui/core/ui_text.c
         src/ui/components/navigation/ui_nav_animation.c
+        src/ui/components/navigation/ui_nav_visual.c
+        src/ui/components/navigation/ui_nav_capsule_row.c
         src/ui/components/navigation/ui_nav_command_dock.c
         src/ui/components/navigation/ui_nav_control.c
         src/ui/components/navigation/ui_nav_data_strip.c
@@ -526,6 +611,7 @@ if(BUILD_TESTING)
         src/ui/fonts/ui_font_misans_ui_20.c
         src/ui/fonts/ui_font_misans_ui_24.c
         src/ui/fonts/ui_font_misans_nav_metric_40.c
+        src/ui/fonts/ui_font_misans_nav_letter_40.c
         src/ui/fonts/ui_font_misans_nav_action_32.c
         src/ui/fonts/ui_font_misans_nav_unit_16.c
         src/ui/fonts/ui_font_misans_en_18.c
@@ -606,6 +692,7 @@ if(BUILD_TESTING)
     add_executable(ui_settings_list_test
         tests/ui_settings_list_test.c
         src/ui/components/settings/ui_settings_list.c
+        src/ui/components/ui_liquid_selection.c
         src/ui/core/ui_motion.c
         src/ui/core/ui_sound.c
         src/ui/fonts/ui_font_misans_ui_20.c

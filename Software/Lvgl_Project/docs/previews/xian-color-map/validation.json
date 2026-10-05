@@ -1,0 +1,205 @@
+{
+  "frames": {
+    "xian_actions": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_arrived": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_follow": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_junction": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_map_detail": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_overview": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_pick_crosshair": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_pick_destination": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_picked_follow": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_picked_preview": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_preview": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_routes": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_standby": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_zoom_in": {
+      "identical": true,
+      "difference_bounds": null
+    },
+    "xian_zoom_out": {
+      "identical": true,
+      "difference_bounds": null
+    }
+  },
+  "protected_ui": {
+    "src/ui/pages/ui_boot_motion.c": true,
+    "src/ui/pages/ui_boot_motion.h": true,
+    "src/ui/pages/ui_boot_page.c": true,
+    "src/ui/pages/ui_boot_page.h": true,
+    "src/ui/pages/ui_boot_prts_assets.c": true,
+    "src/ui/pages/ui_boot_prts_assets.h": true,
+    "src/ui/pages/ui_home_page.c": true,
+    "src/ui/pages/ui_profile_page.c": true
+  },
+  "performance": {
+    "full": [
+      "Selected coordinates drift: 0.000 m north, 0.000 m east",
+      "PC picked route: 12.73 ms, 334 expanded nodes, 3044136 bytes workspace, distance=1729 m",
+      "PC map refresh: p50=4.0 ms p95=5.0 ms max=6.0 ms; last tile job=0.15 ms, bytes=0, hits=16, misses=0",
+      "ui_offline_navigation_integration: PASS"
+    ],
+    "partial": [
+      "Selected coordinates drift: 0.000 m north, 0.000 m east",
+      "PC picked route: 12.89 ms, 334 expanded nodes, 3044136 bytes workspace, distance=1729 m",
+      "PC map refresh: p50=4.0 ms p95=6.0 ms max=8.0 ms; last tile job=0.16 ms, bytes=0, hits=16, misses=0",
+      "ui_offline_navigation_integration: PASS"
+    ]
+  },
+  "map": {
+    "format": "BTIL0002",
+    "name": "西安彩色离线地图",
+    "bbox_lon_lat": [
+      108.78,
+      34.12,
+      109.15,
+      34.46
+    ],
+    "detail_bbox_lon_lat": [
+      108.87,
+      34.2,
+      109.05,
+      34.37
+    ],
+    "levels_mpp": [
+      0.375,
+      0.75,
+      1.5,
+      3.0,
+      6.0,
+      12.0,
+      24.0,
+      48.0,
+      96.0
+    ],
+    "tile_size": 256,
+    "tiles": 8331,
+    "bytes": 88761336,
+    "palette": {
+      "background": "#1B272C",
+      "building": "#3C505A",
+      "building_edge": "#526874",
+      "commercial": "#554D3D",
+      "industrial": "#494555",
+      "park": "#285B44",
+      "forest": "#244D39",
+      "grass": "#345E42",
+      "water": "#235B79",
+      "water_edge": "#367697",
+      "major": "#D4C49A",
+      "secondary": "#AFBFC4",
+      "street": "#80989F",
+      "cycleway": "#53C8B1",
+      "path": "#608A7F",
+      "casing": "#162125",
+      "label": "#F3F4ED",
+      "muted": "#A9BABB"
+    },
+    "graph": {
+      "nodes": 126839,
+      "directed_edges": 213156,
+      "names": 2132,
+      "bytes": 5542384,
+      "profile": "conservative bicycle access; no turn-restriction engine"
+    },
+    "source_sha256": "95b5bc401cb16ec369cab2981492a4dd3577627e13be753be0c5b8e5d80741f4",
+    "detail_sha256": "2076a0b3d7d96803d4ce8a796ef2fe117f887bd2f246bb360615dba6038c9375",
+    "osm_timestamp": [
+      "2026-07-24T11:04:51Z",
+      "2026-06-01T08:52:28Z"
+    ],
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors",
+    "build_seconds": 55.68,
+    "limitations": [
+      "Original OSM completeness varies; no invented lane or traffic-light data.",
+      "Highest-resolution tiles cover the detail rectangle; other areas use next level.",
+      "Routing is conservative road-graph navigation, not a certified commercial engine."
+    ],
+    "coordinate_system": "WGS84",
+    "highest_resolution_bbox_lon_lat": [
+      108.92,
+      34.25,
+      108.98,
+      34.28
+    ],
+    "resolution_1_5_bbox_lon_lat": [
+      108.87,
+      34.2,
+      109.05,
+      34.37
+    ],
+    "base_building_data_bbox_lon_lat": [
+      108.92,
+      34.25,
+      108.98,
+      34.28
+    ],
+    "supplemental_source_bbox_lon_lat": [
+      108.87,
+      34.2,
+      108.93,
+      34.256667
+    ],
+    "label_layer": "upright cached labels, screen-space collision avoidance",
+    "polygon_layer": "closed ways and multipolygon outer rings with holes",
+    "package_sha256": "a46d7b368f060da2e11af6482b977765b64973e9034b9c25478776278d201384",
+    "graph_sha256": "320fbb4cdf605e11e3669f2239eb3aed9d9fda400c27234a138b7933de3bd24b"
+  },
+  "ctest_log": "work/xian-map-v2/ctest.log",
+  "ctest": {
+    "passed": 40,
+    "total": 40,
+    "confirmed": true
+  },
+  "core_performance": [
+    "color tiles: cold 5.0 ms, warm 0.0 ms, 547217 cold bytes, 12 tiles; cached read bytes=0",
+    "A*: 94.0 ms, 1427 expanded, 96 points, 4090 m, workspace=3044136 bytes, end snap=0.0 m",
+    "ui_offline_color_test: PASS"
+  ],
+  "memory_bytes": {
+    "astar_workspace": 3044136,
+    "route": 327744,
+    "map_frame": 28520,
+    "tile_cache_metadata": 31120
+  }
+}

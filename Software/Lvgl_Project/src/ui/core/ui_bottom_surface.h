@@ -51,6 +51,8 @@ typedef void (*ui_bottom_surface_observer_cb_t)(
 void ui_bottom_surface_init(void);
 bool ui_bottom_surface_create(lv_obj_t *parent);
 bool ui_bottom_surface_is_created(void);
+/* Page-specific persistent content; normal Dynamic Card presets are unchanged. */
+bool ui_bottom_surface_set_page_content(lv_obj_t *content,int32_t height,bool animated);
 
 lv_obj_t *ui_bottom_surface_root(void);
 lv_obj_t *ui_bottom_surface_dynamic_host(void);

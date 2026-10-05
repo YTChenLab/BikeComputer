@@ -10,7 +10,11 @@ typedef struct
     uint8_t dispatched_count;
     uint8_t observed_count;
     bool accept;
+    uint32_t cancelled;
 } fake_backend_t;
+
+static void cancel(uint32_t id,void *context)
+{((fake_backend_t *)context)->cancelled=id;}
 
 static bool dispatch(const ui_command_t *command, void *context)
 {
@@ -157,12 +161,40 @@ static void test_capacity_and_repeated_completion(void)
     }
 }
 
+static void test_fix_cancellation(void)
+{
+    fake_backend_t fake={.accept=true};ui_command_service_init();
+    const ui_command_backend_t backend={.dispatch=dispatch,.context=&fake,.cancel=cancel};
+    assert(ui_command_service_register_backend(&backend));
+    assert(ui_command_service_subscribe(observe,&fake)>0);
+    uint32_t queued=ui_command_service_submit(UI_COMMAND_GNSS_ACQUIRE_FIX,0,200);
+    assert(ui_command_service_cancel_fix(queued));
+    ui_command_service_process(1);assert(fake.dispatched_count==0);
+    uint32_t old=ui_command_service_submit(UI_COMMAND_GNSS_ACQUIRE_FIX,0,200);
+    ui_command_service_process(1);assert(fake.dispatched_count==1);
+    assert(ui_command_service_cancel_fix(old)&&fake.cancelled==old);
+    uint32_t fresh=ui_command_service_submit(UI_COMMAND_GNSS_ACQUIRE_FIX,0,200);
+    assert(fresh!=old);ui_command_service_process(1);
+    assert(ui_command_service_complete(old,UI_COMMAND_STATUS_SUCCESS,0));
+    ui_command_service_process(1);assert(ui_command_service_pending()==1);
+    assert(ui_command_service_complete(fresh,UI_COMMAND_STATUS_SUCCESS,0));
+    ui_command_service_process(1);assert(ui_command_service_pending()==0);
+    uint32_t ride=ui_command_service_submit(UI_COMMAND_RIDE_START,0,200);
+    ui_command_service_process(1);
+    assert(ui_command_service_complete(ride,UI_COMMAND_STATUS_SUCCESS,0));
+    assert(!ui_command_service_cancel_fix(ride));
+    ui_command_service_process(1);
+    assert(fake.observed[fake.observed_count-1].id==ride);
+    assert(fake.observed[fake.observed_count-1].status==UI_COMMAND_STATUS_SUCCESS);
+}
+
 int main(void)
 {
     test_success_and_fifo();
     test_latest_value_coalescing();
     test_timeout_and_rejection();
     test_capacity_and_repeated_completion();
+    test_fix_cancellation();
     puts("ui_command_service_test: PASS");
     return 0;
 }

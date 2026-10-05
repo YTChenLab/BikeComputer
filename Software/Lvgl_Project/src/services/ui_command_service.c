@@ -172,6 +172,25 @@ uint32_t ui_command_service_submit(ui_command_type_t type, int32_t value,
     return id;
 }
 
+bool ui_command_service_cancel_fix(uint32_t id)
+{
+    if(!id) return false;
+    ui_concurrency_lock();bool cancelled=false,active=false;
+    if(s_commands.active_valid && s_commands.active.id==id &&
+       s_commands.active.type==UI_COMMAND_GNSS_ACQUIRE_FIX) {
+        s_commands.active_valid=false;cancelled=active=true;
+    }
+    for(uint8_t i=0;i<s_commands.queued_count;i++)
+        if(s_commands.queued[i].id==id && s_commands.queued[i].type==UI_COMMAND_GNSS_ACQUIRE_FIX) {
+            remove_command(i);cancelled=true;break;
+        }
+    if(cancelled) for(uint8_t i=0;i<s_commands.result_count;)
+        if(s_commands.results[i].id==id) remove_result(i);else i++;
+    ui_command_backend_t backend=s_commands.backend;ui_concurrency_unlock();
+    if(active && backend.cancel) backend.cancel(id,backend.context);
+    return cancelled;
+}
+
 bool ui_command_service_complete(uint32_t command_id,
                                  ui_command_status_t status,
                                  int32_t error_code)

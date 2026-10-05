@@ -1,0 +1,230 @@
+{
+  "frames": [
+    {
+      "page": "nav_approach",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_arrival",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_arrival_map",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_capsule_reverse",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_capsule_switch",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_confirm",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_cross_page",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_gnss_lost",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_guidance",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_map_detail",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_maps",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_near",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_overview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preparing",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_preview",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_quick_actions",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_recent_empty",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_reroute_failed",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_reroute_success",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_rerouting",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_roundabout",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_routes",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_saved_routes",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_standby",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_starting",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_storage",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    },
+    {
+      "page": "nav_transfer_unavailable",
+      "size": [
+        480,
+        854
+      ],
+      "identical": true
+    }
+  ],
+  "protected_sources": {
+    "src/ui/pages/ui_boot_motion.c": "c94b721fab06be5e4fd17b925b8710f44ab8eb3df8fbf65057d44d8e4a952a60",
+    "src/ui/pages/ui_boot_motion.h": "a9ff3a6f90d5b065c1d5fa13b7af519e9bf756c86727c8cadfe458e1b56b7110",
+    "src/ui/pages/ui_boot_page.c": "d5e0d5105cfb25a91ffbdb7578f321a2067e07b34b1beaca493263b87e38cd8b",
+    "src/ui/pages/ui_boot_page.h": "945da0e7a16acea48e109d0f2b00d542336720e25759be3721f9a3054153f520",
+    "src/ui/pages/ui_boot_prts_assets.c": "35dca2ec41fc6051738cd142a713ffc1799c52404dc9b65578a035c653a70006",
+    "src/ui/pages/ui_boot_prts_assets.h": "6cc7a4f191a60066a599f606dbe6b6b8809a5b0ea008624bfb1aa68085072901",
+    "src/ui/pages/ui_home_page.c": "781bc1569a91df6b49e3ca775fac60f843ec5eb9b2680887847cc65212813274",
+    "src/ui/pages/ui_profile_page.c": "3cc42a456822fbbc9f9a71bf809a6c454393ab3d9436d8ff906244622b5b139a"
+  }
+}

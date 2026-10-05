@@ -20,7 +20,7 @@ static void apply_visual(ui_nav_control_t *control)
         control->focused ? UI_TOKEN_BORDER_FOCUS : UI_TOKEN_BORDER_THIN, 0);
     lv_obj_set_style_bg_color(
         control->root,
-        control->focused ? lv_color_hex(0x15170A) : UI_TOKEN_COLOR_SURFACE, 0);
+        control->focused ? lv_color_hex(0x202020) : lv_color_hex(0x101010), 0);
     lv_obj_set_style_text_color(control->icon, color, 0);
 }
 

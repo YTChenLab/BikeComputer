@@ -1,5 +1,9 @@
 * text=auto
 
+# GNU checksum manifests must stay LF on Windows checkouts.
+.gitattributes text eol=lf
+**/SHA256SUMS.txt text eol=lf
+
 *.c text eol=lf
 *.h text eol=lf
 *.cpp text eol=lf

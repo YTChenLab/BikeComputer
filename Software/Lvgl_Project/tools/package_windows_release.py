@@ -67,7 +67,7 @@ def main():
             package.write(path, name)
     with archive.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-    (output_dir / 'SHA256SUMS.txt').write_text(f'{digest}  {archive.name}\n', encoding='utf-8')
+    (output_dir / 'SHA256SUMS.txt').write_text(f'{digest}  {archive.name}\n', encoding='utf-8', newline='\n')
     print(f'Packaged {archive.name}: {archive.stat().st_size} bytes; {len(binaries)} runtime binaries')
 
 if __name__ == '__main__':

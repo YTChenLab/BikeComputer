@@ -85,7 +85,7 @@ def main():
             meta=s.with_suffix('.source.json')
             if meta.exists():z.writestr(meta.name,meta.read_bytes())
     (a.output/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(f.read_bytes()).hexdigest()+'  '+f.name+'\n'
-        for f in sorted(a.output.iterdir()) if f.suffix in ('.btiles','.bmap','.bgraph','.bpoi','.broute','.gpx','.zip')),encoding='ascii')
+        for f in sorted(a.output.iterdir()) if f.suffix in ('.btiles','.bmap','.bgraph','.bpoi','.broute','.gpx','.zip')),encoding='ascii',newline='\n')
     print('Published staged resources',a.output,flush=True)
 
 if __name__=='__main__':main()

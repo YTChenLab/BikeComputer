@@ -41,24 +41,46 @@ jobs:
             mingw-w64-ucrt-x86_64-SDL2
             mingw-w64-ucrt-x86_64-python
             mingw-w64-ucrt-x86_64-python-pillow
+      - name: 检查 Python 与字体依赖
+        run: |
+          /ucrt64/bin/python.exe -c 'import sys; import PIL; from PIL import Image, ImageDraw, ImageFont; print("UI Python:", sys.executable); print("Pillow:", PIL.__version__)'
       - name: 检查版本和地图资源
         env:
           RELEASE_REF: ${{ inputs.release_tag && format('refs/tags/{0}', inputs.release_tag) || github.ref }}
         run: |
-          python -c 'from pathlib import Path; import os; v=Path("VERSION").read_text().strip(); h=Path("src/ui/core/ui_version.h").read_text(); assert "\"v"+v+"\"" in h; ref=os.environ["RELEASE_REF"]; assert not ref.startswith("refs/tags/") or ref == "refs/tags/v"+v'
+          /ucrt64/bin/python.exe -c 'from pathlib import Path; import os; v=Path("VERSION").read_text().strip(); h=Path("src/ui/core/ui_version.h").read_text(); assert "\"v"+v+"\"" in h; ref=os.environ["RELEASE_REF"]; assert not ref.startswith("refs/tags/") or ref == "refs/tags/v"+v'
           # Windows checkouts of older tags may use CRLF manifests.
           (cd assets/maps/xian && sed 's/\r$//' SHA256SUMS.txt | sha256sum -c -)
       - name: 构建
         run: |
-          cmake --preset bike-ui
-          cmake --build --preset bike-ui --parallel 4
+          set -o pipefail
+          mkdir -p build
+          cmake --preset bike-ui -DPython3_EXECUTABLE="$(cygpath -m /ucrt64/bin/python.exe)" 2>&1 | tee build/configure.log
+          cmake --build --preset bike-ui --parallel 4 2>&1 | tee build/build.log
       - name: 回归测试
-        run: ctest --preset bike-ui
+        run: |
+          set -o pipefail
+          ctest --preset bike-ui 2>&1 | tee build/ctest.log
       - name: 打包 Windows PC 模拟器
         if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && startsWith(inputs.release_tag, 'v'))
         run: |
-          python tools/package_windows_release.py --output dist --toolchain-bin "$(cygpath -m /ucrt64/bin)"
+          set -o pipefail
+          /ucrt64/bin/python.exe tools/package_windows_release.py --output dist --toolchain-bin "$(cygpath -m /ucrt64/bin)" 2>&1 | tee build/package.log
           sed -i 's/\r$//' dist/SHA256SUMS.txt
+      - name: 上传失败诊断
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Software/Lvgl_Project/build/configure.log
+            Software/Lvgl_Project/build/build.log
+            Software/Lvgl_Project/build/ctest.log
+            Software/Lvgl_Project/build/package.log
+            Software/Lvgl_Project/build/Testing/Temporary/LastTest.log
+            Software/Lvgl_Project/build/CMakeCache.txt
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && startsWith(inputs.release_tag, 'v'))
         with:

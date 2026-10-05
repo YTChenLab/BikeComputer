@@ -20,6 +20,10 @@ git lfs pull
 
 CI checkout 必须开启 `lfs: true`。本机环境可继续使用既有 `bike-ui-ucrt64` preset；其他机器使用 `bike-ui` preset 和自己的现有工具链。新装本机环境须先确定安装路径。
 
+字体生成依赖 Pillow。Windows runner 同时存在预装 CPython 和 MSYS2 Python；依赖安装在其中一个解释器不代表其他解释器也可导入。CI 将 `Python3_EXECUTABLE` 明确指定为 `cygpath -m /ucrt64/bin/python.exe` 的结果，并用同一 Python 执行版本检查、字体生成、Python 测试与打包。首次配置前输出 Python 路径和 Pillow 版本；本机也可通过 `cmake --preset bike-ui -DPython3_EXECUTABLE=<已有解释器绝对路径>` 选择包含 Pillow 的 Python。
+
+若构建、测试或打包失败，Actions 会附加 `ci-diagnostics-<运行ID>-<重试次数>`，包含配置、编译、CTest、打包日志及 CMakeCache，保留 7 天。这些日志管道使用 `pipefail`，不会因为 tee 成功而掩盖真正的失败。日志不包含运行时 Key 配置。
+
 ## 发布
 
 1. 将 `VERSION`、`UI_SOFTWARE_VERSION`、README 和 CHANGELOG 同步到同一版本，写明验证结果与已知限制。
@@ -40,3 +44,11 @@ CI checkout 必须开启 `lfs: true`。本机环境可继续使用既有 `bike-u
 4. 本入口用于尚未成功发布的标签。若该标签已有 Release，应先核对它的状态与附件；现有发布不会被此入口覆盖。
 
 校验清单必须使用 LF。生成脚本与 Git 属性共同固定换行；CI 在读取历史清单时只去掉每行末尾回车，仍验证所有资源的 SHA-256，错误哈希或缺失资源仍会失败。
+
+## 2026-10-05 CI 修复验证
+
+只使用 Git 提交 `639ba87` 中的文件，并加入本次 CMake 依赖检查，不带原工作区的构建缓存、运行记录或未跟踪文件。四个 LFS 地图对象按提交中的指针验证大小与 SHA-256 后使用。
+
+显式指定现有 UCRT64 Python 3.14.7 / Pillow 12.3.0，资源七项校验、干净完整构建、44/44 CTest、Windows 打包、ZIP CRC、空 Key 默认离线配置与脱离工具链 PATH 的启动检查均通过。CTest 按 CI 的顺序执行，用时 226.06 秒；构建无警告或错误。工作流 YAML、六段 shell 语法及失败日志管道检查通过。
+
+本地验证不替代 GitHub runner 的最终结果。主分支推送后查看新的 CI；恢复尚未发布的 v1.5.1 时，从最新 main 手动运行并填写 release_tag=v1.5.1。旧运行使用旧工作流，旧标签仍定位原应用发布提交。

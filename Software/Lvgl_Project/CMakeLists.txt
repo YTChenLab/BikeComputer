@@ -173,6 +173,20 @@ file(
 list(FILTER UI_RUNTIME_TEXT_SOURCES EXCLUDE REGEX "/src/ui/fonts/")
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
+# The font generator and its Pillow dependency must use this exact interpreter.
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -c "from PIL import Image, ImageDraw, ImageFont"
+    RESULT_VARIABLE UI_FONT_PYTHON_IMPORT_RESULT
+    ERROR_VARIABLE UI_FONT_PYTHON_IMPORT_ERROR
+    OUTPUT_QUIET
+)
+if(NOT UI_FONT_PYTHON_IMPORT_RESULT STREQUAL "0")
+    message(FATAL_ERROR
+        "Font generation requires Pillow in the selected interpreter: ${Python3_EXECUTABLE}\n"
+        "Select an existing Python with Pillow using -DPython3_EXECUTABLE=<absolute-path>.\n"
+        "${UI_FONT_PYTHON_IMPORT_ERROR}")
+endif()
+message(STATUS "UI font Python: ${Python3_EXECUTABLE}")
 if(BUILD_TESTING)
     add_test(NAME map_places_test COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/map_places_test.py)
     add_test(NAME osm_pbf_test COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/osm_pbf_test.py)

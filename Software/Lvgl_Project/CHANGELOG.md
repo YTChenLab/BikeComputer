@@ -4,6 +4,8 @@
 
 ## 未发布 - CI 发布流程修复（2026-10-05）
 
+- 修复 CMake 在 Windows runner 上选中预装 CPython、却将 Pillow 安装在 MSYS2 Python 中的解释器混用。CI 明确指定 UCRT64 Python，版本校验、字体生成、Python 测试与打包使用同一解释器；构建前检查依赖，CMake 配置阶段报告缺失的 Pillow 和实际 Python 路径。
+- 失败时上传配置、编译、测试与打包的诊断文件，保留 7 天；日志管道开启 pipefail，真实失败仍阻止发布。
 - 修复 Windows checkout 将 SHA256SUMS.txt 转为 CRLF，导致 MSYS2 校验把行尾回车当作文件名的问题。Git 固定清单为 LF，地图与发布包生成脚本显式写 LF；CI 兼容已有标签在 Windows 检出后的 CRLF 清单并继续验证全部哈希。
 - 增加 Actions 手动指定已有版本标签的重建发布入口，以修复后的工作流验证、打包原标签源码；版本必须匹配，旧标签保持原提交。应用版本仍为 v1.5.1，云端发布成功须以 Actions 结果确认。
 

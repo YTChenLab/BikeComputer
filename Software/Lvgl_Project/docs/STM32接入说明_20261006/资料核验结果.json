@@ -1,0 +1,241 @@
+{
+  "checked_date": "2026-10-06",
+  "project_root": "D:/Postgraduate_Program/111AAALearn_Lab/111AAABikeComputer",
+  "lvgl_source_root": "D:/Postgraduate_Program/111AAALearn_Lab/111AAABikeComputer/Software/Lvgl_Project",
+  "stm32_source_root": "D:/Postgraduate_Program/111AAALearn_Lab/111AAABikeComputer/Software/STM32_Project",
+  "hardware_root": "D:/Postgraduate_Program/111AAALearn_Lab/111AAABikeComputer/Hardware",
+  "document_root": "D:/Postgraduate_Program/111AAALearn_Lab/111AAABikeComputer/Software/Lvgl_Project/docs/STM32接入说明_20261006",
+  "source_basis": "最终目录的本地工作区；包含尚未跟踪的 STM32 和硬件文件",
+  "git_head": "fd1db03db101cee2306c9829d153a090046239a0",
+  "version": "1.5.1",
+  "header_files": 25,
+  "structures": 55,
+  "structure_declarations_checked": 380,
+  "hardware_gpio_rows": 140,
+  "source_index_files": 34,
+  "local_links_checked": 92,
+  "api_names_checked": 34,
+  "enum_counts": {
+    "UI_COMMAND_": 24,
+    "UI_NAV_REQ_": 12,
+    "UI_RIDE_FIELD_": 17
+  },
+  "validation_limits": [
+    "核验文件存在、链接行号、真实 C 声明、API 名称、枚举数量和关键引脚",
+    "未进行 ARM 编译、STM32 上板测试和实物电气测量",
+    "PC sizeof 仅作预算参考，ARM ABI 数值需由最终工具链重新确认"
+  ],
+  "errors": [],
+  "files": [
+    {
+      "name": "LVGL到STM32全流程接入指南.md",
+      "bytes": 77593,
+      "sha256": "09d132ee94c5184bf5d748b9f24c36056d40e9dc4ca8c163325d3ed48add0150"
+    },
+    {
+      "name": "STM32接口变量与回调清单.md",
+      "bytes": 29426,
+      "sha256": "75b95137166bb947eb9db211b2e5be9113b4dd0e4360ae021ed73a34824b61f4"
+    },
+    {
+      "name": "STM32接口变量与回调清单.csv",
+      "bytes": 32761,
+      "sha256": "8ab1d7c7a9bc424dffd80efd287028a821e29412209bdbe2043eabf7566654f3"
+    },
+    {
+      "name": "STM32硬件引脚核对.csv",
+      "bytes": 5694,
+      "sha256": "37f8aab10dd3f785279a6d2dfc22cb7c8f94baa768b569a62913ba5f29350a15"
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "Hardware/Netlist_Schematic1_2026-09-21.tel",
+      "sha256": "57e180171f3c85bc08cde83f53f3d5412765973c25e0db594cd2ee6f2348ea97"
+    },
+    {
+      "path": "Hardware/SCH_Schematic1_2026-09-21.pdf",
+      "sha256": "a3203fa7ff9971d3bd3aa4ee23fdddab3d4d222346253818c36c4f47f40f385a"
+    },
+    {
+      "path": "Hardware/数据手册/3英寸480854_D300T9307V1/D300T9307V1 SPEC.pdf",
+      "sha256": "b34df5d3e011f43c5792b3a486608c6a0609ffff14e32c27c9b47eada043797d"
+    },
+    {
+      "path": "Hardware/数据手册/ATGM336H-5N31.pdf",
+      "sha256": "c6ba6ebedc17304bd358e170f3d577a2c19ceef86269ed176a470968edeb8220"
+    },
+    {
+      "path": "Hardware/数据手册/SPL06-001.pdf",
+      "sha256": "e5d365e4f918ec8d075e82e58babf6fb6def71179ce210e20a46152e6f158de9"
+    },
+    {
+      "path": "Software/Lvgl_Project/docs/examples/ui_board_adapter_example.c",
+      "sha256": "bc98ad813a95406d5516af10f609233c031cf55533944e831135d8016d8ba940"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/hal/hal.c",
+      "sha256": "e3a149b340c9f563cc99149a75bd916532e4e3b2775a083b5057ec9648857d07"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/platform/stm32/ui_stm32_services.c",
+      "sha256": "cbaf0bde8a0de45c8c7b2517c6f56229a4b777dfba4e2a9f05fe6cb4b016ed88"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/platform/stm32/ui_stm32_services.h",
+      "sha256": "53abce556c5a15758e05e3fc475f14e9153e1535a137e5ad3dc4cd570428467b"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_command_service.h",
+      "sha256": "8e370dffddf72f5e1c672bb81558c555a0c8627e34d7173aa9807caf60645e12"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_device_info.h",
+      "sha256": "fd76fe41da4ce04eed5cc9d7d46fd85c8990ad373f35d8cabd4a640b3d3ed7ff"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_nav_map_provider.h",
+      "sha256": "ce0a90f61ee37e9d578de179c817de43513dc52e318c2e19583f354b9d61f432"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_nav_raster.c",
+      "sha256": "6660cbfaa3ab182717d13e5423d6728a22c3bef2b1cf1f6750395997e5c5a45a"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_nav_search.h",
+      "sha256": "b064135bfe102cf4be9a07b3ec58326e82c3f69f107ccd1a3e3a8082ca0d910b"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_nav_session.h",
+      "sha256": "2ad7c0cf3b47347d4e7ccfdaedb232d7cb4eacab441c2477c1510ac684e67a40"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_navigation_service.h",
+      "sha256": "58f428003e964a08325c28569e407e7e41cd70b7d740e66ed623d6500620e6d9"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_offline_graph.c",
+      "sha256": "2963631a8b9918c3bb1aee74b661489405962ff26e6b145e5074a29ddc2acacb"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_offline_graph.h",
+      "sha256": "aa335fb8841b4305694035b3ddf6b24602fc588b741e18513681d25eb578e396"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_offline_map.h",
+      "sha256": "007c197ce893b7cb7c95aaa4457b83721e6f2855fc7a9467b1b251ece3c274c6"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_offline_places.h",
+      "sha256": "ae5a1db3003d33e0f39910b25a62ba039d87cc6322bdee4b8bd6c61f10759f9c"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_offline_route.h",
+      "sha256": "0ff6523ca0f167bbb6e11773282b2760974690e2aa35c6734efade8370592c2e"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_offline_tiles.h",
+      "sha256": "84530b46fc5cd6a9a9e5f6f19d87ff686a45bb0937ccccbc82fbb7dca49527aa"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_preferences.h",
+      "sha256": "1bfb18a1a5953674ef231131f639e1ab1a28590c6975772c9ad5f84d82bbb348"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_ride_history_repository.h",
+      "sha256": "42a9aa1f451b3af95287f4be0ab261bef441e6700bab202fae1307ce149e3092"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/services/ui_state_adapter.h",
+      "sha256": "1b7c10016d99839d3aa5686f024edb36005a5bbc7802aeb406c460afb38dd6cc"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/components/navigation/ui_nav_map.c",
+      "sha256": "654548301a226716e47334a99e2d260a0419ef51b87279dbd881be56627474c7"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/core/ui_app.c",
+      "sha256": "cdcf7ff7f4f310a73c1242c9dc37ec772589711d31c0691068b8602488a70881"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/core/ui_back_key_gesture.h",
+      "sha256": "5449459595b899d1fd8e6af74141ad5c2be8058be248d1b578ddd10204f4d6bd"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/core/ui_background.h",
+      "sha256": "c99a7a32a6d729cb62eb8db38b820526dfb8786552f4c306983c37d25de10e54"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/core/ui_event.h",
+      "sha256": "1fd793028ef0b51ca107ebd4bcc4a19f2a0e58c28feb34a49d97302985660a19"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/core/ui_hardware_input.c",
+      "sha256": "32b657e50fde04947783bc15d0ef5e2a0ce208bb93dc22171cc2f12a264cf601"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/core/ui_input.h",
+      "sha256": "1f060b3db81aaf48736259e875ec259ab5bef55e00057bcffd31fe10eb754f05"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/core/ui_text.h",
+      "sha256": "d28e13ab3b2b49a54ebbcce89bc2716ec8c41a4bdd98fd663fefeb94a3b5bdb1"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/models/ui_ride_data_model.c",
+      "sha256": "ef24285034b179cd33aaf6955ac3e3c1d3faac40fb52e9d3adaa7d6918348bc3"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/models/ui_ride_data_model.h",
+      "sha256": "39fc3f59b05f803bf30465c902e6c013c1b8665bc2eb608375614b25157ee8da"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/models/ui_ride_history_model.h",
+      "sha256": "ce450bec9c5c27173850e22808a323e0580471d7ee219845925d0d27592aeb26"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/models/ui_ride_report_data.h",
+      "sha256": "62374e1989326b9c2bbcf4f6733cc5d9d9ce7f8685dd30f3b581c550dd25da35"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/models/ui_ride_summary_model.h",
+      "sha256": "bfe967d9e01ab9070e3add5e168d8bdc1d767638405c0f882456e4d8566be9e2"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/models/ui_weather_model.h",
+      "sha256": "e01752cad279f094b27b68d561c588ea8071fc23611fdea66ce6fa0ff80feb71"
+    },
+    {
+      "path": "Software/Lvgl_Project/src/ui/pages/ui_devices_page.h",
+      "sha256": "992487bbe6dccd37c46c1589d6ba0d39d748be5c87e6020a3601568cf733de3e"
+    },
+    {
+      "path": "Software/Lvgl_Project/VERSION",
+      "sha256": "dfe7d71b3f428eb73ed853f8fded65e2986896e21d69f45ebf06bb623b450e14"
+    },
+    {
+      "path": "Software/STM32_Project/App/RTOS/app_rtos.c",
+      "sha256": "d286c38281de25516b25460dc9c5cf040ec3448b9129b027b31b946b37778f16"
+    },
+    {
+      "path": "Software/STM32_Project/BikeComputer_STM32.ioc",
+      "sha256": "07d40bb8decfad8e2f71b8a8ac465e57ca05763b3cdd3bc9f846aa1ff317b5fe"
+    },
+    {
+      "path": "Software/STM32_Project/Core/Inc/FreeRTOSConfig.h",
+      "sha256": "10b86544eaf2d76b92ba7267373f910ef9f31657c83440785ead9de41d28fc90"
+    },
+    {
+      "path": "Software/STM32_Project/Core/Inc/main.h",
+      "sha256": "9b6daa97ed700baa8392d792c63db743641575be04a5234a917e53ef4523a8b1"
+    },
+    {
+      "path": "Software/STM32_Project/Core/Src/main.c",
+      "sha256": "67b53ff41dcb6989a54a7b27c96bd9e7dbbd2f8b6d5561daba7710df0722400c"
+    },
+    {
+      "path": "Software/STM32_Project/MDK-ARM/BikeComputer_STM32.uvprojx",
+      "sha256": "048985394c5443f6024b4d8c9af511238a0ff0dc1b4fd2427f5980b8325f10e9"
+    }
+  ]
+}

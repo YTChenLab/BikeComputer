@@ -1,0 +1,11 @@
+﻿类型,变化,内容
+ui_stm32_service_port_t,成员变更,"新增：void (*cancel_command)(uint32_t command_id, void *context);；移除："
+ui_stm32_device_status_t,新增类型,"uint8_t kind;；char status[64], feedback[96];；uint32_t color;"
+ui_offline_graph_t,成员变更,新增：uint8_t validation_workspace[4096];；移除：
+ui_offline_tiles_t,成员变更,新增：uint8_t validation_workspace[1024];；移除：
+ui_offline_tile_cache_t,成员变更,新增：uint8_t decode_workspace[4096];；移除：
+ui_stm32_startup_t,新增类型,"ui_runtime_port_t runtime;；bool (*resources_ready)(void *context);；void *resources_context;；ui_stm32_display_port_t display;；const ui_stm32_service_port_t *services;；const ui_ride_history_storage_t *history;；const ui_preferences_port_t *preferences;；const ui_nav_backend_t *navigation;；const ui_nav_map_backend_t *maps;；const ui_nav_search_backend_t *search;；uint32_t navigation_capabilities;；const ui_device_connection_port_t *devices;；const ui_background_port_t *background;；const lv_font_t *font20, *font24;；ui_sound_backend_cb_t sound;；void *sound_context;；uint16_t *raster_a, *raster_b;；size_t raster_pixel_count;"
+ui_stm32_diagnostics_t,新增类型,"ui_runtime_diagnostics_t runtime;；uint32_t input_queue_drop, event_bridge_drop, event_forward_failure;；uint32_t command_drop, command_timeout, command_late_ack;"
+ui_stm32_display_port_t,新增类型,"uint16_t width, height;；void *draw_buffer_a, *draw_buffer_b;；size_t draw_buffer_bytes;；ui_stm32_flush_status_t (*start_flush)(const lv_area_t *area, const uint8_t *pixels, uint32_t stride_bytes, void *context);；bool (*wait_flush_complete)(void *context);；void *context;"
+ui_runtime_port_t,新增类型,"uint32_t (*now_ms)(void *context);；uint32_t (*now_us)(void *context);；bool (*is_ui_task)(void *context);；bool (*is_isr)(void *context);；void (*fault)(const char *reason, void *context);；void *context;"
+ui_runtime_diagnostics_t,新增类型,"uint32_t counters[UI_DIAG_COUNT];；uint32_t handler_calls, handler_last_us, handler_max_us;；bool microsecond_clock;"

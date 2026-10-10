@@ -1,0 +1,40 @@
+{
+  "version": "1.5.1",
+  "baseline_commit": "fd1db03db101cee2306c9829d153a090046239a0",
+  "pc_baseline_tests": {
+    "count": 44,
+    "failed": [],
+    "xml_sha256": "1c9d55e3f56ef4f082e9533dacd1ccc801e61323ce89f1a46918d5b469c1488b"
+  },
+  "pc_final_tests": {
+    "count": 44,
+    "failed": [],
+    "xml_sha256": "e8f42e4de2b63036fa981454a83ff6ee3a2ea6175af19ba69b8663ebb98b6715"
+  },
+  "stm32_host_contract_tests": {
+    "count": 1,
+    "failed": [],
+    "xml_sha256": "ae67ca7a283a44369591dab74e4934faf3bceeb1bcfd537591a108f46cac47a3"
+  },
+  "screenshots": {
+    "count": 762,
+    "identical": 762,
+    "by_mode": {
+      "full": 325,
+      "partial": 325,
+      "offline": 56,
+      "offline-partial": 56
+    }
+  },
+  "ac6": {
+    "compiler": "Arm Compiler 6.7 / armclang",
+    "target": "Cortex-M7 / C11 / hard-float",
+    "configured": true,
+    "compiled": true,
+    "archive_tool": "existing GNU ar (ARM ELF objects)",
+    "firmware_linked": false,
+    "hardware_tested": false,
+    "library_sha256": "34260341ec7bd1ae4fb19536c00a882685f021a86868048ec07c7fec0e71ad03"
+  },
+  "protected_font_version_sha256_csv": "fa0a7546579347053e08b5ae630a4bd97c720e928564386cc7f74b84e50bb064"
+}

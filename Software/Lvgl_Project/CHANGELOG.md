@@ -2,7 +2,44 @@
 
 本项目遵循语义化版本编号，Git 标签格式为 `vMAJOR.MINOR.PATCH`。
 
-## 未发布 - CI 发布流程修复（2026-10-05）
+## v1.5.2 - 2026-10-10
+
+本版归档 2026-10-06 至 2026-10-09 在本地完成的 LVGL 适配工作；比较基线为 Git 主分支 `fd1db03`。详细变化、验证与限制见 [v1.5.2 发布记录](docs/V1.5.2_RELEASE_NOTES.md)，当前板端契约见 [STM32 接入说明](docs/STM32_V1.5.2_INTEGRATION.md)。
+
+### 构建与平台拆分
+
+- 增加 `UI_PLATFORM=PC|STM32`，将原 CMake 内容拆到 `cmake/pc.cmake`、`cmake/stm32.cmake` 和公共源清单；PC／STM32 使用独立 `lv_conf.h`，保留原 PC 兼容入口。
+- 增加 Cortex-M7／Arm Compiler 6 工具链与 `bike_ui_stm32` 静态库；板端源清单排除桌面 HAL、SDL、Windows 文件系统、演示、POSIX FreeRTOS 和测试入口。
+- 修复 LVGL TLSF 位运算的 AC6 编译器识别，使用已有 builtin 路径，消除错误选择旧 ARMCC 分支产生的未声明／未解析 `__clz` 符号；GCC 路径保持原实现。
+- GitHub Actions 沿用现有 PC 构建／回归／发布流程；STM32 host 和 ARM 编译在本地完成验证。Windows 发布包增加当前接入说明和历史参考资料。
+- PC 默认背景、日期、天气、演示骑行数据、并发实现和路线回放移入 `src/platform/pc`；共用 UI／services 通过平台边界访问这些能力。
+
+### STM32 接口、运行与资源
+
+- 增加聚合启动端口、UiTask handler、触摸缓存和 LVGL 9 PARTIAL 显示端口；显示缓冲区采用明确的同步／异步刷新所有权与完成通知契约。
+- 增加运行上下文、统一单调时间和诊断接口，区分 UiTask、worker 和 ISR；服务邮箱依赖板端真实锁，异步业务回调只排队，不在 UI 回调中执行存储或算路。
+- 为大对象增加 32 字节对齐的 `.ui_sdram` 放置约定，收敛大型临时工作区与栈使用；板端必须自行落实 SDRAM 初始化、链接分区、MPU／Cache 与 DMA 一致性。
+- 更新导航、地图、历史、配置及设备服务的提交和完成接口；未接入的板端能力返回无效／不支持，不沿用 PC 演示成功结果。
+
+### 实体输入
+
+- 用固定 12 字节 `ui_physical_input_event_t` 传递 key、action、encoder_delta 和 timestamp；InputService 负责消抖、单双击、长按和编码器解码，UiTask 只映射已经识别的动作。
+- 新增 `ui_stm32_services_handle_input_event()` 与 `ui_stm32_services_apply_display_state()`；移除旧 `sample_inputs`、`set_key_map`、`submit_input` 路径及 UI 内部硬件手势识别文件。
+- PC SDL 通过原输入队列注入相同语义事件，保留触摸链路；增加语义映射、真实 SDL HAL 和板端 host 契约测试。
+- 实体 POWER 的识别与硬件控制由 PowerService 负责；UI 收到状态通知后更新显示，不能把 UI 接口完成视为实板电源驱动已经实现。
+
+### 文档与资源
+
+- 纳入 Board-Ready 目录／线程／依赖／内存审计、STM32 全流程接入指南、结构与回调清单、引脚核对及实体输入验收说明；新增 v1.5.2 当前接口入口，标明历史快照和待实现项。
+- 地图四个主要二进制资源、导航来源归档和已提交字体沿用原数据；本版没有扩大离线地图覆盖或新增真实 GNSS 验收。
+- VERSION 与 UI 系统信息同步为 1.5.2。固件工程、硬件、结构模型、安装包、运行存档和构建缓存不随本版归档。
+
+### 发布验证与边界
+
+- 发布前重新执行干净 PC 构建／全量 CTest、STM32 host 契约测试、现有 AC6 板端库编译、地图哈希与 Windows 打包检查，实际结果记入发布记录。
+- 完整 STM32 固件链接、BSP／HAL 驱动、InputService／PowerService、实板性能和整机验证仍待完成。旧版接入资料中的实体输入部分以 v1.5.2 当前契约为准。
+
+## v1.5.2 同步收录 - CI 发布流程修复（开发日期 2026-10-05）
 
 - 修复 CMake 在 Windows runner 上选中预装 CPython、却将 Pillow 安装在 MSYS2 Python 中的解释器混用。CI 明确指定 UCRT64 Python，版本校验、字体生成、Python 测试与打包使用同一解释器；构建前检查依赖，CMake 配置阶段报告缺失的 Pillow 和实际 Python 路径。
 - 失败时上传配置、编译、测试与打包的诊断文件，保留 7 天；日志管道开启 pipefail，真实失败仍阻止发布。

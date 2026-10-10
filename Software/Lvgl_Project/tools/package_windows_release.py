@@ -52,6 +52,16 @@ def main():
     for name in ['VERSION', 'README.md', 'CHANGELOG.md', 'licence.txt',
                  '启动模拟器.cmd', f'docs/V{version}_RELEASE_NOTES.md', 'docs/RELEASE_WORKFLOW.md']:
         entries.append((project / name, name))
+    # Bundle the current STM32 contract and its historical reference material.
+    for name in [f'docs/STM32_V{version}_INTEGRATION.md',
+                 'docs/输入架构重构_20261009.md',
+                 'docs/输入架构重构验收_20261009.md',
+                 'docs/输入架构修改文件_20261009.csv']:
+        entries.append((project / name, name))
+    for name in ['docs/BoardReady_20261006', 'docs/STM32接入说明_20261006']:
+        folder = project / name
+        entries.extend((p, p.relative_to(project).as_posix())
+                       for p in folder.rglob('*') if p.is_file())
     entries.append((project / 'lvgl/LICENCE.txt', 'licenses/LVGL-LICENCE.txt'))
     # Public template only; never bundle runtime/ or a user's API key.
     for name in ['config/navigation-online.example.ini', 'docs/导航联网搜索_20261005.md',

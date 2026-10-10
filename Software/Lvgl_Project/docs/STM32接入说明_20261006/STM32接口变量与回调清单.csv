@@ -1,0 +1,381 @@
+﻿结构类型,成员或回调声明,源码路径,行号
+ui_stm32_service_port_t,bool (*request_gnss_fix)(void *context);,src/platform/stm32/ui_stm32_services.h,23
+ui_stm32_service_port_t,bool (*save_ride)(void *context);,src/platform/stm32/ui_stm32_services.h,24
+ui_stm32_service_port_t,bool (*retry_save)(void *context);,src/platform/stm32/ui_stm32_services.h,25
+ui_stm32_service_port_t,"bool (*dispatch_command)(const ui_command_t *command, void *context);",src/platform/stm32/ui_stm32_services.h,26
+ui_stm32_service_port_t,bool (*request_history_page_worker)(void *context);,src/platform/stm32/ui_stm32_services.h,27
+ui_stm32_service_port_t,"void (*tick)(uint32_t elapsed_ms, void *context);",src/platform/stm32/ui_stm32_services.h,28
+ui_stm32_service_port_t,void (*lock)(void *context);,src/platform/stm32/ui_stm32_services.h,29
+ui_stm32_service_port_t,void (*unlock)(void *context);,src/platform/stm32/ui_stm32_services.h,30
+ui_stm32_service_port_t,void *context;,src/platform/stm32/ui_stm32_services.h,31
+ui_ride_field_quality_t,uint32_t sampled_at_ms;,src/ui/models/ui_ride_data_model.h,28
+ui_ride_field_quality_t,uint32_t stale_after_ms;,src/ui/models/ui_ride_data_model.h,29
+ui_ride_field_quality_t,ui_data_source_t source;,src/ui/models/ui_ride_data_model.h,30
+ui_ride_data_t,float speed;,src/ui/models/ui_ride_data_model.h,37
+ui_ride_data_t,uint16_t heart_rate;,src/ui/models/ui_ride_data_model.h,38
+ui_ride_data_t,uint16_t power;,src/ui/models/ui_ride_data_model.h,39
+ui_ride_data_t,uint16_t cadence;,src/ui/models/ui_ride_data_model.h,40
+ui_ride_data_t,float grade;,src/ui/models/ui_ride_data_model.h,41
+ui_ride_data_t,float distance;,src/ui/models/ui_ride_data_model.h,42
+ui_ride_data_t,float average_speed;,src/ui/models/ui_ride_data_model.h,43
+ui_ride_data_t,float maximum_speed;,src/ui/models/ui_ride_data_model.h,44
+ui_ride_data_t,int32_t altitude_m;,src/ui/models/ui_ride_data_model.h,45
+ui_ride_data_t,uint32_t ascent_m;,src/ui/models/ui_ride_data_model.h,46
+ui_ride_data_t,uint32_t calories_kcal;,src/ui/models/ui_ride_data_model.h,47
+ui_ride_data_t,int8_t temperature_c;,src/ui/models/ui_ride_data_model.h,48
+ui_ride_data_t,uint8_t heart_rate_zone;,src/ui/models/ui_ride_data_model.h,49
+ui_ride_data_t,uint8_t current_lap;,src/ui/models/ui_ride_data_model.h,50
+ui_ride_data_t,uint8_t total_laps;,src/ui/models/ui_ride_data_model.h,51
+ui_ride_data_t,uint32_t ride_seconds;,src/ui/models/ui_ride_data_model.h,52
+ui_ride_data_t,uint8_t clock_hour;,src/ui/models/ui_ride_data_model.h,53
+ui_ride_data_t,uint8_t clock_minute;,src/ui/models/ui_ride_data_model.h,54
+ui_ride_data_t,uint8_t satellites;,src/ui/models/ui_ride_data_model.h,55
+ui_ride_data_t,uint8_t battery;,src/ui/models/ui_ride_data_model.h,56
+ui_ride_data_t,uint32_t sample_time_ms;,src/ui/models/ui_ride_data_model.h,60
+ui_ride_data_t,uint64_t timer_ms;,src/ui/models/ui_ride_data_model.h,61
+ui_ride_data_t,int64_t timestamp_utc;,src/ui/models/ui_ride_data_model.h,62
+ui_ride_data_t,uint32_t session_id;,src/ui/models/ui_ride_data_model.h,63
+ui_ride_data_t,double latitude;,src/ui/models/ui_ride_data_model.h,64
+ui_ride_data_t,double longitude;,src/ui/models/ui_ride_data_model.h,65
+ui_ride_data_t,bool quality_known;,src/ui/models/ui_ride_data_model.h,66
+ui_ride_data_t,uint32_t capability_flags;,src/ui/models/ui_ride_data_model.h,67
+ui_ride_data_t,uint32_t valid_flags;,src/ui/models/ui_ride_data_model.h,68
+ui_ride_data_t,ui_ride_field_quality_t quality[UI_RIDE_FIELD_COUNT];,src/ui/models/ui_ride_data_model.h,69
+ui_state_adapter_snapshot_t,uint8_t clock_hour;,src/services/ui_state_adapter.h,26
+ui_state_adapter_snapshot_t,uint8_t clock_minute;,src/services/ui_state_adapter.h,27
+ui_state_adapter_snapshot_t,uint8_t battery_percent;,src/services/ui_state_adapter.h,28
+ui_state_adapter_snapshot_t,bool battery_charging;,src/services/ui_state_adapter.h,29
+ui_state_adapter_snapshot_t,"bool status_quality_known, clock_valid, battery_valid;",src/services/ui_state_adapter.h,30
+ui_state_adapter_snapshot_t,uint8_t satellites;,src/services/ui_state_adapter.h,31
+ui_state_adapter_snapshot_t,bool gps_enabled;,src/services/ui_state_adapter.h,32
+ui_state_adapter_snapshot_t,bool wifi_enabled;,src/services/ui_state_adapter.h,34
+ui_state_adapter_snapshot_t,bool wifi_connected;,src/services/ui_state_adapter.h,35
+ui_state_adapter_snapshot_t,bool bluetooth_enabled;,src/services/ui_state_adapter.h,36
+ui_state_adapter_snapshot_t,bool bluetooth_connected;,src/services/ui_state_adapter.h,37
+ui_state_adapter_snapshot_t,char wifi_name[UI_APP_STATE_NAME_MAX];,src/services/ui_state_adapter.h,38
+ui_state_adapter_snapshot_t,char bluetooth_name[UI_APP_STATE_NAME_MAX];,src/services/ui_state_adapter.h,39
+ui_state_adapter_snapshot_t,uint8_t sound_level;,src/services/ui_state_adapter.h,41
+ui_state_adapter_snapshot_t,uint8_t brightness_level;,src/services/ui_state_adapter.h,42
+ui_state_adapter_snapshot_t,bool power_save_enabled;,src/services/ui_state_adapter.h,43
+ui_state_adapter_snapshot_t,bool touch_locked;,src/services/ui_state_adapter.h,44
+ui_state_adapter_snapshot_t,bool media_playing;,src/services/ui_state_adapter.h,46
+ui_state_adapter_snapshot_t,uint8_t media_track;,src/services/ui_state_adapter.h,47
+ui_state_adapter_snapshot_t,ui_media_mode_t media_mode;,src/services/ui_state_adapter.h,48
+ui_state_adapter_snapshot_t,bool navigation_active;,src/services/ui_state_adapter.h,50
+ui_weather_data_t,int8_t temperature_c;,src/ui/models/ui_weather_model.h,19
+ui_weather_data_t,int8_t feels_like_c;,src/ui/models/ui_weather_model.h,20
+ui_weather_data_t,uint8_t wind_kmh;,src/ui/models/ui_weather_model.h,21
+ui_weather_data_t,uint8_t rain_percent;,src/ui/models/ui_weather_model.h,22
+ui_weather_data_t,uint16_t air_quality_index;,src/ui/models/ui_weather_model.h,23
+ui_weather_data_t,ui_weather_condition_t condition;,src/ui/models/ui_weather_model.h,24
+ui_weather_data_t,uint32_t version;,src/ui/models/ui_weather_model.h,25
+ui_weather_data_t,"bool quality_known, valid;",src/ui/models/ui_weather_model.h,26
+ui_weather_data_t,"uint32_t sampled_at_ms, stale_after_ms;",src/ui/models/ui_weather_model.h,27
+ui_preferences_t,"char user_name[32], tagline[48];",src/services/ui_preferences.h,8
+ui_preferences_t,"uint16_t heart_zone_bounds[4], power_zone_bounds[4];",src/services/ui_preferences.h,9
+ui_preferences_t,uint32_t idle_sleep_ms;,src/services/ui_preferences.h,10
+ui_preferences_t,"uint8_t brightness, sound;",src/services/ui_preferences.h,11
+ui_preferences_t,"bool auto_pause, reduced_motion;",src/services/ui_preferences.h,12
+ui_preferences_t,"uint8_t dashboard_fields[UI_DASHBOARD_SLOT_COUNT], dashboard_preset;",src/services/ui_preferences.h,13
+ui_preferences_t,uint32_t revision;,src/services/ui_preferences.h,14
+ui_preferences_port_t,"bool (*load)(uint8_t blob[UI_PREFERENCES_BLOB_SIZE], void *context);",src/services/ui_preferences.h,17
+ui_preferences_port_t,"bool (*store)(const uint8_t blob[UI_PREFERENCES_BLOB_SIZE], void *context);",src/services/ui_preferences.h,18
+ui_preferences_port_t,bool (*request_worker)(void *context);,src/services/ui_preferences.h,19
+ui_preferences_port_t,void *context;,src/services/ui_preferences.h,20
+ui_device_info_t,"char device_model[48], hardware_target[48], firmware_version[32], health[48];",src/services/ui_device_info.h,6
+ui_device_info_t,uint64_t storage_free_bytes;,src/services/ui_device_info.h,7
+ui_device_info_t,bool storage_ready;,src/services/ui_device_info.h,8
+ui_command_t,uint32_t id;,src/services/ui_command_service.h,53
+ui_command_t,ui_command_type_t type;,src/services/ui_command_service.h,54
+ui_command_t,int32_t value;,src/services/ui_command_service.h,55
+ui_command_t,uint32_t timeout_ms;,src/services/ui_command_service.h,56
+ui_command_result_t,uint32_t id;,src/services/ui_command_service.h,61
+ui_command_result_t,ui_command_type_t type;,src/services/ui_command_service.h,62
+ui_command_result_t,ui_command_status_t status;,src/services/ui_command_service.h,63
+ui_command_result_t,int32_t error_code;,src/services/ui_command_service.h,64
+ui_command_result_t,int32_t value;,src/services/ui_command_service.h,65
+ui_command_backend_t,"bool (*dispatch)(const ui_command_t *command, void *context);",src/services/ui_command_service.h,70
+ui_command_backend_t,"void (*tick)(uint32_t elapsed_ms, void *context);",src/services/ui_command_service.h,71
+ui_command_backend_t,void *context;,src/services/ui_command_service.h,72
+ui_command_backend_t,"void (*cancel)(uint32_t command_id, void *context);",src/services/ui_command_service.h,74
+ui_input_message_t,ui_input_event_t type;,src/ui/core/ui_input.h,36
+ui_input_message_t,int32_t x;,src/ui/core/ui_input.h,37
+ui_input_message_t,int32_t y;,src/ui/core/ui_input.h,38
+ui_event_t,ui_event_type_t type;,src/ui/core/ui_event.h,81
+ui_event_t,ui_event_priority_t priority;,src/ui/core/ui_event.h,82
+ui_event_t,uint32_t source_id;,src/ui/core/ui_event.h,83
+ui_event_t,uint32_t dedupe_key;,src/ui/core/ui_event.h,84
+ui_event_t,uint32_t timeout_ms;,src/ui/core/ui_event.h,85
+ui_event_t,int32_t value;,src/ui/core/ui_event.h,86
+ui_event_t,int32_t minimum;,src/ui/core/ui_event.h,87
+ui_event_t,int32_t maximum;,src/ui/core/ui_event.h,88
+ui_event_t,bool flag;,src/ui/core/ui_event.h,89
+ui_event_t,char title[UI_EVENT_TITLE_MAX];,src/ui/core/ui_event.h,90
+ui_event_t,char message[UI_EVENT_MESSAGE_MAX];,src/ui/core/ui_event.h,91
+ui_event_t,char primary_action[UI_EVENT_ACTION_MAX];,src/ui/core/ui_event.h,92
+ui_event_t,char secondary_action[UI_EVENT_ACTION_MAX];,src/ui/core/ui_event.h,93
+nav_model_t,float speed;,src/services/ui_navigation_service.h,56
+nav_model_t,float distance;,src/services/ui_navigation_service.h,57
+nav_model_t,uint32_t remaining_ascent_m;,src/services/ui_navigation_service.h,58
+nav_model_t,uint8_t eta_hour;,src/services/ui_navigation_service.h,59
+nav_model_t,uint8_t eta_min;,src/services/ui_navigation_service.h,60
+nav_model_t,double latitude;,src/services/ui_navigation_service.h,61
+nav_model_t,double longitude;,src/services/ui_navigation_service.h,62
+nav_model_t,float heading;,src/services/ui_navigation_service.h,63
+nav_model_t,uint8_t zoom;,src/services/ui_navigation_service.h,64
+nav_model_t,nav_direction_t direction;,src/services/ui_navigation_service.h,65
+nav_model_t,uint32_t direction_distance;,src/services/ui_navigation_service.h,66
+nav_model_t,nav_ui_state_t ui_state;,src/services/ui_navigation_service.h,67
+nav_model_t,char road_name[64];,src/services/ui_navigation_service.h,68
+nav_model_t,bool demo;,src/services/ui_navigation_service.h,69
+nav_model_t,bool position_valid;,src/services/ui_navigation_service.h,70
+nav_model_t,"uint32_t sampled_at_ms, stale_after_ms;",src/services/ui_navigation_service.h,71
+nav_model_t,bool map_geometry_valid;,src/services/ui_navigation_service.h,74
+nav_model_t,"double map_origin_latitude, map_origin_longitude;",src/services/ui_navigation_service.h,75
+nav_model_t,float meters_per_pixel;,src/services/ui_navigation_service.h,76
+nav_model_t,uint8_t route_point_count;,src/services/ui_navigation_service.h,77
+nav_model_t,"double route_latitude[16], route_longitude[16];",src/services/ui_navigation_service.h,78
+nav_model_t,"bool session_bound, guidance_valid, speed_valid, distance_valid, eta_valid, heading_valid;",src/services/ui_navigation_service.h,80
+nav_model_t,"uint32_t session_id, route_id, route_revision, step_id;",src/services/ui_navigation_service.h,81
+nav_model_t,uint8_t coordinate_system;,src/services/ui_navigation_service.h,82
+nav_model_t,"bool junction_valid, next_valid, exit_valid, off_route, reroute_failed;",src/services/ui_navigation_service.h,83
+nav_model_t,bool exit_position_valid;,src/services/ui_navigation_service.h,84
+nav_model_t,"double exit_latitude,exit_longitude;",src/services/ui_navigation_service.h,85
+nav_model_t,"double junction_latitude, junction_longitude;",src/services/ui_navigation_service.h,86
+nav_model_t,nav_maneuver_t next_direction;,src/services/ui_navigation_service.h,87
+nav_model_t,uint32_t next_distance_m;,src/services/ui_navigation_service.h,88
+nav_model_t,uint8_t roundabout_exit;,src/services/ui_navigation_service.h,89
+ui_nav_point_t,"double latitude, longitude;",src/services/ui_nav_session.h,9
+ui_nav_point_t,ui_nav_coord_t system;,src/services/ui_nav_session.h,9
+ui_nav_item_t,"uint32_t id, revision;",src/services/ui_nav_session.h,32
+ui_nav_item_t,"char name[64], detail[96];",src/services/ui_nav_session.h,33
+ui_nav_item_t,ui_nav_point_t point;,src/services/ui_nav_session.h,34
+ui_nav_item_t,"uint32_t distance_m, duration_s, size_kib;",src/services/ui_nav_session.h,35
+ui_nav_item_t,"bool distance_valid, duration_valid, start_allowed, demo, saved;",src/services/ui_nav_session.h,36
+ui_nav_item_t,"bool size_valid,progress_valid;",src/services/ui_nav_session.h,37
+ui_nav_item_t,uint8_t progress_percent;,src/services/ui_nav_session.h,38
+ui_nav_item_t,ui_nav_map_status_t map_status;,src/services/ui_nav_session.h,39
+ui_nav_item_t,uint32_t ascent_m;,src/services/ui_nav_session.h,40
+ui_nav_item_t,"bool ascent_valid,coverage_known,coverage_complete;",src/services/ui_nav_session.h,41
+ui_nav_item_t,"char version_name[24],coverage[48];",src/services/ui_nav_session.h,42
+ui_nav_item_t,uint8_t thumbnail_count;,src/services/ui_nav_session.h,43
+ui_nav_item_t,ui_nav_point_t thumbnail[16];,src/services/ui_nav_session.h,44
+ui_nav_catalog_t,ui_nav_list_t kind;,src/services/ui_nav_session.h,47
+ui_nav_catalog_t,uint32_t request_id;,src/services/ui_nav_session.h,48
+ui_nav_catalog_t,"uint32_t offset, total;",src/services/ui_nav_session.h,49
+ui_nav_catalog_t,uint8_t count;,src/services/ui_nav_session.h,50
+ui_nav_catalog_t,ui_nav_item_t items[UI_NAV_CATALOG_MAX];,src/services/ui_nav_session.h,51
+ui_nav_catalog_t,bool storage_valid;,src/services/ui_nav_session.h,52
+ui_nav_catalog_t,"uint32_t storage_total_kib,storage_free_kib;",src/services/ui_nav_session.h,53
+ui_nav_request_t,"uint32_t id, session_id, route_id, route_revision, offset;",src/services/ui_nav_session.h,56
+ui_nav_request_t,ui_nav_request_kind_t kind;,src/services/ui_nav_session.h,57
+ui_nav_request_t,ui_nav_source_t source;,src/services/ui_nav_session.h,58
+ui_nav_request_t,ui_nav_list_t list;,src/services/ui_nav_session.h,59
+ui_nav_request_t,ui_nav_item_t destination;,src/services/ui_nav_session.h,60
+ui_nav_request_t,uint32_t timeout_ms;,src/services/ui_nav_session.h,61
+ui_nav_result_t,"uint32_t request_id, session_id;",src/services/ui_nav_session.h,64
+ui_nav_result_t,ui_nav_result_code_t code;,src/services/ui_nav_session.h,65
+ui_nav_result_t,ui_nav_item_t route;,src/services/ui_nav_session.h,66
+ui_nav_result_t,ui_nav_catalog_t catalog;,src/services/ui_nav_session.h,67
+ui_nav_session_t,"uint32_t version, id;",src/services/ui_nav_session.h,70
+ui_nav_session_t,ui_nav_session_state_t state;,src/services/ui_nav_session.h,71
+ui_nav_session_t,ui_nav_source_t source;,src/services/ui_nav_session.h,72
+ui_nav_session_t,"ui_nav_item_t destination, route;",src/services/ui_nav_session.h,73
+ui_nav_session_t,"bool position_valid, phone_connected;",src/services/ui_nav_session.h,74
+ui_nav_session_t,ui_nav_point_t position;,src/services/ui_nav_session.h,75
+ui_nav_session_t,"uint32_t position_sampled_at_ms,position_stale_after_ms;",src/services/ui_nav_session.h,76
+ui_nav_session_t,"bool elapsed_valid,travelled_valid,ascent_valid;",src/services/ui_nav_session.h,77
+ui_nav_session_t,"uint32_t elapsed_s,travelled_m,ascent_m;",src/services/ui_nav_session.h,78
+ui_nav_backend_t,"bool (*dispatch)(const ui_nav_request_t *request, void *context);",src/services/ui_nav_session.h,81
+ui_nav_backend_t,"void (*cancel)(uint32_t request_id, void *context);",src/services/ui_nav_session.h,82
+ui_nav_backend_t,"void (*tick)(uint32_t elapsed_ms, void *context);",src/services/ui_nav_session.h,83
+ui_nav_backend_t,void *context;,src/services/ui_nav_session.h,84
+ui_nav_local_point_t,"float east_m,north_m;",src/services/ui_nav_map_provider.h,10
+ui_nav_area_t,uint8_t count;,src/services/ui_nav_map_provider.h,12
+ui_nav_area_t,ui_nav_area_kind_t kind;,src/services/ui_nav_map_provider.h,12
+ui_nav_area_t,ui_nav_local_point_t points[UI_NAV_MAP_AREA_POINT_MAX];,src/services/ui_nav_map_provider.h,12
+ui_nav_map_label_t,ui_nav_local_point_t point;,src/services/ui_nav_map_provider.h,14
+ui_nav_map_label_t,uint8_t kind;,src/services/ui_nav_map_provider.h,14
+ui_nav_map_label_t,char text[48];,src/services/ui_nav_map_provider.h,14
+ui_nav_road_t,"ui_nav_point_t a, b;",src/services/ui_nav_map_provider.h,15
+ui_nav_road_t,uint8_t level;,src/services/ui_nav_map_provider.h,15
+ui_nav_map_request_t,"uint32_t id, route_id, route_revision;",src/services/ui_nav_map_provider.h,18
+ui_nav_map_request_t,ui_nav_point_t center;,src/services/ui_nav_map_provider.h,19
+ui_nav_map_request_t,"float meters_per_pixel, heading;",src/services/ui_nav_map_provider.h,20
+ui_nav_map_request_t,"uint16_t width, height;",src/services/ui_nav_map_provider.h,22
+ui_nav_map_request_t,ui_nav_map_purpose_t purpose;,src/services/ui_nav_map_provider.h,23
+ui_nav_map_frame_t,"uint32_t request_id, route_id, route_revision, map_revision;",src/services/ui_nav_map_provider.h,26
+ui_nav_map_frame_t,ui_nav_point_t origin;,src/services/ui_nav_map_provider.h,27
+ui_nav_map_frame_t,float meters_per_pixel;,src/services/ui_nav_map_provider.h,28
+ui_nav_map_frame_t,ui_nav_result_code_t status;,src/services/ui_nav_map_provider.h,29
+ui_nav_map_frame_t,uint32_t raster_id;,src/services/ui_nav_map_provider.h,30
+ui_nav_map_frame_t,float raster_latitude_ref;,src/services/ui_nav_map_provider.h,31
+ui_nav_map_frame_t,bool demo;,src/services/ui_nav_map_provider.h,32
+ui_nav_map_frame_t,bool destination_valid;,src/services/ui_nav_map_provider.h,33
+ui_nav_map_frame_t,ui_nav_point_t destination;,src/services/ui_nav_map_provider.h,34
+ui_nav_map_frame_t,"uint8_t road_count, point_count;",src/services/ui_nav_map_provider.h,35
+ui_nav_map_frame_t,ui_nav_road_t roads[UI_NAV_MAP_ROAD_MAX];,src/services/ui_nav_map_provider.h,36
+ui_nav_map_frame_t,ui_nav_point_t points[UI_NAV_WINDOW_POINT_MAX];,src/services/ui_nav_map_provider.h,37
+ui_nav_map_frame_t,"uint8_t area_count,label_count;",src/services/ui_nav_map_provider.h,38
+ui_nav_map_frame_t,ui_nav_area_t areas[UI_NAV_MAP_AREA_MAX];,src/services/ui_nav_map_provider.h,39
+ui_nav_map_frame_t,ui_nav_map_label_t labels[UI_NAV_MAP_LABEL_MAX];,src/services/ui_nav_map_provider.h,40
+ui_nav_map_backend_t,"bool (*request)(const ui_nav_map_request_t *request, void *context);",src/services/ui_nav_map_provider.h,43
+ui_nav_map_backend_t,"void (*cancel)(uint32_t request_id, void *context);",src/services/ui_nav_map_provider.h,44
+ui_nav_map_backend_t,void *context;,src/services/ui_nav_map_provider.h,45
+ui_nav_search_request_t,uint32_t id;,src/services/ui_nav_search.h,4
+ui_nav_search_request_t,char query[UI_PLACE_QUERY_MAX];,src/services/ui_nav_search.h,4
+ui_nav_search_request_t,ui_nav_point_t center;,src/services/ui_nav_search.h,4
+ui_nav_search_request_t,bool center_valid;,src/services/ui_nav_search.h,4
+ui_nav_search_backend_t,"bool (*request)(const ui_nav_search_request_t *,void *);",src/services/ui_nav_search.h,5
+ui_nav_search_backend_t,"void (*cancel)(uint32_t,void *);",src/services/ui_nav_search.h,5
+ui_nav_search_backend_t,void *context;,src/services/ui_nav_search.h,5
+ui_place_t,uint32_t id;,src/services/ui_offline_places.h,6
+ui_place_t,ui_nav_point_t point;,src/services/ui_offline_places.h,6
+ui_place_t,"char name[64],detail[64];",src/services/ui_offline_places.h,6
+ui_place_t,uint8_t kind;,src/services/ui_offline_places.h,6
+ui_place_t,bool entrance;,src/services/ui_offline_places.h,6
+ui_place_t,ui_nav_point_t navigation_point;,src/services/ui_offline_places.h,7
+ui_place_t,"bool navigation_point_valid,online;",src/services/ui_offline_places.h,7
+ui_place_results_t,uint32_t request_id;,src/services/ui_offline_places.h,8
+ui_place_results_t,ui_nav_result_code_t code;,src/services/ui_offline_places.h,8
+ui_place_results_t,uint8_t count;,src/services/ui_offline_places.h,8
+ui_place_results_t,bool limited;,src/services/ui_offline_places.h,8
+ui_place_results_t,uint8_t online_status;,src/services/ui_offline_places.h,8
+ui_place_results_t,ui_place_t items[UI_PLACE_RESULT_MAX];,src/services/ui_offline_places.h,8
+ui_offline_places_t,ui_offline_map_io_t io;,src/services/ui_offline_places.h,9
+ui_offline_places_t,"uint32_t revision,records,keys,records_offset,keys_offset;",src/services/ui_offline_places.h,9
+ui_place_stats_t,"uint32_t bytes,scanned;",src/services/ui_offline_places.h,10
+ui_place_stats_t,bool limited;,src/services/ui_offline_places.h,10
+ui_offline_map_io_t,"bool (*read_at)(void *context,uint32_t offset,void *bytes,size_t count);",src/services/ui_offline_map.h,7
+ui_offline_map_io_t,uint32_t size;,src/services/ui_offline_map.h,8
+ui_offline_map_io_t,void *context;,src/services/ui_offline_map.h,8
+ui_offline_map_t,ui_offline_map_io_t io;,src/services/ui_offline_map.h,11
+ui_offline_map_t,"uint32_t revision,cell,cols,rows;",src/services/ui_offline_map.h,11
+ui_offline_map_t,"int32_t west,south,east,north;",src/services/ui_offline_map.h,12
+ui_offline_map_t,"char version_name[16],name[48];",src/services/ui_offline_map.h,13
+ui_offline_map_stats_t,"uint32_t tiles,bytes,roads_seen,areas_seen;",src/services/ui_offline_map.h,15
+ui_offline_map_stats_t,"bool roads_limited,areas_limited;",src/services/ui_offline_map.h,15
+ui_offline_graph_t,ui_offline_map_io_t io;,src/services/ui_offline_graph.h,5
+ui_offline_graph_t,"uint32_t revision,nodes,edges,names,node_offset,edge_offset,name_offset;",src/services/ui_offline_graph.h,5
+ui_offline_graph_t,"int32_t west,south,east,north;",src/services/ui_offline_graph.h,6
+ui_offline_graph_stats_t,"uint32_t expanded,bytes;",src/services/ui_offline_graph.h,8
+ui_offline_graph_stats_t,"float start_snap_m,end_snap_m;",src/services/ui_offline_graph.h,8
+ui_offline_graph_stats_t,bool cancelled;,src/services/ui_offline_graph.h,8
+ui_offline_route_point_t,ui_nav_point_t position;,src/services/ui_offline_route.h,6
+ui_offline_route_point_t,float cumulative_m;,src/services/ui_offline_route.h,6
+ui_offline_route_point_t,char road[48];,src/services/ui_offline_route.h,6
+ui_offline_route_t,"uint32_t id,revision,count;",src/services/ui_offline_route.h,7
+ui_offline_route_t,float distance_m;,src/services/ui_offline_route.h,7
+ui_offline_route_t,char name[48];,src/services/ui_offline_route.h,7
+ui_offline_route_t,ui_offline_route_point_t points[UI_OFFLINE_ROUTE_POINT_MAX];,src/services/ui_offline_route.h,7
+ui_offline_tile_level_t,float mpp;,src/services/ui_offline_tiles.h,8
+ui_offline_tile_level_t,"uint32_t cols,rows,first;",src/services/ui_offline_tiles.h,8
+ui_offline_tiles_t,ui_offline_map_io_t io;,src/services/ui_offline_tiles.h,10
+ui_offline_tiles_t,"uint32_t revision,directory,total,label_offset,label_bytes;",src/services/ui_offline_tiles.h,11
+ui_offline_tiles_t,"int32_t west,south,east,north;",src/services/ui_offline_tiles.h,12
+ui_offline_tiles_t,"float latitude_ref,meters_lon,meters_lat;",src/services/ui_offline_tiles.h,13
+ui_offline_tiles_t,uint32_t level_count;,src/services/ui_offline_tiles.h,14
+ui_offline_tiles_t,ui_offline_tile_level_t levels[UI_OFFLINE_TILE_LEVEL_MAX];,src/services/ui_offline_tiles.h,15
+ui_offline_tile_label_t,"float x,y;",src/services/ui_offline_tiles.h,17
+ui_offline_tile_label_t,uint8_t kind;,src/services/ui_offline_tiles.h,17
+ui_offline_tile_label_t,char text[48];,src/services/ui_offline_tiles.h,17
+ui_offline_tile_cache_entry_t,"uint32_t key,age;",src/services/ui_offline_tiles.h,18
+ui_offline_tile_cache_entry_t,bool valid;,src/services/ui_offline_tiles.h,18
+ui_offline_tile_cache_entry_t,uint8_t label_count;,src/services/ui_offline_tiles.h,18
+ui_offline_tile_cache_entry_t,ui_offline_tile_label_t labels[16];,src/services/ui_offline_tiles.h,18
+ui_offline_tile_cache_t,uint16_t *pixels;,src/services/ui_offline_tiles.h,20
+ui_offline_tile_cache_t,unsigned slots;,src/services/ui_offline_tiles.h,20
+ui_offline_tile_cache_t,uint32_t clock;,src/services/ui_offline_tiles.h,20
+ui_offline_tile_cache_t,ui_offline_tile_cache_entry_t entries[UI_OFFLINE_TILE_CACHE_MAX];,src/services/ui_offline_tiles.h,21
+ui_offline_tiles_stats_t,"uint32_t bytes,hits,misses,tiles;",src/services/ui_offline_tiles.h,23
+ui_offline_tiles_stats_t,float mpp;,src/services/ui_offline_tiles.h,23
+ui_ride_history_checkpoint_t,ui_ride_history_totals_t totals;,src/services/ui_ride_history_repository.h,31
+ui_ride_history_checkpoint_t,uint64_t last_committed_id;,src/services/ui_ride_history_repository.h,32
+ui_ride_history_checkpoint_t,ui_ride_record_t pending;,src/services/ui_ride_history_repository.h,33
+ui_ride_history_checkpoint_t,bool pending_valid;,src/services/ui_ride_history_repository.h,34
+ui_ride_history_checkpoint_t,bool pending_is_new;,src/services/ui_ride_history_repository.h,35
+ui_ride_history_storage_t,ui_ride_history_load_cb_t load;,src/services/ui_ride_history_repository.h,48
+ui_ride_history_storage_t,ui_ride_history_store_cb_t store;,src/services/ui_ride_history_repository.h,49
+ui_ride_history_storage_t,ui_ride_history_now_cb_t now_utc;,src/services/ui_ride_history_repository.h,50
+ui_ride_history_storage_t,void *context;,src/services/ui_ride_history_repository.h,51
+ui_ride_history_storage_t,ui_ride_history_checkpoint_load_cb_t load_checkpoint;,src/services/ui_ride_history_repository.h,55
+ui_ride_history_storage_t,ui_ride_history_checkpoint_store_cb_t store_checkpoint;,src/services/ui_ride_history_repository.h,56
+ui_ride_history_storage_t,ui_ride_history_page_cb_t load_page;,src/services/ui_ride_history_repository.h,57
+ui_ride_history_storage_t,"ui_ride_history_result_t (*append_record)(const ui_ride_record_t *record, void *context);",src/services/ui_ride_history_repository.h,60
+ui_ride_summary_t,float distance_km;,src/ui/models/ui_ride_summary_model.h,12
+ui_ride_summary_t,uint32_t duration_seconds;,src/ui/models/ui_ride_summary_model.h,13
+ui_ride_summary_t,uint32_t moving_time_seconds;,src/ui/models/ui_ride_summary_model.h,14
+ui_ride_summary_t,uint8_t metric_flags;,src/ui/models/ui_ride_summary_model.h,15
+ui_ride_summary_t,float average_speed_kmh;,src/ui/models/ui_ride_summary_model.h,16
+ui_ride_summary_t,float maximum_speed_kmh;,src/ui/models/ui_ride_summary_model.h,17
+ui_ride_summary_t,uint32_t ascent_m;,src/ui/models/ui_ride_summary_model.h,18
+ui_ride_summary_t,uint32_t descent_m;,src/ui/models/ui_ride_summary_model.h,19
+ui_ride_summary_t,int32_t maximum_elevation_m;,src/ui/models/ui_ride_summary_model.h,20
+ui_ride_summary_t,uint32_t calories_kcal;,src/ui/models/ui_ride_summary_model.h,21
+ui_ride_summary_t,bool has_heart_rate;,src/ui/models/ui_ride_summary_model.h,22
+ui_ride_summary_t,uint16_t average_heart_rate;,src/ui/models/ui_ride_summary_model.h,23
+ui_ride_summary_t,uint16_t maximum_heart_rate;,src/ui/models/ui_ride_summary_model.h,24
+ui_ride_summary_t,uint16_t minimum_heart_rate;,src/ui/models/ui_ride_summary_model.h,25
+ui_ride_summary_t,bool has_power;,src/ui/models/ui_ride_summary_model.h,26
+ui_ride_summary_t,uint16_t average_power;,src/ui/models/ui_ride_summary_model.h,27
+ui_ride_summary_t,uint16_t maximum_power;,src/ui/models/ui_ride_summary_model.h,28
+ui_ride_summary_t,bool has_cadence;,src/ui/models/ui_ride_summary_model.h,29
+ui_ride_summary_t,uint16_t average_cadence;,src/ui/models/ui_ride_summary_model.h,30
+ui_ride_summary_t,uint16_t maximum_cadence;,src/ui/models/ui_ride_summary_model.h,31
+ui_ride_summary_t,bool has_temperature;,src/ui/models/ui_ride_summary_model.h,32
+ui_ride_summary_t,int16_t average_temperature_tenths_c;,src/ui/models/ui_ride_summary_model.h,33
+ui_ride_summary_t,ui_ride_report_trace_t trace;,src/ui/models/ui_ride_summary_model.h,34
+ui_ride_summary_t,bool saved;,src/ui/models/ui_ride_summary_model.h,35
+ui_ride_summary_t,uint32_t version;,src/ui/models/ui_ride_summary_model.h,36
+ui_ride_summary_t,uint32_t session_id;,src/ui/models/ui_ride_summary_model.h,37
+ui_ride_summary_t,int64_t started_at_utc;,src/ui/models/ui_ride_summary_model.h,38
+ui_ride_summary_t,int64_t finished_at_utc;,src/ui/models/ui_ride_summary_model.h,39
+ui_ride_record_t,uint64_t id;,src/ui/models/ui_ride_history_model.h,15
+ui_ride_record_t,int64_t started_at_utc;,src/ui/models/ui_ride_history_model.h,16
+ui_ride_record_t,int64_t finished_at_utc;,src/ui/models/ui_ride_history_model.h,17
+ui_ride_record_t,float distance_km;,src/ui/models/ui_ride_history_model.h,18
+ui_ride_record_t,uint32_t duration_seconds;,src/ui/models/ui_ride_history_model.h,19
+ui_ride_record_t,uint32_t moving_time_seconds;,src/ui/models/ui_ride_history_model.h,20
+ui_ride_record_t,uint8_t metric_flags;,src/ui/models/ui_ride_history_model.h,21
+ui_ride_record_t,float average_speed_kmh;,src/ui/models/ui_ride_history_model.h,22
+ui_ride_record_t,float maximum_speed_kmh;,src/ui/models/ui_ride_history_model.h,23
+ui_ride_record_t,uint32_t ascent_m;,src/ui/models/ui_ride_history_model.h,24
+ui_ride_record_t,uint32_t descent_m;,src/ui/models/ui_ride_history_model.h,25
+ui_ride_record_t,int32_t maximum_elevation_m;,src/ui/models/ui_ride_history_model.h,26
+ui_ride_record_t,uint32_t calories_kcal;,src/ui/models/ui_ride_history_model.h,27
+ui_ride_record_t,bool has_heart_rate;,src/ui/models/ui_ride_history_model.h,28
+ui_ride_record_t,uint16_t average_heart_rate;,src/ui/models/ui_ride_history_model.h,29
+ui_ride_record_t,uint16_t maximum_heart_rate;,src/ui/models/ui_ride_history_model.h,30
+ui_ride_record_t,uint16_t minimum_heart_rate;,src/ui/models/ui_ride_history_model.h,31
+ui_ride_record_t,bool has_power;,src/ui/models/ui_ride_history_model.h,32
+ui_ride_record_t,uint16_t average_power;,src/ui/models/ui_ride_history_model.h,33
+ui_ride_record_t,uint16_t maximum_power;,src/ui/models/ui_ride_history_model.h,34
+ui_ride_record_t,bool has_cadence;,src/ui/models/ui_ride_history_model.h,35
+ui_ride_record_t,uint16_t average_cadence;,src/ui/models/ui_ride_history_model.h,36
+ui_ride_record_t,uint16_t maximum_cadence;,src/ui/models/ui_ride_history_model.h,37
+ui_ride_record_t,bool has_temperature;,src/ui/models/ui_ride_history_model.h,38
+ui_ride_record_t,int16_t average_temperature_tenths_c;,src/ui/models/ui_ride_history_model.h,39
+ui_ride_record_t,ui_ride_report_trace_t trace;,src/ui/models/ui_ride_history_model.h,40
+ui_ride_history_totals_t,double total_distance_km;,src/ui/models/ui_ride_history_model.h,45
+ui_ride_history_totals_t,uint64_t total_duration_seconds;,src/ui/models/ui_ride_history_model.h,46
+ui_ride_history_totals_t,uint64_t total_ascent_m;,src/ui/models/ui_ride_history_model.h,47
+ui_ride_history_totals_t,uint32_t ride_count;,src/ui/models/ui_ride_history_model.h,48
+ui_ride_report_trace_t,uint16_t point_count;,src/ui/models/ui_ride_report_data.h,23
+ui_ride_report_trace_t,bool time_is_estimated;,src/ui/models/ui_ride_report_data.h,24
+ui_ride_report_trace_t,uint16_t speed_tenths[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,25
+ui_ride_report_trace_t,uint16_t heart_rate[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,26
+ui_ride_report_trace_t,uint16_t power[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,27
+ui_ride_report_trace_t,uint16_t cadence[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,28
+ui_ride_report_trace_t,int16_t elevation_m[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,29
+ui_ride_report_trace_t,uint32_t time_seconds[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,30
+ui_ride_report_trace_t,uint32_t valid_fields[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,31
+ui_ride_report_trace_t,int32_t latitude_microdegrees[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,32
+ui_ride_report_trace_t,int32_t longitude_microdegrees[UI_RIDE_REPORT_POINT_MAX];,src/ui/models/ui_ride_report_data.h,33
+ui_ride_report_trace_t,uint32_t heart_rate_zone_seconds[UI_RIDE_REPORT_ZONE_COUNT];,src/ui/models/ui_ride_report_data.h,34
+ui_ride_report_trace_t,uint32_t power_zone_seconds[UI_RIDE_REPORT_ZONE_COUNT];,src/ui/models/ui_ride_report_data.h,35
+ui_background_port_t,"const void *(*load)(const char *resource_id, void *context);",src/ui/core/ui_background.h,19
+ui_background_port_t,"void (*release)(const void *source, void *context);",src/ui/core/ui_background.h,20
+ui_background_port_t,void *context;,src/ui/core/ui_background.h,21
+ui_device_connection_port_t,bool (*scan)(void *context);,src/ui/pages/ui_devices_page.h,25
+ui_device_connection_port_t,"bool (*connect)(ui_device_kind_t kind,void *context);",src/ui/pages/ui_devices_page.h,26
+ui_device_connection_port_t,void *context;,src/ui/pages/ui_devices_page.h,27

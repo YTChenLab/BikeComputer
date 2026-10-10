@@ -1,0 +1,46 @@
+﻿源码,行号,声明或操作
+src/ui/core/ui_runtime.c,2,#include <stdatomic.h>
+src/ui/core/ui_runtime.c,5,"_Static_assert(ATOMIC_INT_LOCK_FREE == 2, ""UiTask diagnostics require lock-free 32-bit C11 atomics"");"
+src/ui/core/ui_runtime.c,7,static atomic_uint s_counters[UI_DIAG_COUNT];
+src/ui/core/ui_runtime.c,8,"static atomic_uint s_calls, s_last_us, s_max_us;"
+src/ui/core/ui_runtime.c,22,"atomic_fetch_add_explicit(&s_counters[counter], 1U, memory_order_relaxed);"
+src/ui/core/ui_runtime.c,58,"atomic_fetch_add_explicit(&s_calls, 1U, memory_order_relaxed);"
+src/ui/core/ui_runtime.c,59,"atomic_store_explicit(&s_last_us, duration_us, memory_order_relaxed);"
+src/ui/core/ui_runtime.c,60,"if(duration_us > atomic_load_explicit(&s_max_us, memory_order_relaxed))"
+src/ui/core/ui_runtime.c,61,"atomic_store_explicit(&s_max_us, duration_us, memory_order_relaxed);"
+src/ui/core/ui_runtime.c,67,"out->counters[i] = atomic_load_explicit(&s_counters[i], memory_order_relaxed);"
+src/ui/core/ui_runtime.c,68,"out->handler_calls = atomic_load_explicit(&s_calls, memory_order_relaxed);"
+src/ui/core/ui_runtime.c,69,"out->handler_last_us = atomic_load_explicit(&s_last_us, memory_order_relaxed);"
+src/ui/core/ui_runtime.c,70,"out->handler_max_us = atomic_load_explicit(&s_max_us, memory_order_relaxed);"
+src/services/ui_offline_map.c,2,#include <stdatomic.h>
+src/services/ui_offline_map.c,32,static atomic_flag s_map_busy=ATOMIC_FLAG_INIT;
+src/services/ui_offline_map.c,95,"if(atomic_flag_test_and_set_explicit(&s_map_busy,memory_order_acquire))return UI_NAV_UNAVAILABLE;"
+src/services/ui_offline_map.c,97,"atomic_flag_clear_explicit(&s_map_busy,memory_order_release);return result;"
+src/services/ui_online_places.c,2,#include <stdatomic.h>
+src/services/ui_online_places.c,170,static atomic_flag s_json_busy=ATOMIC_FLAG_INIT;
+src/services/ui_online_places.c,173,"if(atomic_flag_test_and_set_explicit(&s_json_busy,memory_order_acquire))return UI_PLACE_ONLINE_FAILED;"
+src/services/ui_online_places.c,175,"atomic_flag_clear_explicit(&s_json_busy,memory_order_release);return status;"
+src/services/ui_online_places.c,183,"if(atomic_flag_test_and_set_explicit(&s_json_busy,memory_order_acquire)){offline->online_status=UI_PLACE_ONLINE_FAILED;return;}"
+src/services/ui_online_places.c,194,"atomic_flag_clear_explicit(&s_json_busy,memory_order_release);"
+src/services/ui_ride_history_repository.c,5,#include <stdatomic.h>
+src/services/ui_ride_history_repository.c,31,static atomic_int s_job_state;
+src/services/ui_ride_history_repository.c,45,if(atomic_load(&s_job_state) != 0) return false;
+src/services/ui_ride_history_repository.c,70,if(atomic_load(&s_job_state) != 0) return;
+src/services/ui_ride_history_repository.c,86,storage->now_utc == NULL || atomic_load(&s_job_state) != 0 ||
+src/services/ui_ride_history_repository.c,138,if(s_repository.pending_valid || (atomic_load(&s_job_state) != 0 && !s_job.is_page)) return UI_RIDE_HISTORY_INVALID_DATA;
+src/services/ui_ride_history_repository.c,209,if(!s_repository.configured || !s_repository.pending_valid || atomic_load(&s_job_state) != 0)
+src/services/ui_ride_history_repository.c,223,"atomic_store_explicit(&s_job_state, 1, memory_order_release);"
+src/services/ui_ride_history_repository.c,230,"return atomic_compare_exchange_strong(&s_job_state, &expected, 0);"
+src/services/ui_ride_history_repository.c,237,"if(atomic_load_explicit(&s_job_state, memory_order_acquire) != 1 || s_job.is_page ||"
+src/services/ui_ride_history_repository.c,238,"!atomic_compare_exchange_strong(&s_job_state, &expected, 2))"
+src/services/ui_ride_history_repository.c,263,"atomic_store_explicit(&s_job_state, 3, memory_order_release);"
+src/services/ui_ride_history_repository.c,269,"if(atomic_load_explicit(&s_job_state, memory_order_acquire) != 3) return false;"
+src/services/ui_ride_history_repository.c,275,"atomic_store_explicit(&s_job_state,0,memory_order_release);"
+src/services/ui_ride_history_repository.c,291,"atomic_store_explicit(&s_job_state, 0, memory_order_release);"
+src/services/ui_ride_history_repository.c,298,"return atomic_load_explicit(&s_job_state,memory_order_acquire)==3 && s_job.is_page &&"
+src/services/ui_ride_history_repository.c,305,"if(atomic_load_explicit(&s_job_state,memory_order_acquire)!=1 || !s_job.is_page ||"
+src/services/ui_ride_history_repository.c,306,"!atomic_compare_exchange_strong(&s_job_state,&expected,2)) return UI_RIDE_HISTORY_INVALID_DATA;"
+src/services/ui_ride_history_repository.c,316,"atomic_store_explicit(&s_job_state,3,memory_order_release);"
+src/services/ui_ride_history_repository.c,340,"atomic_store_explicit(&s_job_state,1,memory_order_release);"
+src/services/ui_ride_history_repository.c,342,"atomic_store_explicit(&s_job_state,0,memory_order_release);"
+src/services/ui_ride_history_repository.c,348,bool ui_ride_history_repository_busy(void) { return atomic_load(&s_job_state) != 0; }

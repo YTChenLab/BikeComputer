@@ -75,9 +75,10 @@
 /*
 ** gcc 3.4 and above have builtin support, specialized for architecture.
 ** Some compilers masquerade as gcc; patchlevel test filters them out.
+** Arm Compiler 6 also supports these builtins without GCC patchlevel macros.
 */
-#if defined (__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)) \
-    && defined (__GNUC_PATCHLEVEL__)
+#if (defined (__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)) \
+     && defined (__GNUC_PATCHLEVEL__)) || (defined (__ARMCC_VERSION) && defined (__clang__))
 
 #if defined (__SNC__)
 /* SNC for PlayStation 3. */

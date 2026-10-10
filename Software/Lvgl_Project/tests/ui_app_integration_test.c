@@ -53,6 +53,44 @@
 #include <windows.h>
 #endif
 
+/* Exercise recognized physical records through the production mapper.
+ * Development shortcuts remain application actions, outside InputService. */
+static void semantic_delta(int32_t delta)
+{
+    const ui_physical_input_event_t event={.key=UI_PHYSICAL_KEY_ENCODER,
+        .action=UI_PHYSICAL_ENCODER_DELTA,.encoder_delta=delta,.timestamp_ms=lv_tick_get()};
+    assert(ui_app_handle_input_event(&event));
+}
+static void semantic_input(ui_input_event_t input)
+{
+    ui_physical_input_event_t event={.timestamp_ms=lv_tick_get()};
+    switch(input) {
+        case UI_INPUT_ENCODER_CW: semantic_delta(1); return;
+        case UI_INPUT_ENCODER_CCW: semantic_delta(-1); return;
+        case UI_INPUT_ENCODER_PRESS: event.key=UI_PHYSICAL_KEY_ENCODER_BUTTON; event.action=UI_PHYSICAL_KEY_CLICK; break;
+        case UI_INPUT_BACK: event.key=UI_PHYSICAL_KEY_BACK; event.action=UI_PHYSICAL_KEY_CLICK; break;
+        case UI_INPUT_BACK_DOUBLE: event.key=UI_PHYSICAL_KEY_BACK; event.action=UI_PHYSICAL_KEY_DOUBLE_CLICK; break;
+        case UI_INPUT_BACK_LONG: event.key=UI_PHYSICAL_KEY_BACK; event.action=UI_PHYSICAL_KEY_LONG_START; break;
+        case UI_INPUT_PAGE_PREV: event.key=UI_PHYSICAL_KEY_PREV; event.action=UI_PHYSICAL_KEY_CLICK; break;
+        case UI_INPUT_PAGE_NEXT: event.key=UI_PHYSICAL_KEY_NEXT; event.action=UI_PHYSICAL_KEY_CLICK; break;
+        case UI_INPUT_TOGGLE_CONTROL_CENTER: event.key=UI_PHYSICAL_KEY_MENU; event.action=UI_PHYSICAL_KEY_CLICK; break;
+        case UI_INPUT_RIDE_TOGGLE: event.key=UI_PHYSICAL_KEY_MENU; event.action=UI_PHYSICAL_KEY_LONG_START; break;
+        default: ui_app_handle_input(input); return;
+    }
+    ui_physical_input_event_t lifecycle=event;
+    lifecycle.action=UI_PHYSICAL_KEY_DOWN;
+    assert(ui_app_handle_input_event(&lifecycle));
+    assert(ui_app_handle_input_event(&event));
+    if(event.action==UI_PHYSICAL_KEY_LONG_START) {
+        lifecycle.action=UI_PHYSICAL_KEY_LONG_REPEAT;
+        assert(ui_app_handle_input_event(&lifecycle));
+        lifecycle.action=UI_PHYSICAL_KEY_LONG_END;
+        assert(ui_app_handle_input_event(&lifecycle));
+    }
+    lifecycle.action=UI_PHYSICAL_KEY_UP;
+    assert(ui_app_handle_input_event(&lifecycle));
+}
+
 static uint8_t draw_buffer[480 * 854 * 2];
 static uint16_t frame_buffer[480 * 854];
 static const char *capture_directory;
@@ -148,7 +186,7 @@ static void event(ui_event_type_t type)
 }
 static void confirm_power(void)
 {
-    ui_app_handle_input(UI_INPUT_OPEN_POWER);
+    semantic_input(UI_INPUT_OPEN_POWER);
     assert(ui_router_current()==UI_ROUTE_POWER);
     capture("power");
     assert(ui_power_page_handle_input(UI_INPUT_ENCODER_PRESS));
@@ -197,7 +235,7 @@ static void tap_label(lv_obj_t *parent,const char *text,bool scroll)
 }
 static void confirm_restart(void)
 {
-    ui_app_handle_input(UI_INPUT_OPEN_POWER);
+    semantic_input(UI_INPUT_OPEN_POWER);
     assert(ui_router_current() == UI_ROUTE_POWER);
     tap_label(lv_screen_active(), "重新启动", false);
     const ui_dock_card_t *card = ui_dock_current();
@@ -223,13 +261,13 @@ static lv_obj_t *speed_segment(void)
 }
 static void test_layout_editor(void)
 {
-    ui_app_handle_input(UI_INPUT_OPEN_SETTINGS); advance(600);
+    semantic_input(UI_INPUT_OPEN_SETTINGS); advance(600);
     assert(ui_router_current()==UI_ROUTE_SETTINGS);capture("settings_initial");
     tap_label(lv_screen_active(),"骑行数据布局",true);
     assert(ui_dashboard_editor_visible()); advance(300); capture("layout_editor");
     tap_label(lv_layer_top(),"骑行方案",false); capture("preset_picker");
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+    semantic_input(UI_INPUT_ENCODER_CW);
+    semantic_input(UI_INPUT_ENCODER_PRESS);
     ui_preferences_t before; assert(ui_preferences_get(&before));
     assert(before.dashboard_preset==UI_DASHBOARD_CRUISE);
     tap_label(lv_layer_top(),"取消",false);
@@ -239,14 +277,14 @@ static void test_layout_editor(void)
 
     tap_label(lv_screen_active(),"骑行数据布局",false); advance(300);
     tap_label(lv_layer_top(),"骑行方案",false);
-    ui_app_handle_input(UI_INPUT_ENCODER_CW); ui_app_handle_input(UI_INPUT_ENCODER_CW);
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS); /* Climb draft. */
+    semantic_input(UI_INPUT_ENCODER_CW); semantic_input(UI_INPUT_ENCODER_CW);
+    semantic_input(UI_INPUT_ENCODER_PRESS); /* Climb draft. */
     tap_label(lv_layer_top(),"上左",false); capture("field_picker");
     lv_obj_t *picker=lv_obj_get_parent(find_label(lv_layer_top(),"选择指标"));
     tap_label(picker,"功率",false); /* Disabled: already used in upper right. */
     assert(find_label(lv_layer_top(),"选择指标"));
-    ui_app_handle_input(UI_INPUT_ENCODER_CW); /* Skip distance/time already in other slots. */
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS); /* Average speed. */
+    semantic_input(UI_INPUT_ENCODER_CW); /* Skip distance/time already in other slots. */
+    semantic_input(UI_INPUT_ENCODER_PRESS); /* Average speed. */
     assert(!find_label(lv_layer_top(),"选择指标"));
     after.sound=47; assert(ui_preferences_submit(&after)); advance(100);
     tap_label(lv_layer_top(),"保存布局",false); advance(150);
@@ -260,17 +298,17 @@ static void test_layout_editor(void)
     assert(memcmp(decoded.dashboard_fields,after.dashboard_fields,6)==0);
 
     ui_dashboard_editor_open(); advance(300);
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS); /* Preset picker. */
-    ui_app_handle_input(UI_INPUT_BACK); /* Close picker only. */
+    semantic_input(UI_INPUT_ENCODER_PRESS); /* Preset picker. */
+    semantic_input(UI_INPUT_BACK); /* Close picker only. */
     assert(ui_dashboard_editor_visible());
     ui_input_pointer_event_t modal={.type=UI_INPUT_TOUCH_BEGIN,.x=450,.y=100};
     ui_app_handle_pointer(&modal);
-    ui_app_handle_input(UI_INPUT_BACK); assert(!ui_dashboard_editor_visible());
+    semantic_input(UI_INPUT_BACK); assert(!ui_dashboard_editor_visible());
     modal.type=UI_INPUT_TOUCH_MOVE; modal.x=20; ui_app_handle_pointer(&modal);
     modal.type=UI_INPUT_TOUCH_END; ui_app_handle_pointer(&modal);
     assert(ui_router_current()==UI_ROUTE_SETTINGS);
     apply_preset(UI_DASHBOARD_CRUISE);
-    ui_app_handle_input(UI_INPUT_BACK); advance(600);
+    semantic_input(UI_INPUT_BACK); advance(600);
     assert(ui_router_current()==UI_ROUTE_HOME);
 }
 static unsigned scan_requests,connection_requests;static ui_device_kind_t requested_device;
@@ -280,32 +318,32 @@ static void test_shell_pages(void)
 {
     ui_home_data_t initial_home_data;
     assert(ui_home_data_model_get(&initial_home_data));
-    ui_app_handle_input(UI_INPUT_OPEN_POWER); advance(250);
+    semantic_input(UI_INPUT_OPEN_POWER); advance(250);
     assert(ui_router_current() == UI_ROUTE_POWER);
     tap_label(lv_screen_active(), "取消", false); advance(250);
     assert(ui_router_current() == UI_ROUTE_HOME);
-    ui_app_handle_input(UI_INPUT_OPEN_POWER); advance(250);
+    semantic_input(UI_INPUT_OPEN_POWER); advance(250);
     assert(ui_power_page_handle_input(UI_INPUT_ENCODER_CW));
     assert(ui_power_page_handle_input(UI_INPUT_ENCODER_CW));
     assert(ui_power_page_handle_input(UI_INPUT_ENCODER_PRESS)); advance(250);
     assert(ui_router_current() == UI_ROUTE_HOME);
     /* Leave the independent power tests with their original OFF selection. */
-    ui_app_handle_input(UI_INPUT_OPEN_POWER); advance(250);
+    semantic_input(UI_INPUT_OPEN_POWER); advance(250);
     assert(ui_power_page_handle_input(UI_INPUT_ENCODER_CCW));
     assert(ui_power_page_handle_input(UI_INPUT_ENCODER_CCW));
-    ui_app_handle_input(UI_INPUT_BACK); advance(250);
+    semantic_input(UI_INPUT_BACK); advance(250);
     tap_label(lv_screen_active(),"历史记录",false); advance(250);
     assert(ui_router_current()==UI_ROUTE_HISTORY); capture("history_empty");
-    ui_app_handle_input(UI_INPUT_BACK); advance(250);
-    ui_app_handle_input(UI_INPUT_PAGE_NEXT); advance(500);
+    semantic_input(UI_INPUT_BACK); advance(250);
+    semantic_input(UI_INPUT_PAGE_NEXT); advance(500);
     assert(ui_router_current()==UI_ROUTE_NAVIGATION); capture("navigation");
-    ui_app_handle_input(UI_INPUT_BACK); advance(500);
+    semantic_input(UI_INPUT_BACK); advance(500);
     assert(ui_router_current()==UI_ROUTE_HOME);
     tap_label(lv_screen_active(),"收藏路线",false); advance(250);
     assert(ui_router_current()==UI_ROUTE_SAVED_ROUTES);
     capture("saved_routes_empty");
     assert(find_label(lv_screen_active(),"导航服务暂不可用"));
-    ui_app_handle_input(UI_INPUT_BACK); advance(250);
+    semantic_input(UI_INPUT_BACK); advance(250);
     assert(ui_router_current()==UI_ROUTE_HOME);
     tap_label(lv_screen_active(),"设备与传感器",false); advance(250);
     assert(ui_router_current()==UI_ROUTE_DEVICES);
@@ -318,8 +356,8 @@ static void test_shell_pages(void)
     ui_app_state_t device_state;assert(ui_app_state_get(&device_state));
     if(!device_state.bluetooth_enabled){assert(ui_command_service_submit(UI_COMMAND_BLUETOOTH_SET_ENABLED,1,2000));advance(600);}
     tap_label(lv_screen_active(),"搜索附近设备",false);advance(100);assert(scan_requests==1);
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(70);capture("devices_liquid_moving");
-    ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(40);capture("devices_liquid_reverse");
+    semantic_input(UI_INPUT_ENCODER_CW);advance(70);capture("devices_liquid_moving");
+    semantic_input(UI_INPUT_ENCODER_CCW);advance(40);capture("devices_liquid_reverse");
     tap_label(lv_screen_active(),"心率带",false);advance(700);
     assert(connection_requests==1&&requested_device==UI_DEVICE_HEART_RATE);
     assert(find_label(lv_screen_active(),"未连接")); /* Request acceptance cannot fake a connection. */
@@ -329,13 +367,13 @@ static void test_shell_pages(void)
     lv_obj_t *device_row=lv_obj_get_parent(lv_obj_get_parent(find_label(lv_screen_active(),"心率带")));
     lv_obj_t *device_list=lv_obj_get_parent(device_row);
     assert(lv_obj_get_height(device_row)>110&&lv_obj_get_scroll_bottom(device_list)>0);
-    for(unsigned i=0;i<8;i++)ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    for(unsigned i=0;i<8;i++)semantic_input(UI_INPUT_ENCODER_CW);
     advance(700);assert(ui_devices_page_selected_device()==UI_DEVICE_SPEED_CADENCE);
     assert(lv_obj_get_scroll_bottom(device_list)<=1);capture("devices_bottom");
-    for(unsigned i=0;i<8;i++)ui_app_handle_input(UI_INPUT_ENCODER_CCW);
+    for(unsigned i=0;i<8;i++)semantic_input(UI_INPUT_ENCODER_CCW);
     advance(700);assert(lv_obj_get_scroll_y(device_list)==0);capture("devices_top");
     ui_devices_page_register_connection_port(NULL);ui_devices_page_set_status(UI_DEVICE_HEART_RATE,"未连接",0xAAAAAA);
-    ui_app_handle_input(UI_INPUT_BACK); advance(250);
+    semantic_input(UI_INPUT_BACK); advance(250);
     /* A home shortcut must open newest data even before history is entered. */
     ui_ride_record_t recent_records[2] = {{.id=701,.distance_km=7.0f,.duration_seconds=600},
                                         {.id=702,.distance_km=9.0f,.duration_seconds=900}};
@@ -344,7 +382,7 @@ static void test_shell_pages(void)
     assert(ui_router_current()==UI_ROUTE_RIDE_DETAIL);
     assert(find_label(lv_screen_active(),"9.0"));
     capture("ride_detail");
-    ui_app_handle_input(UI_INPUT_BACK); advance(250);
+    semantic_input(UI_INPUT_BACK); advance(250);
     ui_ride_history_model_init();
     assert(ui_home_data_model_update(&initial_home_data)); advance(20);
     assert(lv_color_eq(lv_obj_get_style_bg_color(lv_screen_active(),0),lv_color_black()));
@@ -361,13 +399,13 @@ static void test_shell_pages(void)
         assert(home_selection->items[i].object!=lifetime);
     }
     /* A refresh is the only operable descendant in lifetime data, and remains on Home. */
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);capture("home_refresh_selected");
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+    semantic_input(UI_INPUT_ENCODER_CW);advance(700);capture("home_refresh_selected");
+    semantic_input(UI_INPUT_ENCODER_PRESS);semantic_input(UI_INPUT_ENCODER_PRESS);
     assert(lv_obj_has_state(home_selection->items[1].object,LV_STATE_DISABLED));
     advance(700);assert(!lv_obj_has_state(home_selection->items[1].object,LV_STATE_DISABLED));
     assert(ui_router_current()==UI_ROUTE_HOME);capture("home_refreshed");
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(60);capture("home_liquid_moving");
-    ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(40);capture("home_liquid_reverse");
+    semantic_input(UI_INPUT_ENCODER_CW);advance(60);capture("home_liquid_moving");
+    semantic_input(UI_INPUT_ENCODER_CCW);advance(40);capture("home_liquid_reverse");
     unsigned images=0;
     for(unsigned i=0;i<lv_obj_get_child_count(lifetime);++i) {
         lv_obj_t *child=lv_obj_get_child(lifetime,i);
@@ -400,7 +438,7 @@ static void test_shell_pages(void)
     assert(unit_area.x1>number_area.x1 && unit_area.x2<lv_obj_get_x(lifetime)+lv_obj_get_width(lifetime));
     capture("home_long_values");
     assert(ui_home_data_model_update(&baseline)); advance(20);
-    ui_app_handle_input(UI_INPUT_OPEN_PROFILE); advance(600); capture("profile_empty");
+    semantic_input(UI_INPUT_OPEN_PROFILE); advance(600); capture("profile_empty");
     assert(lv_color_eq(lv_obj_get_style_bg_color(lv_screen_active(),0),lv_color_black()));
     assert(lv_obj_get_style_bg_image_src(lv_screen_active(),0)==NULL);
     assert(find_label(lv_screen_active(),"成就进度"));
@@ -410,34 +448,34 @@ static void test_shell_pages(void)
     assert(profile_selection->count==8 && ui_profile_page_selected_index()==0);
     lv_obj_t *profile_stats=lv_obj_get_parent(find_label(lv_screen_active(),"骑行总数据"));
     assert(profile_stats && !lv_obj_has_flag(profile_stats,LV_OBJ_FLAG_CLICKABLE));
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    semantic_input(UI_INPUT_ENCODER_CW);
     for(unsigned i=0;i<12;i++){advance(25);char name[48];snprintf(name,sizeof(name),"profile_liquid_%02u",i);capture(name);}
-    ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(40);capture("profile_liquid_reverse");
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);capture("profile_achievement_selected");
+    semantic_input(UI_INPUT_ENCODER_CCW);advance(40);capture("profile_liquid_reverse");
+    semantic_input(UI_INPUT_ENCODER_CW);advance(700);capture("profile_achievement_selected");
     assert(ui_profile_page_selected_index()==1);
     assert(lv_color_eq(lv_obj_get_style_text_color(find_label(lv_screen_active(),"成就进度"),0),lv_color_hex(0x101010)));
     touch(100,230,true);touch(100,230,false);advance(20);
     assert(ui_router_current()==UI_ROUTE_PROFILE && ui_profile_page_selected_index()==1);
     ui_motion_set_reduced(true);
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(20);capture("profile_activity_selected");
+    semantic_input(UI_INPUT_ENCODER_CW);advance(20);capture("profile_activity_selected");
     assert(ui_profile_page_selected_index()==2 && profile_selection->progress==1000);
     assert(lv_color_eq(lv_obj_get_style_text_color(find_label(lv_screen_active(),"成就进度"),0),UI_TOKEN_COLOR_TEXT_PRIMARY));
     ui_motion_set_reduced(false);
-    for(unsigned i=0;i<5;i++)ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    for(unsigned i=0;i<5;i++)semantic_input(UI_INPUT_ENCODER_CW);
     advance(700);capture("profile_settings_selected");
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);
+    semantic_input(UI_INPUT_ENCODER_CW);advance(700);
     assert(ui_profile_page_selected_index()==0);
-    ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(700);
+    semantic_input(UI_INPUT_ENCODER_CCW);advance(700);
     assert(ui_profile_page_selected_index()==7);
-    ui_app_handle_input(UI_INPUT_BACK); advance(600);
+    semantic_input(UI_INPUT_BACK); advance(600);
     assert(!profile_selection->active);
-    ui_app_handle_input(UI_INPUT_OPEN_PROFILE);advance(600);
+    semantic_input(UI_INPUT_OPEN_PROFILE);advance(600);
     assert(ui_profile_page_selected_index()==0);capture("profile_reopened");
     touch(330,726,true);advance(100);capture("profile_touch_pressed");touch(330,726,false);advance(600);
     assert(ui_router_current()==UI_ROUTE_DEVICES && !profile_selection->active);
-    ui_app_handle_input(UI_INPUT_BACK);advance(600);
-    if(ui_router_current()==UI_ROUTE_PROFILE){ui_app_handle_input(UI_INPUT_BACK);advance(600);}
-    ui_app_handle_input(UI_INPUT_OPEN_SETTINGS); advance(600);
+    semantic_input(UI_INPUT_BACK);advance(600);
+    if(ui_router_current()==UI_ROUTE_PROFILE){semantic_input(UI_INPUT_BACK);advance(600);}
+    semantic_input(UI_INPUT_OPEN_SETTINGS); advance(600);
     assert(ui_router_current()==UI_ROUTE_SETTINGS);capture("settings_initial");
     assert(lv_color_eq(lv_obj_get_style_bg_color(lv_screen_active(),0),lv_color_black()));
     assert(lv_obj_get_style_bg_image_src(lv_screen_active(),0)==NULL);
@@ -455,9 +493,9 @@ static void test_shell_pages(void)
     lv_obj_t *wifi_row=lv_obj_get_parent(lv_obj_get_parent(find_label(lv_screen_active(),"WiFi")));
     assert(lv_obj_get_height(wifi_row)>=110);
     assert(find_label(lv_screen_active(),"1-5 / 15  向上滑动查看更多"));
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    semantic_input(UI_INPUT_ENCODER_CW);
     for(unsigned i=0;i<12;i++){advance(25);char name[48];snprintf(name,sizeof(name),"settings_liquid_%02u",i);capture(name);}
-    ui_app_handle_input(UI_INPUT_ENCODER_CCW);
+    semantic_input(UI_INPUT_ENCODER_CCW);
     for(unsigned i=0;i<12;i++){advance(25);char name[48];snprintf(name,sizeof(name),"settings_reverse_%02u",i);capture(name);}advance(500);
     ui_app_state_t before,after; assert(ui_app_state_get(&before));
     touch(240,744,true);
@@ -468,19 +506,19 @@ static void test_shell_pages(void)
     assert(ui_app_state_get(&after));
     assert(before.wifi_enabled==after.wifi_enabled && before.bluetooth_enabled==after.bluetooth_enabled);
     assert(before.power_save_enabled==after.power_save_enabled && before.touch_locked==after.touch_locked);
-    for(unsigned i=0;i<16;++i) ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    for(unsigned i=0;i<16;++i) semantic_input(UI_INPUT_ENCODER_CW);
     advance(600);
     assert(lv_obj_get_scroll_bottom(list)<=1);
     capture("settings_bottom");
-    for(unsigned i=0;i<16;++i) ui_app_handle_input(UI_INPUT_ENCODER_CCW);
+    for(unsigned i=0;i<16;++i) semantic_input(UI_INPUT_ENCODER_CCW);
     advance(600); assert(lv_obj_get_scroll_y(list)==0);
     /* INFO rows are readable, with no false action/chevron. */
     tap_label(lv_screen_active(),"系统信息",true); advance(600);
     assert(ui_router_current()==UI_ROUTE_SYSTEM);
     capture("system_information");
-    ui_app_handle_input(UI_INPUT_BACK); advance(600);
+    semantic_input(UI_INPUT_BACK); advance(600);
     assert(ui_router_current()==UI_ROUTE_SETTINGS);
-    ui_app_handle_input(UI_INPUT_BACK); advance(600);
+    semantic_input(UI_INPUT_BACK); advance(600);
     assert(ui_router_current()==UI_ROUTE_HOME);
 }
 static void test_dashboard_variants(void)
@@ -507,12 +545,12 @@ static void test_dashboard_variants(void)
         advance(20); char name[32]; snprintf(name,sizeof(name),"dataflip_%02u",i); capture(name);
     }
     assert(ui_dynamic_card_manager_get_extended_page()==1); capture("extended_page2");
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+    semantic_input(UI_INPUT_ENCODER_PRESS);
     assert(ui_dynamic_card_manager_get_mode()==UI_DYNAMIC_CARD_CONTROL);
-    ui_app_handle_input(UI_INPUT_ENCODER_CW); advance(200);
+    semantic_input(UI_INPUT_ENCODER_CW); advance(200);
     assert(ui_dynamic_card_manager_get_extended_page()==0);
     assert(ui_dynamic_card_manager_get_active_card()==UI_DYNAMIC_CARD_EXTENDED_DATA);
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     assert(ui_dynamic_card_manager_get_mode()==UI_DYNAMIC_CARD_BROWSER);
     /* A native vertical card drag must scroll to navigation, never act as a tap. */
     touch(300,790,true);
@@ -520,7 +558,7 @@ static void test_dashboard_variants(void)
     touch(300,650,false); advance(600);
     assert(ui_dynamic_card_manager_get_extended_page()==0);
     assert(ui_dynamic_card_manager_get_active_card()==UI_DYNAMIC_CARD_NAVIGATION);
-    ui_app_handle_input(UI_INPUT_ENCODER_CCW); advance(600);
+    semantic_input(UI_INPUT_ENCODER_CCW); advance(600);
     assert(ui_dynamic_card_manager_get_active_card()==UI_DYNAMIC_CARD_EXTENDED_DATA);
 
     ui_ride_data_t real; assert(ui_ride_data_model_get(&real,NULL));
@@ -562,33 +600,33 @@ static void assert_navigation_pair(const char *first,const char *second)
 static void test_navigation_workflow(void)
 {
  size_t before_records=record_count;
- ui_pc_navigation_register();advance(300);ui_app_handle_input(UI_INPUT_PAGE_NEXT);advance(400);
+ ui_pc_navigation_register();advance(300);semantic_input(UI_INPUT_PAGE_NEXT);advance(400);
  assert(ui_router_current()==UI_ROUTE_NAVIGATION&&ui_nav_workspace_view()==UI_NAV_VIEW_CENTER);
  const ui_nav_map_t *map=ui_navigation_map();lv_obj_t *persistent=map->root;assert(map->safe_height==UI_NAV_MAP_HEIGHT);
  assert(!find_label(lv_screen_active(),"演示地图 · 非真实道路"));
  assert(ui_navigation_selected_card()==UI_NAV_CARD_MAP&&!ui_navigation_card_entered());
  uint8_t initial_zoom=map->zoom;
- ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(200);
+ semantic_input(UI_INPUT_ENCODER_CW);advance(200);
  assert(ui_navigation_selected_card()==UI_NAV_CARD_DOCK&&!ui_navigation_card_entered()&&map->zoom==initial_zoom);
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(300);
+ semantic_input(UI_INPUT_ENCODER_PRESS);advance(300);
  assert(ui_navigation_card_entered());
  lv_obj_t *my=find_label(lv_screen_active(),"我的路线"),*recent=find_label(lv_screen_active(),"最近使用");
  assert(lv_obj_get_style_border_width(lv_obj_get_parent(my),0)==0);
  assert(lv_color_eq(lv_obj_get_style_text_color(my,0),lv_color_hex(0x101010)));
  /* Search is now the first focusable dock control, before the route pair. */
- ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);
- ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(70);
+ semantic_input(UI_INPUT_ENCODER_CW);advance(700);
+ semantic_input(UI_INPUT_ENCODER_CW);advance(70);
  lv_obj_t *selection=lv_obj_get_child(lv_obj_get_parent(lv_obj_get_parent(my)),1);lv_obj_update_layout(selection);
  assert(lv_obj_get_width(selection)>lv_obj_get_width(lv_obj_get_parent(my)));capture("nav_capsule_switch");
- ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(40);capture("nav_capsule_reverse");
- ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);
+ semantic_input(UI_INPUT_ENCODER_CCW);advance(40);capture("nav_capsule_reverse");
+ semantic_input(UI_INPUT_ENCODER_CW);advance(700);
  assert(lv_color_eq(lv_obj_get_style_text_color(recent,0),lv_color_hex(0x101010)));
  assert(lv_color_eq(lv_obj_get_style_text_color(my,0),lv_color_hex(0x101010)));
  assert(lv_obj_get_x(selection)==lv_obj_get_x(lv_obj_get_parent(recent)));
  assert_navigation_pair("我的路线","最近使用");capture("nav_standby");
  tap_label(lv_screen_active(),"最近使用",false);advance(450);
  assert(ui_router_current()==UI_ROUTE_SAVED_ROUTES&&find_label(lv_screen_active(),"暂无最近使用的路线"));capture("nav_recent_empty");
- ui_app_handle_input(UI_INPUT_BACK);advance(400);tap_label(lv_screen_active(),"我的路线",false);advance(500);
+ semantic_input(UI_INPUT_BACK);advance(400);tap_label(lv_screen_active(),"我的路线",false);advance(500);
  assert(ui_router_current()==UI_ROUTE_SAVED_ROUTES);capture("nav_routes");
  lv_obj_t *maps_button=lv_obj_get_parent(find_label(lv_screen_active(),"离线地图"));
  lv_obj_t *refresh_button=lv_obj_get_parent(find_label(lv_screen_active(),"刷新"));
@@ -596,19 +634,19 @@ static void test_navigation_workflow(void)
  lv_obj_update_layout(footer);lv_area_t footer_bounds;lv_obj_get_coords(footer,&footer_bounds);
  assert(lv_area_get_height(&footer_bounds)==UI_NAV_FIXED_DOCK_HEIGHT&&footer_bounds.y1==UI_NAV_DATA_TOP&&footer_bounds.y2==837);
  assert(lv_obj_get_height(maps_button)==72&&lv_obj_get_style_border_width(maps_button,0)==0);
- for(unsigned i=0;i<3;i++)ui_app_handle_input(UI_INPUT_ENCODER_CW);
- advance(700);ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(70);capture("nav_resources_capsule_switch");
+ for(unsigned i=0;i<3;i++)semantic_input(UI_INPUT_ENCODER_CW);
+ advance(700);semantic_input(UI_INPUT_ENCODER_CW);advance(70);capture("nav_resources_capsule_switch");
  lv_obj_t *resource_capsule=lv_obj_get_child(toolbar,0);lv_obj_update_layout(resource_capsule);
  assert(lv_obj_get_width(resource_capsule)>lv_obj_get_width(maps_button));
- ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(40);capture("nav_resources_capsule_reverse");
- ui_app_handle_input(UI_INPUT_ENCODER_CW);ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(700);
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(500);
+ semantic_input(UI_INPUT_ENCODER_CCW);advance(40);capture("nav_resources_capsule_reverse");
+ semantic_input(UI_INPUT_ENCODER_CW);semantic_input(UI_INPUT_ENCODER_CW);advance(700);
+ semantic_input(UI_INPUT_ENCODER_PRESS);advance(500);
  assert(ui_router_current()==UI_ROUTE_SAVED_ROUTES&&!ui_nav_session_active());
  assert(lv_obj_get_x(resource_capsule)==lv_obj_get_x(refresh_button));
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(500);assert(ui_router_current()==UI_ROUTE_SAVED_ROUTES);capture("nav_resources_refreshed");
+ semantic_input(UI_INPUT_ENCODER_PRESS);advance(500);assert(ui_router_current()==UI_ROUTE_SAVED_ROUTES);capture("nav_resources_refreshed");
  tap_label(lv_screen_active(),"城市骑行",false);advance(160);
  assert(ui_nav_session_busy()&&!ui_nav_session_active());capture("nav_preparing");
- ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_session_busy()&&!ui_nav_session_active());
+ semantic_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_session_busy()&&!ui_nav_session_active());
  tap_label(lv_screen_active(),"城市骑行",false);advance(1000);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_PREVIEW&&!ui_nav_session_active());
  assert_navigation_pair("返回","开始导航");
@@ -618,40 +656,40 @@ static void test_navigation_workflow(void)
  assert(ui_navigation_map()->root==persistent);
  tap_label(lv_screen_active(),"开始导航",false);advance(70);
  assert(!ui_nav_session_active()&&ui_state_machine_state()==UI_RIDE_STATE_PRE_RIDE);capture("nav_ride_preparing");
- ui_app_handle_input(UI_INPUT_BACK);advance(4000);
+ semantic_input(UI_INPUT_BACK);advance(4000);
  assert(ui_router_current()==UI_ROUTE_HOME&&ui_state_machine_state()==UI_RIDE_STATE_HOME);
  assert(!ui_nav_session_active()&&!ui_ride_summary_model_active()&&record_count==before_records);
- ui_app_handle_input(UI_INPUT_PAGE_NEXT);advance(400);
+ semantic_input(UI_INPUT_PAGE_NEXT);advance(400);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_PREVIEW);
  tap_label(lv_screen_active(),"开始导航",false);advance(1800);
  assert(ui_state_machine_state()==UI_RIDE_STATE_GPS_READY&&!ui_nav_session_active());capture("nav_ride_ready");
  assert(find_label(lv_screen_active(),"GO")&&find_label(lv_screen_active(),"取消"));
  tap_label(lv_screen_active(),"GO",false);advance(70);
- ui_app_handle_input(UI_INPUT_BACK); /* Recording ACK pending: do not cancel as preparation. */
+ semantic_input(UI_INPUT_BACK); /* Recording ACK pending: do not cancel as preparation. */
  advance(2400);assert(ui_state_machine_state()==UI_RIDE_STATE_RIDING&&ui_nav_session_active()&&ui_nav_workspace_view()==UI_NAV_VIEW_LIVE);
  ui_ride_summary_t ride_session;assert(ui_ride_summary_model_get(&ride_session));uint32_t ride_id=ride_session.session_id;
  capture("nav_guidance");
  lv_obj_update_layout(map->root);lv_area_t original_map;lv_obj_get_coords(map->root,&original_map);
  int32_t dock_height=lv_obj_get_height(ui_bottom_surface_root());assert(dock_height==UI_NAV_FIXED_DOCK_HEIGHT);
  assert(ui_navigation_selected_card()==UI_NAV_CARD_MAP&&!ui_navigation_card_entered());
- ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(200);
+ semantic_input(UI_INPUT_ENCODER_CW);advance(200);
  assert(ui_navigation_selected_card()==UI_NAV_CARD_DOCK&&!ui_navigation_card_entered());
- ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(200);
+ semantic_input(UI_INPUT_ENCODER_CCW);advance(200);
  assert(ui_navigation_selected_card()==UI_NAV_CARD_MAP&&!ui_navigation_card_entered());
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ semantic_input(UI_INPUT_ENCODER_PRESS);
  assert(ui_navigation_card_entered());
- for(unsigned i=0;i<UI_NAV_FOCUS_COUNT&&map->focused_control!=UI_NAV_FOCUS_ZOOM_IN;i++)ui_app_handle_input(UI_INPUT_ENCODER_CW);
- uint8_t before_zoom=map->zoom;ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(300);
+ for(unsigned i=0;i<UI_NAV_FOCUS_COUNT&&map->focused_control!=UI_NAV_FOCUS_ZOOM_IN;i++)semantic_input(UI_INPUT_ENCODER_CW);
+ uint8_t before_zoom=map->zoom;semantic_input(UI_INPUT_ENCODER_PRESS);advance(300);
  assert(map->zoom>before_zoom&&map->state==NAV_FOLLOW_USER_ZOOM);
  /* A stationary press must not create browsing mode. */
  lv_obj_send_event(map->root,LV_EVENT_PRESSED,NULL);lv_obj_send_event(map->root,LV_EVENT_PRESSING,NULL);lv_obj_send_event(map->root,LV_EVENT_RELEASED,NULL);
  assert(map->state==NAV_FOLLOW_USER_ZOOM);
  ui_pc_navigation_next_scenario();advance(400);capture("nav_approach");
  ui_pc_navigation_next_scenario();advance(400);capture("nav_near");
- ui_app_handle_input(UI_INPUT_PAGE_PREV);advance(300);assert(ui_router_current()==UI_ROUTE_RIDE_DASHBOARD&&ui_nav_session_active());
+ semantic_input(UI_INPUT_PAGE_PREV);advance(300);assert(ui_router_current()==UI_ROUTE_RIDE_DASHBOARD&&ui_nav_session_active());
  ui_ride_summary_t accumulated;assert(ui_ride_summary_model_get(&accumulated)&&accumulated.session_id==ride_id&&accumulated.duration_seconds>ride_session.duration_seconds);
  ui_pc_navigation_next_scenario();advance(300);assert(ui_dock_current()&&ui_dock_current()->type==UI_DOCK_TYPE_NAVIGATION);capture("nav_cross_page");
- ui_app_handle_input(UI_INPUT_PAGE_NEXT);advance(400);
+ semantic_input(UI_INPUT_PAGE_NEXT);advance(400);
  touch(200,670,true);touch(200,584,true);touch(200,584,false);advance(600);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU);capture("nav_quick_actions");
  lv_area_t dock_bounds,host_bounds;lv_obj_get_coords(ui_bottom_surface_root(),&dock_bounds);lv_obj_get_coords(lv_obj_get_parent(ui_bottom_surface_root()),&host_bounds);
@@ -659,21 +697,21 @@ static void test_navigation_workflow(void)
  lv_area_t rider;lv_obj_get_coords(map->position_marker,&rider);assert(rider.y1>=62&&rider.y2<dock_bounds.y1);
  touch(200,650,true);touch(200,732,true);touch(200,732,false);advance(600);assert(ui_nav_workspace_view()==UI_NAV_VIEW_LIVE);
  /* Hardware Back (also simulator right-click) exposes Stop without leaving navigation. */
- ui_app_handle_input(UI_INPUT_BACK);advance(600);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU);
+ semantic_input(UI_INPUT_BACK);advance(600);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU);
  assert(ui_nav_session_active()&&ui_navigation_selected_card()==UI_NAV_CARD_DOCK&&ui_navigation_card_entered());
  lv_area_t unchanged_map;lv_obj_get_coords(map->root,&unchanged_map);
  assert(memcmp(&original_map,&unchanged_map,sizeof(original_map))==0);
  assert(lv_obj_get_height(ui_bottom_surface_root())==dock_height);
  bool sound=ui_navigation_prompts_enabled();tap_label(lv_screen_active(),sound?"提示音：开":"提示音：关",false);advance(300);assert(ui_navigation_prompts_enabled()!=sound);
  tap_label(lv_screen_active(),"路线总览",false);advance(700);assert(ui_navigation_overview());capture("nav_overview");
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(700);assert(!ui_navigation_overview());
+ semantic_input(UI_INPUT_ENCODER_PRESS);advance(700);assert(!ui_navigation_overview());
  ui_navigation_open_menu();advance(300);tap_label(lv_screen_active(),"结束导航",false);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_STOP);capture("nav_confirm");
- ui_app_handle_input(UI_INPUT_BACK);advance(300);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU&&ui_nav_session_active());
- ui_app_handle_input(UI_INPUT_BACK);advance(300);assert(ui_nav_workspace_view()==UI_NAV_VIEW_LIVE);
+ semantic_input(UI_INPUT_BACK);advance(300);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU&&ui_nav_session_active());
+ semantic_input(UI_INPUT_BACK);advance(300);assert(ui_nav_workspace_view()==UI_NAV_VIEW_LIVE);
  ui_navigation_open_maps();advance(500);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MAPS);capture("nav_maps");
  tap_label(lv_screen_active(),"存储空间管理",false);advance(500);assert(find_label(lv_screen_active(),"存储容量暂不可用"));capture("nav_storage");
- ui_app_handle_input(UI_INPUT_BACK);advance(500);tap_label(lv_screen_active(),"本地地图",false);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MAP_DETAIL);capture("nav_map_detail");
- ui_app_handle_input(UI_INPUT_BACK);advance(500);ui_app_handle_input(UI_INPUT_BACK);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_LIVE);
+ semantic_input(UI_INPUT_BACK);advance(500);tap_label(lv_screen_active(),"本地地图",false);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MAP_DETAIL);capture("nav_map_detail");
+ semantic_input(UI_INPUT_BACK);advance(500);semantic_input(UI_INPUT_BACK);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_LIVE);
  ui_pc_navigation_next_scenario();advance(200);ui_pc_navigation_next_scenario();advance(200);capture("nav_roundabout");
  ui_pc_navigation_next_scenario();advance(300);assert(ui_nav_workspace_view()==UI_NAV_VIEW_ERROR);capture("nav_reroute_failed");
  ui_nav_session_t before,after;ui_nav_session_get(&before);tap_label(lv_screen_active(),"重试",false);advance(200);assert(ui_nav_session_busy());capture("nav_rerouting");
@@ -689,36 +727,36 @@ static void test_navigation_workflow(void)
  advance(2200);
  assert(ui_state_machine_state()==UI_RIDE_STATE_SUMMARY&&!ui_nav_session_active()&&!ui_ride_summary_model_active());
  assert(record_count==before_records+1&&records[before_records].duration_seconds>0);
- capture("nav_arrival_saved");ui_app_handle_input(UI_INPUT_BACK);advance(400);assert(ui_router_current()==UI_ROUTE_HOME);
+ capture("nav_arrival_saved");semantic_input(UI_INPUT_BACK);advance(400);assert(ui_router_current()==UI_ROUTE_HOME);
  /* Starting navigation during an existing paused ride reuses that recording. */
- ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);advance(1800);tap_label(lv_screen_active(),"GO",false);advance(2400);
+ semantic_input(UI_INPUT_RIDE_TOGGLE);advance(1800);tap_label(lv_screen_active(),"GO",false);advance(2400);
  assert(ui_ride_summary_model_get(&accumulated));ride_id=accumulated.session_id;
- ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);advance(2400);assert(ui_state_machine_state()==UI_RIDE_STATE_PAUSED);
- ui_app_handle_input(UI_INPUT_PAGE_NEXT);advance(400);tap_label(lv_screen_active(),"我的路线",false);advance(500);
+ semantic_input(UI_INPUT_RIDE_TOGGLE);advance(2400);assert(ui_state_machine_state()==UI_RIDE_STATE_PAUSED);
+ semantic_input(UI_INPUT_PAGE_NEXT);advance(400);tap_label(lv_screen_active(),"我的路线",false);advance(500);
  tap_label(lv_screen_active(),"城市骑行",false);advance(1000);tap_label(lv_screen_active(),"开始导航",false);advance(1000);
  assert(ui_nav_session_active()&&ui_state_machine_state()==UI_RIDE_STATE_PAUSED);
  assert(ui_ride_summary_model_get(&accumulated)&&accumulated.session_id==ride_id);
- ui_app_handle_input(UI_INPUT_BACK);advance(400);tap_label(lv_screen_active(),"结束导航",false);advance(400);
+ semantic_input(UI_INPUT_BACK);advance(400);tap_label(lv_screen_active(),"结束导航",false);advance(400);
  tap_label(lv_screen_active(),"取消",false);advance(300);
  assert(ui_state_machine_state()==UI_RIDE_STATE_PAUSED&&ui_nav_session_active());
  tap_label(lv_screen_active(),"结束导航",false);advance(400);
  ui_pc_services_set_next_command_result(false);tap_label(lv_screen_active(),"结束导航",false);advance(900);
  assert(ui_state_machine_state()==UI_RIDE_STATE_PAUSED&&ui_nav_session_active()&&record_count==before_records+1);
  assert(ui_ride_summary_model_get(&accumulated)&&accumulated.session_id==ride_id&&ui_ride_summary_model_active());
- capture("nav_finish_failed");ui_app_handle_input(UI_INPUT_BACK);advance(400);
+ capture("nav_finish_failed");semantic_input(UI_INPUT_BACK);advance(400);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_STOP);
  ui_pc_services_set_next_storage_result(false);tap_label(lv_screen_active(),"结束导航",false);advance(1800);
  assert(ui_state_machine_state()==UI_RIDE_STATE_UNSAVED&&!ui_nav_session_active()&&!ui_ride_summary_model_active());
  assert(ui_ride_history_repository_has_pending()&&record_count==before_records+1);
- capture("nav_save_failed");ui_app_handle_input(UI_INPUT_BACK);advance(300);
+ capture("nav_save_failed");semantic_input(UI_INPUT_BACK);advance(300);
  assert(ui_state_machine_state()==UI_RIDE_STATE_UNSAVED);
  event(UI_EVENT_STORAGE_RETRY);advance(1800);
  assert(ui_state_machine_state()==UI_RIDE_STATE_SUMMARY&&!ui_nav_session_active());
  assert(record_count==before_records+2&&records[before_records+1].duration_seconds>0);
- capture("nav_ride_saved");ui_app_handle_input(UI_INPUT_BACK);advance(350);assert(ui_router_current()==UI_ROUTE_HOME);
+ capture("nav_ride_saved");semantic_input(UI_INPUT_BACK);advance(350);assert(ui_router_current()==UI_ROUTE_HOME);
  tap_label(lv_screen_active(),"收藏路线",false);advance(500);assert(ui_router_current()==UI_ROUTE_SAVED_ROUTES);
  capture("nav_saved_routes");tap_label(lv_screen_active(),"获取路线",false);advance(350);capture("nav_transfer_unavailable");
- ui_app_handle_input(UI_INPUT_PAGE_PREV);advance(350);assert(ui_router_current()==UI_ROUTE_HOME);
+ semantic_input(UI_INPUT_PAGE_PREV);advance(350);assert(ui_router_current()==UI_ROUTE_HOME);
  assert(ui_state_machine_state()==UI_RIDE_STATE_HOME);
  assert(ui_nav_session_register_backend(NULL));assert(ui_nav_map_provider_register(NULL));
 }
@@ -775,10 +813,10 @@ static void test_alpha_input(void)
  assert(text_bounds.x1>=button_bounds.x1&&text_bounds.x2<=button_bounds.x2&&text_bounds.y1>=button_bounds.y1&&text_bounds.y2<=button_bounds.y2);
  assert(abs(text_bounds.y1+text_bounds.y2-button_bounds.y1-button_bounds.y2)<=2);
  /* Fast reversal/wrap and a press before animation completion commit the logical letter. */
- ui_app_handle_input(UI_INPUT_ENCODER_CCW);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ semantic_input(UI_INPUT_ENCODER_CCW);semantic_input(UI_INPUT_ENCODER_PRESS);
  assert(strcmp(ui_nav_search_panel_query(),"z")==0);
  assert(lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN));
- ui_app_handle_input(UI_INPUT_ENCODER_CW);ui_app_handle_input(UI_INPUT_ENCODER_CW);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ semantic_input(UI_INPUT_ENCODER_CW);semantic_input(UI_INPUT_ENCODER_CW);semantic_input(UI_INPUT_ENCODER_PRESS);
  assert(strcmp(ui_nav_search_panel_query(),"zb")==0);advance(220);assert(alpha_requests==1);
  assert(lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&find_label(search_root,"查找中"));
  uint32_t old_request=alpha_request.id;alpha_submit();
@@ -786,43 +824,43 @@ static void test_alpha_input(void)
  assert(!lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&lv_obj_get_height(candidate_card)<UI_NAV_SEARCH_LIST_HEIGHT);
  assert(lv_obj_get_style_opa(candidate_card,0)>0&&lv_obj_get_style_opa(candidate_card,0)<LV_OPA_COVER);capture("alpha_candidates_opening");
  advance(320);assert(ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_HEIGHT);capture("alpha_results_arrived");
- ui_app_handle_input(UI_INPUT_ENCODER_CW);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ semantic_input(UI_INPUT_ENCODER_CW);semantic_input(UI_INPUT_ENCODER_PRESS);
  assert(strcmp(ui_nav_search_panel_query(),"zbc")==0); /* Results must not steal letter focus. */
  lv_obj_t *stale=find_label(candidate_card,"测试地点 1");assert(stale&&!lv_obj_has_flag(lv_obj_get_parent(stale),LV_OBJ_FLAG_CLICKABLE));
  assert(!ui_nav_search_submit(&(ui_place_results_t){.request_id=old_request}));advance(220);alpha_submit();
- ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);assert(ui_state_machine_state()==UI_RIDE_STATE_HOME);
- assert(find_label(lv_screen_active(),"继续输入"));ui_app_handle_input(UI_INPUT_ENCODER_CW);capture("alpha_result_focus");
- ui_app_handle_input(UI_INPUT_BACK);assert(ui_nav_search_panel_active()&&strcmp(ui_nav_search_panel_query(),"zbc")==0);
+ semantic_input(UI_INPUT_RIDE_TOGGLE);assert(ui_state_machine_state()==UI_RIDE_STATE_HOME);
+ assert(find_label(lv_screen_active(),"继续输入"));semantic_input(UI_INPUT_ENCODER_CW);capture("alpha_result_focus");
+ semantic_input(UI_INPUT_BACK);assert(ui_nav_search_panel_active()&&strcmp(ui_nav_search_panel_query(),"zbc")==0);
  advance(150);tap_label(lv_screen_active(),"D",false);assert(strcmp(ui_nav_search_panel_query(),"zbcd")==0);
  /* One-pitch drag follows the finger; holding the same point cannot add movement or letters. */
  advance(180);touch(240,715,true);touch(156,715,true);touch(156,715,true);touch(156,715,false);
- assert(strcmp(ui_nav_search_panel_query(),"zbcd")==0);advance(180);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ assert(strcmp(ui_nav_search_panel_query(),"zbcd")==0);advance(180);semantic_input(UI_INPUT_ENCODER_PRESS);
  assert(strcmp(ui_nav_search_panel_query(),"zbcde")==0);capture("alpha_after_swipe");
- ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(48);capture("alpha_dial_detent");
- ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(180);
+ semantic_input(UI_INPUT_ENCODER_CW);advance(48);capture("alpha_dial_detent");
+ semantic_input(UI_INPUT_ENCODER_CCW);advance(180);
  touch(240,715,true);touch(240,749,true);touch(240,749,false);assert(strcmp(ui_nav_search_panel_query(),"zbcde")==0);
- ui_app_handle_input(UI_INPUT_PAGE_PREV);assert(strcmp(ui_nav_search_panel_query(),"zbcd")==0);
- advance(220);alpha_submit();ui_app_handle_input(UI_INPUT_PAGE_NEXT);ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+ semantic_input(UI_INPUT_PAGE_PREV);assert(strcmp(ui_nav_search_panel_query(),"zbcd")==0);
+ advance(220);alpha_submit();semantic_input(UI_INPUT_PAGE_NEXT);semantic_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
  assert(find_label(lv_screen_active(),"查看结果")&&ui_state_machine_state()==UI_RIDE_STATE_HOME);
  /* A new entry clears the query, dial, candidates and old request. */
  uint32_t closed_request=alpha_request.id;
- ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_search_panel_active());
+ semantic_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_search_panel_active());
  ui_navigation_open_search();advance(700);assert(!ui_nav_search_panel_query()[0]);
  assert(lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_IDLE_HEIGHT);
  assert(!ui_nav_search_submit(&(ui_place_results_t){.request_id=closed_request}));
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);ui_app_handle_input(UI_INPUT_ENCODER_CW);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ semantic_input(UI_INPUT_ENCODER_PRESS);semantic_input(UI_INPUT_ENCODER_CW);semantic_input(UI_INPUT_ENCODER_PRESS);
  assert(strcmp(ui_nav_search_panel_query(),"ab")==0);advance(220);
  /* Empty/error completions remain compact, with status confined to the query. */
  assert(ui_nav_search_submit(&(ui_place_results_t){.request_id=alpha_request.id}));advance(400);
  assert(find_label(search_root,"无结果")&&lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN));capture("alpha_no_results");
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(220);
+ semantic_input(UI_INPUT_ENCODER_PRESS);advance(220);
  assert(ui_nav_search_submit(&(ui_place_results_t){.request_id=alpha_request.id,.code=UI_NAV_NO_MAP}));advance(400);
  assert(find_label(search_root,"无索引")&&lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN));
- ui_app_handle_input(UI_INPUT_PAGE_PREV);advance(220);alpha_submit();advance(45);
+ semantic_input(UI_INPUT_PAGE_PREV);advance(220);alpha_submit();advance(45);
  capture("alpha_candidates_reverse"); /* Refresh also advances the pending LVGL animation tick. */
  int reversing_height=ui_navigation_map()->safe_height;
  size_t reversing_length=strlen(ui_nav_search_panel_query());
- ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(60);
+ semantic_input(UI_INPUT_ENCODER_PRESS);advance(60);
  assert(strlen(ui_nav_search_panel_query())==reversing_length+1);
  assert(ui_navigation_map()->safe_height>=reversing_height);capture("alpha_candidates_retracting");
  assert(lv_obj_get_y(input_card)+lv_obj_get_y(search_root)==UI_NAV_SEARCH_INPUT_TOP);
@@ -831,17 +869,17 @@ static void test_alpha_input(void)
  /* Reopening during candidate animation must restore one coherent geometry. */
  ui_navigation_close_search();advance(50);ui_navigation_open_search();advance(700);
  assert(ui_nav_search_panel_active()&&!ui_nav_search_panel_query()[0]&&lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_IDLE_HEIGHT);
- ui_motion_set_reduced(true);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(220);alpha_submit();advance(20);
+ ui_motion_set_reduced(true);semantic_input(UI_INPUT_ENCODER_PRESS);semantic_input(UI_INPUT_ENCODER_PRESS);advance(220);alpha_submit();advance(20);
  assert(ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_HEIGHT);
- ui_app_handle_input(UI_INPUT_PAGE_PREV);advance(20);
+ semantic_input(UI_INPUT_PAGE_PREV);advance(20);
  assert(lv_obj_has_flag(candidate_card,LV_OBJ_FLAG_HIDDEN)&&ui_navigation_map()->safe_height==UI_NAV_SEARCH_MAP_IDLE_HEIGHT);
  ui_motion_set_reduced(false);
- for(unsigned i=0;i<70;i++)ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+ for(unsigned i=0;i<70;i++)semantic_input(UI_INPUT_ENCODER_PRESS);
  assert(strlen(ui_nav_search_panel_query())==UI_PLACE_QUERY_MAX-1);capture("alpha_long_query");
- for(unsigned i=0;i<UI_PLACE_QUERY_MAX;i++)ui_app_handle_input(UI_INPUT_PAGE_PREV);
- assert(!ui_nav_search_panel_query()[0]);ui_app_handle_input(UI_INPUT_BACK);advance(700);
+ for(unsigned i=0;i<UI_PLACE_QUERY_MAX;i++)semantic_input(UI_INPUT_PAGE_PREV);
+ assert(!ui_nav_search_panel_query()[0]);semantic_input(UI_INPUT_BACK);advance(700);
  assert(!ui_nav_search_panel_active()&&ui_navigation_map()->safe_height==UI_NAV_MAP_HEIGHT);
- ui_navigation_open_search();advance(700);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);ui_app_handle_input(UI_INPUT_ENCODER_PRESS);advance(220);alpha_submit();advance(400);
+ ui_navigation_open_search();advance(700);semantic_input(UI_INPUT_ENCODER_PRESS);semantic_input(UI_INPUT_ENCODER_PRESS);advance(220);alpha_submit();advance(400);
  tap_label(lv_screen_active(),"测试地点 1",true);advance(700);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&!ui_nav_search_panel_active());
  assert(find_label(lv_screen_active(),"联网坐标 · 请确认落点"));
@@ -852,17 +890,17 @@ static void test_alpha_input(void)
 static void test_ride_preparation_cancel(void)
 {
  size_t before=record_count;assert(ui_router_current()==UI_ROUTE_HOME);
- ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);advance(400);
+ semantic_input(UI_INPUT_RIDE_TOGGLE);advance(400);
  assert(ui_state_machine_state()==UI_RIDE_STATE_PRE_RIDE&&find_label(lv_screen_active(),"取消"));
  tap_label(lv_screen_active(),"取消",false);advance(300);
  assert(ui_state_machine_state()==UI_RIDE_STATE_HOME&&ui_router_current()==UI_ROUTE_HOME);
  assert(!ui_ride_summary_model_active()&&record_count==before);
- ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);advance(1800);
+ semantic_input(UI_INPUT_RIDE_TOGGLE);advance(1800);
  assert(ui_state_machine_state()==UI_RIDE_STATE_GPS_READY);capture("ride_prepare_cancel");
  assert(find_label(lv_screen_active(),"00:00:00")&&find_label(lv_screen_active(),"0.00"));
  tap_label(lv_screen_active(),"取消",false);advance(600);
  assert(ui_state_machine_state()==UI_RIDE_STATE_HOME&&ui_router_current()==UI_ROUTE_HOME);
- ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);advance(1800);
+ semantic_input(UI_INPUT_RIDE_TOGGLE);advance(1800);
  ui_pc_services_set_next_command_result(false);tap_label(lv_screen_active(),"GO",false);advance(900);
  assert(ui_state_machine_state()==UI_RIDE_STATE_GPS_READY&&!ui_ride_summary_model_active());
  assert(ui_dock_current()&&strcmp(ui_dock_current()->primary_action,"GO")==0);
@@ -906,16 +944,16 @@ static void test_offline_workflow(void)
  assert(ui_state_machine_state()==UI_RIDE_STATE_GPS_READY&&!ui_nav_session_active());
  tap_label(lv_screen_active(),"GO",false);offline_settle();assert(ui_nav_session_active()&&ui_state_machine_state()==UI_RIDE_STATE_RIDING);capture("xian_follow");
  ui_pc_offline_navigation_set_replay_speed(20);advance(8000);offline_settle();capture("xian_junction");
- ui_app_handle_input(UI_INPUT_BACK);advance(300);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU);capture("xian_actions");
+ semantic_input(UI_INPUT_BACK);advance(300);assert(ui_nav_workspace_view()==UI_NAV_VIEW_MENU);capture("xian_actions");
  tap_label(lv_screen_active(),"路线总览",false);offline_settle();capture("xian_overview");
  ui_navigation_open_maps();advance(400);tap_label(lv_screen_active(),"西安城区基础地图",false);advance(300);capture("xian_map_detail");
- ui_app_handle_input(UI_INPUT_BACK);advance(300);ui_app_handle_input(UI_INPUT_BACK);advance(300);
+ semantic_input(UI_INPUT_BACK);advance(300);semantic_input(UI_INPUT_BACK);advance(300);
  ui_pc_offline_navigation_set_replay_speed(100);advance(30000);offline_settle();assert(ui_nav_workspace_view()==UI_NAV_VIEW_ARRIVAL);capture("xian_arrived");
  assert(ui_state_machine_state()==UI_RIDE_STATE_RIDING&&ui_ride_summary_model_active());
  tap_label(lv_screen_active(),"完成导航",false);offline_settle();assert(!ui_nav_session_active());
  assert(ui_state_machine_state()==UI_RIDE_STATE_SUMMARY&&record_count==1&&!ui_ride_summary_model_active());capture("xian_arrival_saved");
- ui_app_handle_input(UI_INPUT_BACK);advance(400);assert(ui_router_current()==UI_ROUTE_HOME);
- ui_app_handle_input(UI_INPUT_PAGE_NEXT);offline_settle();assert(ui_nav_workspace_view()==UI_NAV_VIEW_CENTER);
+ semantic_input(UI_INPUT_BACK);advance(400);assert(ui_router_current()==UI_ROUTE_HOME);
+ semantic_input(UI_INPUT_PAGE_NEXT);offline_settle();assert(ui_nav_workspace_view()==UI_NAV_VIEW_CENTER);
  /* A real pointer long press selects the geographic point under the map. */
  ui_nav_point_t picked;touch(170,310,true);assert(ui_nav_map_point_at(map,170,310,&picked));
  assert(map->pointer_down);
@@ -933,11 +971,11 @@ static void test_offline_workflow(void)
  assert(ui_state_machine_state()==UI_RIDE_STATE_GPS_READY&&!ui_nav_session_active());
  tap_label(lv_screen_active(),"GO",false);offline_settle();assert(ui_nav_session_active());capture("xian_picked_follow");
  assert(!ui_nav_map_select_at((ui_nav_map_t *)map,170,310));offline_render_benchmark();
- ui_app_handle_input(UI_INPUT_BACK);advance(300);tap_label(lv_screen_active(),"结束导航",false);advance(400);
+ semantic_input(UI_INPUT_BACK);advance(300);tap_label(lv_screen_active(),"结束导航",false);advance(400);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_STOP);tap_label(lv_screen_active(),"结束导航",false);offline_settle();
  assert(!ui_nav_session_active());
  assert(ui_state_machine_state()==UI_RIDE_STATE_SUMMARY&&record_count==2&&!ui_ride_summary_model_active());capture("xian_ride_saved");
- ui_app_handle_input(UI_INPUT_BACK);advance(400);ui_app_handle_input(UI_INPUT_PAGE_NEXT);offline_settle();
+ semantic_input(UI_INPUT_BACK);advance(400);semantic_input(UI_INPUT_PAGE_NEXT);offline_settle();
  /* Encoder can select the map's center crosshair without touching the dock. */
  ui_nav_map_set_focus((ui_nav_map_t *)map,UI_NAV_FOCUS_PICK,true);ui_nav_map_activate_focus((ui_nav_map_t *)map);advance(400);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&map->pick_point_valid);capture("xian_pick_crosshair");tap_label(lv_screen_active(),"返回地图",false);advance(400);assert(!map->pick_mode);
@@ -953,7 +991,7 @@ static void test_offline_workflow(void)
  char current='a';const char *query="zhonglou";
  for(const char *p=query;*p;p++){
   int delta=(*p-current+26)%26;if(delta>13)delta-=26;
-  for(int i=0;i<abs(delta);i++)ui_app_handle_input(delta>0?UI_INPUT_ENCODER_CW:UI_INPUT_ENCODER_CCW);
+  for(int i=0;i<abs(delta);i++)semantic_input(delta>0?UI_INPUT_ENCODER_CW:UI_INPUT_ENCODER_CCW);
   for(unsigned frame=0;frame<3;frame++){advance(40);if(p==query+1){char name[64];snprintf(name,sizeof(name),"xian_dial_tick_%02u",frame);capture(name);}}
   advance(60);char key[2]={(char)(*p-32),0};tap_label(lv_screen_active(),key,false);current=*p;
  }
@@ -964,7 +1002,7 @@ static void test_offline_workflow(void)
 #endif
  }
  ui_place_results_t results;bool search_busy;ui_nav_search_get(&results,NULL,&search_busy);assert(!search_busy&&results.code==UI_NAV_OK&&results.count);capture("xian_search_results");
- ui_app_handle_input(UI_INPUT_ENCODER_CW);advance(100);ui_app_handle_input(UI_INPUT_ENCODER_CCW);advance(100);
+ semantic_input(UI_INPUT_ENCODER_CW);advance(100);semantic_input(UI_INPUT_ENCODER_CCW);advance(100);
  tap_label(lv_screen_active(),"查看结果",false);advance(400);assert(ui_nav_search_panel_active());capture("xian_search_result_focus");
  unsigned chosen=0;for(unsigned i=0;i<results.count;i++)if(strstr(results.items[i].name,"钟楼")){chosen=i;break;}
  tap_label(lv_screen_active(),results.items[chosen].name,true);
@@ -973,18 +1011,19 @@ static void test_offline_workflow(void)
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION);ui_nav_session_get(&planned);assert(planned.state==UI_NAV_SESSION_IDLE);
  capture("xian_search_confirmation");tap_label(lv_screen_active(),"规划路线",false);offline_settle();
  ui_nav_session_get(&planned);assert(planned.state==UI_NAV_SESSION_PREVIEW&&planned.route.id==2&&strstr(planned.route.name,"钟楼"));capture("xian_search_preview");
- ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(ui_nav_search_panel_active()&&!ui_nav_search_panel_query()[0]);
+ semantic_input(UI_INPUT_BACK);advance(700);assert(ui_nav_search_panel_active()&&!ui_nav_search_panel_query()[0]);
  ui_nav_session_get(&planned);assert(planned.state==UI_NAV_SESSION_IDLE&&!planned.route.id);
- ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_search_panel_active()&&map->safe_height==540);
+ semantic_input(UI_INPUT_BACK);advance(700);assert(!ui_nav_search_panel_active()&&map->safe_height==540);
  ui_navigation_open_search();advance(90);ui_navigation_close_search();advance(60);ui_navigation_open_search();advance(800);assert(ui_nav_search_panel_active()&&map->safe_height>=UI_NAV_SEARCH_MAP_HEIGHT&&map->safe_height<=UI_NAV_SEARCH_MAP_IDLE_HEIGHT);ui_navigation_close_search();advance(800);assert(!ui_nav_search_panel_active()&&map->safe_height==540);
  ui_motion_set_reduced(true);ui_navigation_open_search();advance(100);assert(map->safe_height>=UI_NAV_SEARCH_MAP_HEIGHT&&map->safe_height<=UI_NAV_SEARCH_MAP_IDLE_HEIGHT);ui_navigation_close_search();advance(100);assert(map->safe_height==540&&!ui_nav_search_panel_active());ui_motion_set_reduced(false);
  /* Reproduce the user's abbreviation, choose Weiyang explicitly and confirm. */
+ offline_settle(); /* Finish the preceding map resize before freezing the search camera. */
  ui_navigation_open_search();advance(700);
  assert(!ui_nav_search_panel_query()[0]);current='a';
  const char *campus_query="sxkjdx";
  for(const char *p=campus_query;*p;p++){
   int delta=(*p-current+26)%26;if(delta>13)delta-=26;
-  for(int i=0;i<abs(delta);i++)ui_app_handle_input(delta>0?UI_INPUT_ENCODER_CW:UI_INPUT_ENCODER_CCW);
+  for(int i=0;i<abs(delta);i++)semantic_input(delta>0?UI_INPUT_ENCODER_CW:UI_INPUT_ENCODER_CCW);
   advance(150);char key[2]={(char)(*p-32),0};tap_label(lv_screen_active(),key,false);current=*p;
  }
  for(unsigned i=0;i<400;i++){advance(10);
@@ -997,12 +1036,12 @@ static void test_offline_workflow(void)
  assert(has_weiyang);capture("sust_campus_candidates");tap_label(lv_screen_active(),results.items[chosen].name,true);offline_settle();
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&map->pick_point.latitude>34.35);capture("sust_weiyang_confirmation");
  tap_label(lv_screen_active(),"调整位置",false);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_PICK);
- ui_app_handle_input(UI_INPUT_BACK);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&!ui_nav_search_panel_active());
+ semantic_input(UI_INPUT_BACK);advance(400);assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&!ui_nav_search_panel_active());
  tap_label(lv_screen_active(),"调整位置",false);advance(400);tap_label(lv_screen_active(),"选这里",false);advance(400);
  assert(ui_nav_workspace_view()==UI_NAV_VIEW_DESTINATION&&find_label(lv_screen_active(),"陕西科技大学（未央校区）"));capture("sust_manual_position");
  tap_label(lv_screen_active(),"规划路线",false);offline_settle();ui_nav_session_get(&planned);
  assert(planned.state==UI_NAV_SESSION_PREVIEW&&strstr(planned.route.name,"未央校区"));capture("sust_weiyang_route");
- ui_app_handle_input(UI_INPUT_BACK);advance(700);assert(ui_nav_search_panel_active());ui_app_handle_input(UI_INPUT_BACK);advance(700);
+ semantic_input(UI_INPUT_BACK);advance(700);assert(ui_nav_search_panel_active());semantic_input(UI_INPUT_BACK);advance(700);
  assert(ui_state_machine_state()==UI_RIDE_STATE_HOME&&record_count==2&&!ui_ride_summary_model_active());
  assert(!render_failure);ui_pc_offline_navigation_shutdown();puts("ui_offline_navigation_integration: PASS");
 }
@@ -1039,9 +1078,9 @@ int main(int argc, char **argv)
     assert(ui_event_bus_subscribe(UI_EVENT_MASK(UI_EVENT_BOOT_COMPLETE), boot_completed, NULL) > 0);
     assert(ui_router_current() == UI_ROUTE_BOOT);
     ui_app_handle_back();
-    ui_app_handle_input(UI_INPUT_OPEN_PROFILE);
-    ui_app_handle_input(UI_INPUT_OPEN_SETTINGS);
-    ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+    semantic_input(UI_INPUT_OPEN_PROFILE);
+    semantic_input(UI_INPUT_OPEN_SETTINGS);
+    semantic_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
     ui_input_pointer_event_t boot_pointer = { .type = UI_INPUT_TOUCH_BEGIN, .x = 240, .y = 10 };
     ui_app_handle_pointer(&boot_pointer);
     boot_pointer.type = UI_INPUT_TOUCH_MOVE; boot_pointer.y = 450;
@@ -1063,8 +1102,8 @@ int main(int argc, char **argv)
         if(i == 9 || i == 30) {
             ui_route_id_t route = ui_router_current();
             if(i == 30) assert(route == UI_ROUTE_HOME);
-            ui_app_handle_input(UI_INPUT_OPEN_SETTINGS);
-            ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+            semantic_input(UI_INPUT_OPEN_SETTINGS);
+            semantic_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
             ui_app_handle_back();
             assert(ui_router_current() == route);
             assert(ui_system_control_shade_state() == UI_SYSTEM_CONTROL_SHADE_CLOSED);
@@ -1089,11 +1128,11 @@ int main(int argc, char **argv)
     test_alpha_input();
     test_ride_preparation_cancel();
     size_t existing_records=record_count;
-    ui_app_handle_input(UI_INPUT_OPEN_PROFILE);
-    ui_app_handle_input(UI_INPUT_ENCODER_CW); /* Refresh precedes achievements. */
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+    semantic_input(UI_INPUT_OPEN_PROFILE);
+    semantic_input(UI_INPUT_ENCODER_CW); /* Refresh precedes achievements. */
+    semantic_input(UI_INPUT_ENCODER_PRESS);
     assert(ui_router_current() == UI_ROUTE_ACHIEVEMENTS);
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
+    semantic_input(UI_INPUT_ENCODER_PRESS);
     assert(ui_achievements_page_detail_visible());
     ui_input_pointer_event_t modal_pointer = { .type = UI_INPUT_TOUCH_BEGIN, .x = 20, .y = 100 };
     ui_app_handle_pointer(&modal_pointer);
@@ -1101,61 +1140,61 @@ int main(int argc, char **argv)
     ui_app_handle_pointer(&modal_pointer);
     assert(ui_router_current() == UI_ROUTE_ACHIEVEMENTS);
     assert(ui_achievements_page_detail_visible());
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     assert(!ui_achievements_page_detail_visible());
     modal_pointer.type = UI_INPUT_TOUCH_MOVE; modal_pointer.x = 460;
     ui_app_handle_pointer(&modal_pointer);
     modal_pointer.type = UI_INPUT_TOUCH_END;
     ui_app_handle_pointer(&modal_pointer);
     assert(ui_router_current() == UI_ROUTE_ACHIEVEMENTS);
-    ui_app_handle_input(UI_INPUT_BACK);
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     assert(ui_router_current() == UI_ROUTE_HOME);
     ui_zone_editor_open();
     advance(300); capture("zone_editor");
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_ENCODER_PRESS);
+    semantic_input(UI_INPUT_ENCODER_CW);
+    semantic_input(UI_INPUT_BACK);
     assert(!ui_zone_editor_visible());
     /* Editing clamps at adjacent thresholds; cancelling preserves storage. */
     ui_preferences_t zones_before,zones_after;
     assert(ui_preferences_get(&zones_before));
     ui_zone_editor_open(); advance(200);
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS);
-    for(unsigned i=0U;i<250U;++i) ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    semantic_input(UI_INPUT_ENCODER_PRESS);
+    for(unsigned i=0U;i<250U;++i) semantic_input(UI_INPUT_ENCODER_CW);
     char bound_text[24]; snprintf(bound_text,sizeof(bound_text),"%u bpm",zones_before.heart_zone_bounds[1]-1U);
     assert(find_label(lv_layer_top(),bound_text));
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     assert(ui_preferences_get(&zones_after));
     assert(memcmp(zones_before.heart_zone_bounds,zones_after.heart_zone_bounds,
         sizeof(zones_before.heart_zone_bounds))==0);
     /* Touch selection must enter edit mode for that row, then save its draft. */
     ui_zone_editor_open(); advance(200);
     tap_label(lv_layer_top(),"心率 2",false);
-    ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    semantic_input(UI_INPUT_ENCODER_CW);
     tap_label(lv_layer_top(),"保存",false); advance(100);
     assert(!ui_zone_editor_visible());
     assert(ui_preferences_get(&zones_after));
     assert(zones_after.heart_zone_bounds[1]==zones_before.heart_zone_bounds[1]+1U);
     assert(ui_preferences_submit(&zones_before)); advance(100);
     test_layout_editor();
-    ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+    semantic_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
     advance(300);
     capture("compact");
-    ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+    semantic_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
     for(unsigned i=0;i<3;++i) { advance(20); char name[32]; snprintf(name,sizeof(name),"expand_%02u",i); capture(name); }
     advance(10);
     int32_t interrupted_height = ui_control_center_panel_height();
     assert(interrupted_height > UI_CONTROL_CENTER_COMPACT_HEIGHT);
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     advance(500);
     assert(ui_motion_springs_running() == 0);
-    ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+    semantic_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
     advance(300);
-    ui_app_handle_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
+    semantic_input(UI_INPUT_TOGGLE_CONTROL_CENTER);
     for(unsigned i=0;i<45;++i) { advance(20); char name[32]; snprintf(name,sizeof(name),"fluid_%02u",i); capture(name); }
     capture("expanded");
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     advance(600);
     ui_route_id_t route_before_cancel=ui_router_current();
     ui_input_pointer_event_t pointer={.type=UI_INPUT_TOUCH_BEGIN,.x=400,.y=650};
@@ -1164,10 +1203,10 @@ int main(int argc, char **argv)
     pointer.type=UI_INPUT_TOUCH_CANCEL; ui_app_handle_pointer(&pointer);
     advance(300);
     assert(ui_router_current()==route_before_cancel);
-    ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);
+    semantic_input(UI_INPUT_RIDE_TOGGLE);
     advance(1800);
     assert(ui_state_machine_state() == UI_RIDE_STATE_GPS_READY);
-    ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);
+    semantic_input(UI_INPUT_RIDE_TOGGLE);
     advance(600);
     assert(ui_state_machine_state() == UI_RIDE_STATE_RIDING);
     assert(lv_color_eq(lv_obj_get_style_bg_color(lv_screen_active(),0),lv_color_black()));
@@ -1194,13 +1233,13 @@ int main(int argc, char **argv)
     assert(memcmp(retained_power, power_zones, sizeof(power_zones)) == 0);
     ui_ride_summary_t before, after;
     assert(ui_ride_summary_model_get(&before));
-    ui_app_handle_input(UI_INPUT_POWER_TOGGLE);
+    semantic_input(UI_INPUT_POWER_TOGGLE);
     advance(1500);
     assert(ui_ride_summary_model_get(&after));
     assert(after.duration_seconds > before.duration_seconds);
     assert(ui_state_machine_state() == UI_RIDE_STATE_RIDING);
-    ui_app_handle_input(UI_INPUT_ENCODER_PRESS); /* wake, consumes first press */
-    ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);
+    semantic_input(UI_INPUT_ENCODER_PRESS); /* wake, consumes first press */
+    semantic_input(UI_INPUT_RIDE_TOGGLE);
     advance(600);
     assert(ui_state_machine_state() == UI_RIDE_STATE_PAUSED);
     capture("paused");
@@ -1208,10 +1247,10 @@ int main(int argc, char **argv)
     advance(1600);
     ui_ride_summary_model_get(&after);
     assert(after.duration_seconds == before.duration_seconds);
-    ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);
+    semantic_input(UI_INPUT_RIDE_TOGGLE);
     advance(600);
     assert(ui_state_machine_state() == UI_RIDE_STATE_RIDING);
-    ui_app_handle_input(UI_INPUT_BACK_LONG);
+    semantic_input(UI_INPUT_BACK_LONG);
     assert(ui_state_machine_state() == UI_RIDE_STATE_FINISHING);
     ui_pc_services_set_next_storage_result(false);
     event(UI_EVENT_RIDE_FINISH_CONFIRMED);
@@ -1220,7 +1259,7 @@ int main(int argc, char **argv)
     assert(!ui_ride_summary_model_active());
     assert(ui_ride_history_repository_has_pending());
     capture("pending_save");
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     assert(ui_state_machine_state() == UI_RIDE_STATE_UNSAVED);
     advance(250);
     capture("pending_save_after_back");
@@ -1234,31 +1273,31 @@ int main(int argc, char **argv)
     assert(find_label(lv_screen_active(),"骑行已结束，记录已保存"));
     assert(!find_label(lv_screen_active(),"骑行已结束，记录尚未保存"));
     capture("saved_report");
-    for(unsigned i=0U;i<4U;++i) ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    semantic_delta(4);
     advance(600); capture("report_middle");
-    for(unsigned i=0U;i<24U;++i) ui_app_handle_input(UI_INPUT_ENCODER_CW);
+    semantic_delta(24);
     advance(600);
     assert(ui_ride_report_page_scroll_y(UI_RIDE_REPORT_SUMMARY_MODE) >=
         (int32_t)ui_ride_report_page_content_height(UI_RIDE_REPORT_SUMMARY_MODE)-684-1);
     capture("report_bottom");
-    ui_app_handle_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_BACK);
     tap_label(lv_screen_active(),"历史记录",false); advance(600);
     assert(ui_router_current()==UI_ROUTE_HISTORY); capture("history_populated");
-    ui_app_handle_input(UI_INPUT_BACK); advance(600);
+    semantic_input(UI_INPUT_BACK); advance(600);
     ui_pc_services_set_next_command_result(false);
     confirm_power();
     advance(600);
     assert(ui_router_current()!=UI_ROUTE_POWER_OFF); /* Failed shutdown never fakes power-off. */
-    ui_app_handle_input(UI_INPUT_BACK);
-    ui_app_handle_input(UI_INPUT_RIDE_TOGGLE);
+    semantic_input(UI_INPUT_BACK);
+    semantic_input(UI_INPUT_RIDE_TOGGLE);
     advance(1800);
     assert(ui_state_machine_state()==UI_RIDE_STATE_GPS_READY);
-    ui_app_handle_input(UI_INPUT_RIDE_TOGGLE); /* Start is queued, not yet acknowledged. */
+    semantic_input(UI_INPUT_RIDE_TOGGLE); /* Start is queued, not yet acknowledged. */
     confirm_power();
     advance(3500);
     assert(ui_router_current()==UI_ROUTE_POWER_OFF);
     assert(record_count==existing_records+2 && !ui_ride_summary_model_active());
-    ui_app_handle_input(UI_INPUT_POWER_TOGGLE);
+    semantic_input(UI_INPUT_POWER_TOGGLE);
     assert(ui_router_current() == UI_ROUTE_BOOT && !ui_boot_page_is_complete());
     advance(1600);
     assert(ui_router_current() == UI_ROUTE_BOOT && boot_completions == 1);
@@ -1303,7 +1342,7 @@ int main(int argc, char **argv)
         assert(ui_router_replace(UI_ROUTE_SETTINGS, UI_MOTION_PAGE_NONE));
         assert(!ui_home_page_is_entering());
         advance(600);
-        ui_app_handle_input(UI_INPUT_OPEN_PROFILE);
+        semantic_input(UI_INPUT_OPEN_PROFILE);
         assert(ui_router_current() == UI_ROUTE_PROFILE); /* Overlay and input lock cleared. */
         assert(ui_router_replace(UI_ROUTE_HOME, UI_MOTION_PAGE_NONE));
         lv_obj_t *home_screen = ui_router_screen(UI_ROUTE_HOME);

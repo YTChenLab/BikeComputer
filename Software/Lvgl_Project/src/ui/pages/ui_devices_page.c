@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_devices_page.h"
 
 #include "ui_page_common.h"
@@ -31,7 +32,7 @@ typedef struct
     bool active;
 } devices_context_t;
 
-static devices_context_t s_devices;
+static UI_LARGE_RAM devices_context_t s_devices;
 static ui_device_connection_port_t s_connection;
 void ui_devices_page_register_connection_port(const ui_device_connection_port_t *port)
 {s_connection=port?*port:(ui_device_connection_port_t){0};}

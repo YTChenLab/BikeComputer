@@ -113,4 +113,7 @@ bool ui_navigation_service_process(void);
 bool ui_navigation_service_expire(uint32_t now_ms);
 bool ui_navigation_service_get(nav_model_t *model, uint32_t *version);
 
+/* Preserves legacy void entry; board observes rejected/stale producer frames. */
+bool ui_navigation_service_submit_checked(const nav_model_t *model);
+
 #endif /* UI_NAVIGATION_SERVICE_H */

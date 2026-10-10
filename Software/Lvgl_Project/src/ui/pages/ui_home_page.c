@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_home_page.h"
 #include "../core/ui_text.h"
 #include "../core/ui_sound.h"
@@ -55,7 +56,7 @@ typedef struct
     lv_anim_completed_cb_t entered_callback;
 } ui_home_context_t;
 
-static ui_home_context_t s_home;
+static UI_LARGE_RAM ui_home_context_t s_home;
 static void update_focus(void);
 static void refresh_rotation(void *object,int32_t value){lv_obj_set_style_transform_rotation(object,value,0);}
 static void refresh_done(lv_anim_t *animation)

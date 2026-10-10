@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_nav_search_panel.h"
 #include "services/ui_online_places.h"
 #include "ui_nav_visual.h"
@@ -16,7 +17,7 @@
 enum { K_DELETE=256,K_RESULTS,K_EXIT,K_QUERY,K_RESULT=512 };
 enum { LETTER_PITCH=84,LETTER_UNIT=256,LETTER_CELLS=7,RESULT_HEIGHT=86,RESULT_PITCH=94 };
 typedef enum { FOCUS_LETTERS,FOCUS_RESULTS } focus_zone_t;
-static struct {
+static UI_LARGE_RAM struct {
  lv_obj_t *root,*header,*header_bg,*query_label,*status_label,*caret,*list,*input,*strip,*capsule,*index_mark;
  lv_obj_t *cells[LETTER_CELLS],*letters[LETTER_CELLS],*rows[UI_PLACE_RESULT_MAX],*delete_button,*results_button;
  ui_place_results_t results;ui_nav_point_t center;
@@ -255,7 +256,7 @@ static void poll(lv_timer_t *timer)
  if(s.pending&&now-s.edited>=160){
   s.pending=false;s.request=ui_nav_search_request(s.query,s.center,s.center_valid,now);s.results=(ui_place_results_t){0};render_results();
  }
- ui_place_results_t results;uint32_t version;bool busy;ui_nav_search_get(&results,&version,&busy);
+ static UI_LARGE_RAM ui_place_results_t results;uint32_t version;bool busy;ui_nav_search_get(&results,&version,&busy);
  if(version!=s.version){s.version=version;if(!busy&&results.request_id==s.request&&s.request){s.results=results;render_results();}}
 }
 void ui_nav_search_panel_create(lv_obj_t *parent)

@@ -70,20 +70,24 @@ bool ui_ride_data_model_unsubscribe(int32_t subscription_id)
 }
 
 void ui_ride_data_model_submit(const ui_ride_data_t *data)
+{ (void)ui_ride_data_model_submit_checked(data); }
+
+bool ui_ride_data_model_submit_checked(const ui_ride_data_t *data)
 {
-    if(data == NULL) return;
+    if(data == NULL) return false;
     ui_concurrency_lock();
     const ui_ride_data_t *latest = s_model.pending_valid ? &s_model.pending : &s_model.current;
     if((s_model.pending_valid || s_model.version != 0) && data->quality_known && latest->quality_known &&
        (int32_t)(data->sample_time_ms - latest->sample_time_ms) < 0) {
         ui_concurrency_unlock();
-        return;
+        return false;
     }
     s_model.pending = *data;
     s_model.pending_valid = true;
     ui_concurrency_unlock();
     /* Consume every producer frame before display mailbox coalescing. No LVGL. */
     ui_ride_summary_model_update(data);
+    return true;
 }
 
 bool ui_ride_data_model_submit_patch(const ui_ride_data_t *patch, uint32_t fields)

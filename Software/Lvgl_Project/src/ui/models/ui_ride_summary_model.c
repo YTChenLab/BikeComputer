@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_ride_summary_model.h"
 #include "../core/ui_concurrency.h"
 #include <limits.h>
@@ -21,7 +22,7 @@ typedef struct {
     bool active, paused;
 } summary_context_t;
 
-static summary_context_t s_summary;
+static UI_LARGE_RAM summary_context_t s_summary;
 static uint32_t s_next_session;
 static uint16_t s_heart_boundaries[4] = {120, 140, 155, 170};
 static uint16_t s_power_boundaries[4] = {150, 220, 300, 400};

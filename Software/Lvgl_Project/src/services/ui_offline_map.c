@@ -1,3 +1,5 @@
+#include "ui/core/ui_memory.h"
+#include <stdatomic.h>
 #include "ui_offline_map.h"
 #include <math.h>
 #include <string.h>
@@ -26,7 +28,9 @@ static float road_score(const ui_nav_road_t *r,ui_nav_point_t o,float radius)
 {ui_nav_local_point_t a=local(o,r->a),b=local(o,r->b);float dx=b.east_m-a.east_m,dy=b.north_m-a.north_m,d=dx*dx+dy*dy,t=d?-(a.east_m*dx+a.north_m*dy)/d:0;t=fmaxf(0,fminf(1,t));return r->level*radius+hypotf(a.east_m+t*dx,a.north_m+t*dy);}
 static float area_score(const ui_nav_area_t *a,float radius)
 {float x=0,y=0;for(unsigned i=0;i<a->count;i++){x+=a->points[i].east_m;y+=a->points[i].north_m;}return (a->kind==UI_NAV_AREA_BUILDING?radius*3:0)+hypotf(x/a->count,y/a->count);}
-ui_nav_result_code_t ui_offline_map_read(const ui_offline_map_t *m,const ui_nav_map_request_t *r,ui_nav_map_frame_t *f,ui_offline_map_stats_t *stats)
+static UI_LARGE_RAM float rs[UI_NAV_MAP_ROAD_MAX],as[UI_NAV_MAP_AREA_MAX],ls[UI_NAV_MAP_LABEL_MAX];
+static atomic_flag s_map_busy=ATOMIC_FLAG_INIT;
+static ui_nav_result_code_t read_window(const ui_offline_map_t *m,const ui_nav_map_request_t *r,ui_nav_map_frame_t *f,ui_offline_map_stats_t *stats)
 {
  if(!m||!r||!f||!stats)return UI_NAV_FAILED;memset(f,0,sizeof(*f));memset(stats,0,sizeof(*stats));
  f->request_id=r->id;f->route_id=r->route_id;f->route_revision=r->route_revision;f->map_revision=m->revision;f->origin=r->center;f->meters_per_pixel=r->meters_per_pixel;
@@ -40,7 +44,7 @@ ui_nav_result_code_t ui_offline_map_read(const ui_offline_map_t *m,const ui_nav_
  int x1=(west-m->west)/m->cell,x2=(east-m->west)/m->cell,y1=(south-m->south)/m->cell,y2=(north-m->south)/m->cell;
  if(x2>=(int)m->cols)x2=m->cols-1;if(y2>=(int)m->rows)y2=m->rows-1;
  float radius=fmax(100,hypot(halfx,halfy)),screen_mpp=fmax(r->width*r->meters_per_pixel/464,r->height*r->meters_per_pixel/540);
- float rs[UI_NAV_MAP_ROAD_MAX],as[UI_NAV_MAP_AREA_MAX],ls[UI_NAV_MAP_LABEL_MAX];unsigned area_kinds[3]={0};
+ unsigned area_kinds[3]={0};
  /* Reject huge requests rather than freezing a board on a whole-province read. */
  if((x2-x1+1)*(y2-y1+1)>256)return f->status=UI_NAV_UNSUPPORTED;
  for(int y=y1;y<=y2;y++)for(int x=x1;x<=x2;x++){
@@ -84,4 +88,11 @@ ui_nav_result_code_t ui_offline_map_read(const ui_offline_map_t *m,const ui_nav_
  for(unsigned i=0;i<f->area_count;i++)for(unsigned j=i+1;j<f->area_count;j++)if(f->areas[j].kind>f->areas[i].kind){ui_nav_area_t t=f->areas[i];f->areas[i]=f->areas[j];f->areas[j]=t;}
  return f->status=UI_NAV_OK;
 corrupt:f->road_count=f->area_count=f->label_count=0;return f->status=UI_NAV_CORRUPT_MAP;
+}
+
+ui_nav_result_code_t ui_offline_map_read(const ui_offline_map_t *map,const ui_nav_map_request_t *request,ui_nav_map_frame_t *frame,ui_offline_map_stats_t *stats)
+{
+ if(atomic_flag_test_and_set_explicit(&s_map_busy,memory_order_acquire))return UI_NAV_UNAVAILABLE;
+ ui_nav_result_code_t result=read_window(map,request,frame,stats);
+ atomic_flag_clear_explicit(&s_map_busy,memory_order_release);return result;
 }

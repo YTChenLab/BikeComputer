@@ -8,6 +8,7 @@
 typedef struct { float mpp; uint32_t cols,rows,first; } ui_offline_tile_level_t;
 typedef struct {
     ui_offline_map_io_t io;
+    uint8_t validation_workspace[1024];
     uint32_t revision,directory,total,label_offset,label_bytes;
     int32_t west,south,east,north;
     float latitude_ref,meters_lon,meters_lat;
@@ -17,6 +18,7 @@ typedef struct {
 typedef struct {float x,y;uint8_t kind;char text[48];} ui_offline_tile_label_t;
 typedef struct { uint32_t key,age; bool valid;uint8_t label_count;ui_offline_tile_label_t labels[16]; } ui_offline_tile_cache_entry_t;
 typedef struct {
+    uint8_t decode_workspace[4096];
     uint16_t *pixels; unsigned slots; uint32_t clock;
     ui_offline_tile_cache_entry_t entries[UI_OFFLINE_TILE_CACHE_MAX];
 } ui_offline_tile_cache_t;

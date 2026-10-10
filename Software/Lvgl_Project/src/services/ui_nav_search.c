@@ -1,17 +1,18 @@
+#include "ui/core/ui_memory.h"
 #include "ui_nav_search.h"
 #include "ui_online_places.h"
 #include "ui/core/ui_concurrency.h"
 #include <string.h>
 #include <math.h>
 static ui_nav_search_backend_t port;
-static struct {ui_place_results_t current,pending;uint32_t next,id,version,started;bool busy,ready;} s;
+static UI_LARGE_RAM struct {ui_place_results_t current,pending;uint32_t next,id,version,started;bool busy,ready;} s;
 bool ui_nav_search_register(const ui_nav_search_backend_t *p){if(p&&!p->request)return false;ui_nav_search_cancel();ui_concurrency_lock();port=p?*p:(ui_nav_search_backend_t){0};s.current=(ui_place_results_t){0};s.version++;ui_concurrency_unlock();return true;}
 void ui_nav_search_cancel(void){ui_concurrency_lock();uint32_t id=s.busy?s.id:0;s.busy=s.ready=false;s.id=0;ui_nav_search_backend_t p=port;ui_concurrency_unlock();if(id&&p.cancel)p.cancel(id,p.context);}
 uint32_t ui_nav_search_request(const char *q,ui_nav_point_t c,bool valid,uint32_t now)
 {
  if(!q||strlen(q)>=UI_PLACE_QUERY_MAX)return 0;ui_nav_search_cancel();ui_concurrency_lock();if(!s.next)s.next=1;
  ui_nav_search_request_t r={.id=s.next++,.center=c,.center_valid=valid};memcpy(r.query,q,strlen(q)+1);s.id=r.id;s.started=now;s.busy=true;s.current=(ui_place_results_t){.request_id=r.id};s.version++;
- ui_nav_search_backend_t p=port;ui_concurrency_unlock();if(!p.request||!p.request(&r,p.context)){ui_place_results_t result={.request_id=r.id,.code=p.request?UI_NAV_FAILED:UI_NAV_UNAVAILABLE};ui_nav_search_submit(&result);}return r.id;
+ ui_nav_search_backend_t p=port;ui_concurrency_unlock();if(!p.request||!p.request(&r,p.context)){static UI_LARGE_RAM ui_place_results_t result;memset(&result,0,sizeof(result));result.request_id=r.id;result.code=p.request?UI_NAV_FAILED:UI_NAV_UNAVAILABLE;ui_nav_search_submit(&result);}return r.id;
 }
 bool ui_nav_search_submit(const ui_place_results_t *r)
 {

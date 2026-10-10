@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_event_bridge.h"
 
 #include "ui_concurrency.h"
@@ -15,7 +16,7 @@ typedef struct
     uint32_t forward_failures;
 } ui_event_bridge_context_t;
 
-static ui_event_bridge_context_t s_bridge;
+static UI_LARGE_RAM ui_event_bridge_context_t s_bridge;
 
 static bool valid_event(const ui_event_t *event)
 {

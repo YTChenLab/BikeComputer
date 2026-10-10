@@ -1,3 +1,4 @@
+#include "ui/core/ui_runtime.h"
 #include "services/ui_nav_session.h"
 #include "services/ui_nav_map_provider.h"
 #include "ui_app.h"
@@ -63,7 +64,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <time.h>
+#include "platform/ui_platform_internal.h"
 #include <string.h>
 
 typedef ui_route_id_t ui_page_t;
@@ -124,6 +125,7 @@ static uint32_t s_pointer_start_tick;
 static lv_obj_t *s_off_screen;
 static lv_obj_t *s_blank_overlay;
 static bool s_display_blank;
+static bool s_inputs_ready;
 static ui_action_t s_pending_power_action;
 static bool s_start_command_pending, s_system_command_pending;
 static bool s_prepare_requested,s_navigation_start_waiting;
@@ -302,11 +304,11 @@ static void app_ride_badge_clicked(lv_event_t *event)
 
 static void app_restore_pending_summary(void)
 {
-    ui_ride_record_t record;
+    static UI_LARGE_RAM ui_ride_record_t record;
     if(!ui_ride_history_repository_get_pending(&record)) return;
-    ui_ride_summary_t summary = { .saved = false, .version = 1,
-        .started_at_utc = record.started_at_utc,
-        .finished_at_utc = record.finished_at_utc };
+    static UI_LARGE_RAM ui_ride_summary_t summary;
+    memset(&summary,0,sizeof(summary)); summary.saved=false; summary.version=1;
+    summary.started_at_utc=record.started_at_utc; summary.finished_at_utc=record.finished_at_utc;
 #define RESTORE(member) summary.member = record.member
     RESTORE(distance_km); RESTORE(duration_seconds); RESTORE(moving_time_seconds);
     RESTORE(average_speed_kmh); RESTORE(maximum_speed_kmh); RESTORE(ascent_m);
@@ -353,6 +355,9 @@ static void app_input_received(const ui_input_message_t *message,
     if(message->type >= UI_INPUT_TOUCH_BEGIN &&
        message->type <= UI_INPUT_TOUCH_CANCEL) {
         ui_app_handle_pointer(message);
+    }
+    else if(message->type == UI_INPUT_PHYSICAL_EVENT) {
+        (void)ui_app_handle_input_event(&message->physical);
     }
     else {
         ui_app_handle_input(message->type);
@@ -510,7 +515,7 @@ static void app_event_received(const ui_event_t *event, void *user_data)
         case UI_EVENT_RIDE_STARTED:
             s_prepare_requested=false;
             if(s_navigation_start_waiting) {
-                s_navigation_start_waiting=false;ui_nav_session_t session;ui_nav_session_get(&session);
+                s_navigation_start_waiting=false;static UI_LARGE_RAM ui_nav_session_t session;ui_nav_session_get(&session);
                 app_show(UI_PAGE_NAVIGATION);
                 if(session.route.id!=s_pending_nav_route || session.route.revision!=s_pending_nav_revision || !ui_nav_workspace_start())
                     app_show_feature_info("导航未启动","骑行已开始记录，请重新选择路线");
@@ -537,7 +542,7 @@ static void app_event_timer_cb(lv_timer_t *timer)
     ui_system_services_tick(elapsed);
     ui_command_service_process(elapsed);
     if(s_finish_nav_request) {
-        ui_nav_result_t result;ui_nav_session_get_result(&result,NULL);
+        static UI_LARGE_RAM ui_nav_result_t result;ui_nav_session_get_result(&result,NULL);
         if(result.request_id==s_finish_nav_request) {
             s_finish_nav_request=0;
             if(result.code!=UI_NAV_OK) app_show_feature_info("导航结束失败","骑行记录已独立收尾，请重试结束导航");
@@ -580,7 +585,7 @@ static void app_event_timer_cb(lv_timer_t *timer)
     ui_nav_session_tick(now);
     (void)ui_nav_map_provider_process(now);
     static uint32_t nav_session_id,nav_revision;
-    ui_nav_session_t nav_session; ui_nav_session_get(&nav_session);
+    static UI_LARGE_RAM ui_nav_session_t nav_session; ui_nav_session_get(&nav_session);
     if(nav_session.id!=nav_session_id || nav_session.route.revision!=nav_revision ||
        !ui_nav_session_active() || ui_router_current()==UI_PAGE_NAVIGATION) {
         ui_dock_controller_hide_navigation();
@@ -689,19 +694,14 @@ static void app_format_history_date(int64_t timestamp,
                                     char *text, size_t capacity)
 {
     if(timestamp <= 0) { snprintf(text,capacity,"DATE UNAVAILABLE"); return; }
-    time_t value = (time_t)timestamp;
-    struct tm local_time;
-#if defined(_WIN32)
-    if(localtime_s(&local_time, &value) != 0) {
-#else
-    if(localtime_r(&value, &local_time) == NULL) {
-#endif
+    ui_calendar_date_t local_time;
+    if(!ui_platform_local_date(timestamp, &local_time)) {
         snprintf(text, capacity, "DATE UNAVAILABLE");
         return;
     }
     snprintf(text, capacity, "%04d.%02d.%02d  %02d:%02d",
-             local_time.tm_year + 1900, local_time.tm_mon + 1,
-             local_time.tm_mday, local_time.tm_hour, local_time.tm_min);
+             local_time.year, local_time.month,
+             local_time.day, local_time.hour, local_time.minute);
 }
 
 static void app_refresh_history_models(void)
@@ -718,7 +718,7 @@ static void app_refresh_history_models(void)
     home.total_ascent_m = totals.total_ascent_m > UINT32_MAX ? UINT32_MAX :
                           (uint32_t)totals.total_ascent_m;
 
-    ui_ride_record_t latest;
+    static UI_LARGE_RAM ui_ride_record_t latest;
     if(ui_ride_history_model_get_newest(0U, &latest)) {
         home.last_ride_available = true;
         home.last_distance_available = !(latest.metric_flags & UI_REPORT_METRICS_KNOWN) ||
@@ -753,13 +753,13 @@ static void app_refresh_history_models(void)
 static bool app_prepare_ride_save(void)
 {
     if(ui_ride_history_repository_has_pending()) return true;
-    ui_ride_summary_t summary;
+    static UI_LARGE_RAM ui_ride_summary_t summary;
     if(!ui_ride_summary_model_get(&summary)) return false;
     if(summary.saved) return false;
     ui_ride_summary_model_finish(false);
     if(!ui_ride_summary_model_get(&summary)) return false;
     if(ui_ride_history_repository_stage(&summary) != UI_RIDE_HISTORY_OK) return false;
-    ui_ride_record_t staged;
+    static UI_LARGE_RAM ui_ride_record_t staged;
     if(ui_ride_history_repository_get_pending(&staged)) {
         summary.started_at_utc = staged.started_at_utc;
         summary.finished_at_utc = staged.finished_at_utc;
@@ -1288,7 +1288,7 @@ static void app_summary_enter(ui_route_id_t route, lv_obj_t *screen,
     ui_page_view_t *page = &s_pages[route];
     if(!ui_bottom_surface_mount(page->bottom_surface_slot, false))
         LV_LOG_ERROR("Summary Bottom Surface mount failed");
-    ui_ride_summary_t summary;
+    static UI_LARGE_RAM ui_ride_summary_t summary;
     if(ui_ride_summary_model_get(&summary))
         ui_summary_page_set_data(&summary);
     ui_summary_page_set_active(true);
@@ -1726,7 +1726,7 @@ static bool app_cancel_ride_preparation(void)
 }
 static void app_navigation_start(void)
 {
-    ui_ride_state_t state=ui_state_machine_state();ui_nav_session_t session;ui_nav_session_get(&session);
+    ui_ride_state_t state=ui_state_machine_state();static UI_LARGE_RAM ui_nav_session_t session;ui_nav_session_get(&session);
     if(session.state!=UI_NAV_SESSION_PREVIEW || !session.route.start_allowed || s_navigation_start_waiting) return;
     if(state==UI_RIDE_STATE_RIDING || state==UI_RIDE_STATE_PAUSED) {
         if(!ui_nav_workspace_start()) app_show_feature_info("导航未启动","请等待当前导航操作完成后重试");
@@ -2365,6 +2365,10 @@ static void app_action(ui_action_t action) {
     app_update_quick_states();
 }
 void ui_app_init(void) {
+    static bool initialized;
+    if(!ui_runtime_require_ui()) return;
+    if(initialized) { ui_runtime_fault("ui_app_init called twice"); return; }
+    initialized = true;
     s_pending_power_action = UI_ACTION_HOME;
     s_start_command_pending = s_system_command_pending = false;
     s_prepare_requested=s_navigation_start_waiting=false;s_finish_command_pending=false;
@@ -2461,6 +2465,7 @@ void ui_app_init(void) {
     app_update_slider_visuals();
     (void)ui_router_replace(UI_PAGE_BOOT, UI_MOTION_PAGE_NONE);
     s_event_timer = lv_timer_create(app_event_timer_cb, 20, NULL);
+    s_inputs_ready = true;
 }
 void ui_app_handle_back(void) {
     if(app_cancel_ride_preparation()) return;
@@ -2514,6 +2519,34 @@ void ui_app_handle_back(void) {
        ui_dynamic_card_manager_back()) return;
     if(!app_control_shade_visible() && ui_router_current()==UI_PAGE_NAVIGATION && ui_navigation_handle_back()) return;
     app_back();
+}
+
+bool ui_app_apply_display_state(bool enabled)
+{
+    if(!ui_runtime_require_ui() || !s_blank_overlay) return false;
+    s_display_blank = !enabled;
+    if(enabled) {
+        lv_obj_add_flag(s_blank_overlay, LV_OBJ_FLAG_HIDDEN);
+        s_last_interaction_tick = lv_tick_get();
+    }
+    else {
+        lv_obj_remove_flag(s_blank_overlay, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(s_blank_overlay);
+    }
+    return true;
+}
+
+bool ui_app_handle_input_event(const ui_physical_input_event_t *event)
+{
+    if(!ui_runtime_require_ui() || !s_inputs_ready) return false;
+    ui_input_mapping_t mapping;
+    if(!ui_input_map_physical_event(event, &mapping)) {
+        ui_runtime_count(UI_DIAG_INPUT_INVALID);
+        return false;
+    }
+    for(uint32_t step = 0; step < mapping.count; ++step)
+        ui_app_handle_input(mapping.action);
+    return true;
 }
 
 void ui_app_handle_input(ui_input_event_t input) {

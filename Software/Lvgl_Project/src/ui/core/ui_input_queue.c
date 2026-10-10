@@ -15,11 +15,17 @@ static ui_input_queue_context_t s_input_queue;
 
 static bool valid_message(const ui_input_message_t *message)
 {
-    return message != NULL && message->type < UI_INPUT_COUNT;
+    return message != NULL && (unsigned)message->type < UI_INPUT_COUNT;
 }
 
-static bool release_class(ui_input_event_t type)
+static bool release_class(const ui_input_message_t *message)
 {
+    ui_input_event_t type = message->type;
+    if(type == UI_INPUT_PHYSICAL_EVENT)
+        return message->physical.key == UI_PHYSICAL_KEY_BACK &&
+            (message->physical.action == UI_PHYSICAL_KEY_CLICK ||
+             message->physical.action == UI_PHYSICAL_KEY_DOUBLE_CLICK ||
+             message->physical.action == UI_PHYSICAL_KEY_LONG_START);
     return type == UI_INPUT_TOUCH_END || type == UI_INPUT_TOUCH_CANCEL ||
            type == UI_INPUT_BACK || type == UI_INPUT_BACK_DOUBLE ||
            type == UI_INPUT_BACK_LONG;
@@ -66,7 +72,7 @@ bool ui_input_queue_post(const ui_input_message_t *message)
     }
 
     if(s_input_queue.count >= UI_INPUT_QUEUE_MAX) {
-        if(!release_class(message->type)) {
+        if(!release_class(message)) {
             s_input_queue.dropped++;
             ui_concurrency_unlock();
             return false;

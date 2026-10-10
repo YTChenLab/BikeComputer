@@ -64,6 +64,7 @@ size_t ui_ride_report_downsample_u16(const uint16_t *input,
                                      size_t input_count,
                                      uint16_t *output,
                                      size_t output_capacity);
+/* PC/test-only implementation; never part of the STM32 library. */
 void ui_ride_report_model_make_mock(ui_ride_report_model_t *report,
                                     ui_ride_report_mock_case_t mock_case);
 

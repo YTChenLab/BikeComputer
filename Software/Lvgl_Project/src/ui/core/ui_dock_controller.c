@@ -169,20 +169,19 @@ static void dock_action(uint32_t card_id, ui_dock_interaction_t interaction,
     }
 }
 
-static ui_dock_card_t base_card(const ui_event_t *event, uint32_t id,
+static void base_card(ui_dock_card_t *card, const ui_event_t *event, uint32_t id,
                                 ui_dock_type_t type)
 {
-    ui_dock_card_t card = {0};
-    card.id = id;
-    card.type = type;
-    card.priority = (ui_dock_priority_t)event->priority;
-    card.value = event->value;
-    card.minimum = event->minimum;
-    card.maximum = event->maximum;
-    card.dismissible = true;
-    card.action_cb = dock_action;
-    card.context = (void *)(uintptr_t)event->type;
-    return card;
+    memset(card,0,sizeof(*card));
+    card->id = id;
+    card->type = type;
+    card->priority = (ui_dock_priority_t)event->priority;
+    card->value = event->value;
+    card->minimum = event->minimum;
+    card->maximum = event->maximum;
+    card->dismissible = true;
+    card->action_cb = dock_action;
+    card->context = (void *)(uintptr_t)event->type;
 }
 
 static bool present(ui_dock_card_t *card, uint32_t timeout_ms)
@@ -201,7 +200,7 @@ static void map_event(const ui_event_t *event, void *user_data)
     uint32_t timeout = event->timeout_ms;
     switch(event->type) {
         case UI_EVENT_GPS_SEARCHING:
-            card = base_card(event, DOCK_ID_GPS, UI_DOCK_TYPE_ACTION);
+            base_card(&card, event, DOCK_ID_GPS, UI_DOCK_TYPE_ACTION);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             copy_text(card.title, sizeof(card.title), event->title, "GPS 正在定位");
             copy_text(card.message, sizeof(card.message), event->message, "正在搜索卫星信号");
@@ -211,7 +210,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout);
             break;
         case UI_EVENT_GPS_READY:
-            card = base_card(event, DOCK_ID_GPS, UI_DOCK_TYPE_ACTION);
+            base_card(&card, event, DOCK_ID_GPS, UI_DOCK_TYPE_ACTION);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             copy_text(card.title, sizeof(card.title), event->title, "GPS 准备完成");
             copy_text(card.message, sizeof(card.message), event->message, "定位良好，可以开始骑行");
@@ -222,7 +221,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout);
             break;
         case UI_EVENT_GPS_FAILED:
-            card = base_card(event, DOCK_ID_GPS, UI_DOCK_TYPE_ACTION);
+            base_card(&card, event, DOCK_ID_GPS, UI_DOCK_TYPE_ACTION);
             card.priority = UI_DOCK_PRIORITY_P1_RIDING_SAFETY;
             copy_text(card.title, sizeof(card.title), event->title, "GPS 定位失败");
             copy_text(card.message, sizeof(card.message), event->message, "请移动到开阔区域后重试");
@@ -232,7 +231,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout);
             break;
         case UI_EVENT_SENSOR_DISCONNECTED:
-            card = base_card(event, DOCK_ID_SENSOR, UI_DOCK_TYPE_ACTION);
+            base_card(&card, event, DOCK_ID_SENSOR, UI_DOCK_TYPE_ACTION);
             card.priority = UI_DOCK_PRIORITY_P1_RIDING_SAFETY;
             copy_text(card.title, sizeof(card.title), event->title, "传感器已断开");
             copy_text(card.message, sizeof(card.message), event->message, "请检查蓝牙与传感器电量");
@@ -241,7 +240,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 6000);
             break;
         case UI_EVENT_LOW_BATTERY:
-            card = base_card(event, DOCK_ID_BATTERY, UI_DOCK_TYPE_INFO);
+            base_card(&card, event, DOCK_ID_BATTERY, UI_DOCK_TYPE_INFO);
             card.priority = event->priority == UI_EVENT_PRIORITY_P0_CRITICAL ?
                             UI_DOCK_PRIORITY_P0_CRITICAL :
                             UI_DOCK_PRIORITY_P1_RIDING_SAFETY;
@@ -252,7 +251,7 @@ static void map_event(const ui_event_t *event, void *user_data)
         case UI_EVENT_RIDE_STARTED:
         case UI_EVENT_RIDE_PAUSED:
         case UI_EVENT_RIDE_RESUMED:
-            card = base_card(event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
+            base_card(&card, event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             bool automatic = event->value == UI_RIDE_PAUSE_REASON_AUTO;
             const char *default_title = "骑行已开始";
@@ -276,7 +275,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 1800);
             break;
         case UI_EVENT_RIDE_FINISH_REQUESTED:
-            card = base_card(event, DOCK_ID_RIDE, UI_DOCK_TYPE_CONFIRM);
+            base_card(&card, event, DOCK_ID_RIDE, UI_DOCK_TYPE_CONFIRM);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             copy_text(card.title, sizeof(card.title), event->title, "结束骑行");
             copy_text(card.message, sizeof(card.message), event->message, "是否结束并保存本次骑行");
@@ -287,7 +286,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout);
             break;
         case UI_EVENT_NAVIGATION_TURN:
-            card = base_card(event, DOCK_ID_NAVIGATION, UI_DOCK_TYPE_NAVIGATION);
+            base_card(&card, event, DOCK_ID_NAVIGATION, UI_DOCK_TYPE_NAVIGATION);
             card.priority = UI_DOCK_PRIORITY_P1_RIDING_SAFETY;
             copy_text(card.title, sizeof(card.title), event->title, "前方转向");
             copy_text(card.message, sizeof(card.message), event->message, "继续沿当前道路骑行");
@@ -296,7 +295,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 6000);
             break;
         case UI_EVENT_NAVIGATION_OFF_ROUTE:
-            card = base_card(event, DOCK_ID_NAVIGATION, UI_DOCK_TYPE_ACTION);
+            base_card(&card, event, DOCK_ID_NAVIGATION, UI_DOCK_TYPE_ACTION);
             card.priority = UI_DOCK_PRIORITY_P1_RIDING_SAFETY;
             copy_text(card.title, sizeof(card.title), event->title, "已偏离路线");
             copy_text(card.message, sizeof(card.message), event->message, "正在重新规划路线");
@@ -305,7 +304,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout);
             break;
         case UI_EVENT_MEDIA_CHANGED:
-            card = base_card(event, DOCK_ID_MEDIA, UI_DOCK_TYPE_MEDIA);
+            base_card(&card, event, DOCK_ID_MEDIA, UI_DOCK_TYPE_MEDIA);
             card.priority = UI_DOCK_PRIORITY_P4_NORMAL;
             copy_text(card.title, sizeof(card.title), event->title, "音乐播放");
             copy_text(card.message, sizeof(card.message), event->message, "未提供曲目信息");
@@ -317,7 +316,7 @@ static void map_event(const ui_event_t *event, void *user_data)
         case UI_EVENT_RIDE_SAVE_FAILED:
             clear_timeout(DOCK_ID_RIDE);
             (void)ui_dock_hide(DOCK_ID_RIDE);
-            card = base_card(event, DOCK_ID_STORAGE, UI_DOCK_TYPE_CONFIRM);
+            base_card(&card, event, DOCK_ID_STORAGE, UI_DOCK_TYPE_CONFIRM);
             card.priority = UI_DOCK_PRIORITY_P0_CRITICAL;
             copy_text(card.title, sizeof(card.title), event->title, "存储异常");
             copy_text(card.message, sizeof(card.message), event->message, "骑行数据保存失败");
@@ -331,7 +330,7 @@ static void map_event(const ui_event_t *event, void *user_data)
         case UI_EVENT_RIDE_SAVE_STARTED:
             clear_timeout(DOCK_ID_RIDE);
             (void)ui_dock_hide(DOCK_ID_RIDE);
-            card = base_card(event, DOCK_ID_STORAGE, UI_DOCK_TYPE_INFO);
+            base_card(&card, event, DOCK_ID_STORAGE, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             copy_text(card.title, sizeof(card.title), event->title,
                       "正在保存骑行数据");
@@ -341,7 +340,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout);
             break;
         case UI_EVENT_CONTROL_CHANGED:
-            card = base_card(event, DOCK_ID_CONTROL, UI_DOCK_TYPE_CONTROL);
+            base_card(&card, event, DOCK_ID_CONTROL, UI_DOCK_TYPE_CONTROL);
             card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
             copy_text(card.title, sizeof(card.title), event->title, "参数调节");
             copy_text(card.message, sizeof(card.message), event->message, "拖动滑条进行调整");
@@ -349,7 +348,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 2500);
             break;
         case UI_EVENT_FEATURE_INFO:
-            card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
+            base_card(&card, event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P4_NORMAL;
             copy_text(card.title, sizeof(card.title), event->title,
                       "COMING SOON");
@@ -359,7 +358,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             break;
         case UI_EVENT_COMMAND_PENDING:
             if(is_ride_toggle_command(event->value)) {
-                card = base_card(event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
+                base_card(&card, event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
                 card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
                 copy_text(card.title, sizeof(card.title), NULL,
                           is_pause_command(event->value) ?
@@ -370,7 +369,7 @@ static void map_event(const ui_event_t *event, void *user_data)
                           "正在恢复骑行数据记录");
             }
             else {
-                card = base_card(event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
+                base_card(&card, event, DOCK_ID_COMMAND, UI_DOCK_TYPE_INFO);
                 card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
                 copy_text(card.title, sizeof(card.title), event->title,
                           "PROCESSING");
@@ -381,7 +380,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, 0);
             break;
         case UI_EVENT_COMMAND_SUCCESS:
-            card = base_card(event,
+            base_card(&card, event,
                              is_ride_toggle_command(event->value) ?
                              DOCK_ID_RIDE : DOCK_ID_COMMAND,
                              UI_DOCK_TYPE_INFO);
@@ -396,7 +395,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             break;
         case UI_EVENT_COMMAND_FAILED:
             if(is_ride_toggle_command(event->value)) {
-                card = base_card(event, DOCK_ID_RIDE,
+                base_card(&card, event, DOCK_ID_RIDE,
                                  UI_DOCK_TYPE_ACTION);
                 card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
                 copy_text(card.title, sizeof(card.title), NULL,
@@ -408,7 +407,7 @@ static void map_event(const ui_event_t *event, void *user_data)
                           "骑行保持暂停，请重试");
             }
             else {
-                card = base_card(event, DOCK_ID_COMMAND,
+                base_card(&card, event, DOCK_ID_COMMAND,
                                  UI_DOCK_TYPE_ACTION);
                 card.priority = UI_DOCK_PRIORITY_P3_USER_ACTION;
                 copy_text(card.title, sizeof(card.title), event->title,
@@ -421,7 +420,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)present(&card, timeout ? timeout : 6000);
             break;
         case UI_EVENT_RIDE_GO_REQUESTED:
-            card=base_card(event,DOCK_ID_GPS,UI_DOCK_TYPE_INFO);
+            base_card(&card,event,DOCK_ID_GPS,UI_DOCK_TYPE_INFO);
             card.priority=UI_DOCK_PRIORITY_P2_RIDE_STATE;card.dismissible=false;
             copy_text(card.title,sizeof(card.title),NULL,"正在开始骑行");
             copy_text(card.message,sizeof(card.message),NULL,"正在确认记录启动");
@@ -435,7 +434,7 @@ static void map_event(const ui_event_t *event, void *user_data)
             (void)ui_dock_hide(DOCK_ID_GPS);
             break;
         case UI_EVENT_RIDE_FINISH_CONFIRMED:
-            card = base_card(event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
+            base_card(&card, event, DOCK_ID_RIDE, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P2_RIDE_STATE;
             copy_text(card.title, sizeof(card.title), event->title,
                       "正在结束骑行");
@@ -457,7 +456,7 @@ static void map_event(const ui_event_t *event, void *user_data)
         case UI_EVENT_STORAGE_RETRY:
             clear_timeout(DOCK_ID_STORAGE);
             (void)ui_dock_hide(DOCK_ID_STORAGE);
-            card = base_card(event, DOCK_ID_STORAGE, UI_DOCK_TYPE_INFO);
+            base_card(&card, event, DOCK_ID_STORAGE, UI_DOCK_TYPE_INFO);
             card.priority = UI_DOCK_PRIORITY_P0_CRITICAL;
             copy_text(card.title, sizeof(card.title), NULL, "正在重试保存");
             copy_text(card.message, sizeof(card.message), NULL, "请稍候，骑行已停止记录");

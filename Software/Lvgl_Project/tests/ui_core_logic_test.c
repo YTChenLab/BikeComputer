@@ -479,7 +479,7 @@ static void test_stm32_service_contract(void)
     assert(navigation_result.speed == 26.8f);
 
     const ui_input_message_t input = {.type = UI_INPUT_ENCODER_PRESS};
-    assert(ui_stm32_services_submit_input(&input));
+    assert(ui_input_queue_post(&input));
     assert(ui_input_queue_pending() == 1U);
 
     ui_system_services_reset();

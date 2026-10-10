@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_dock_view.h"
 
 #include "ui_dock_templates.h"
@@ -19,7 +20,7 @@ typedef struct
     bool initialized;
 } ui_dock_view_context_t;
 
-static ui_dock_view_context_t s_view;
+static UI_LARGE_RAM ui_dock_view_context_t s_view;
 
 static void content_x_animation(void *object, int32_t value)
 {

@@ -28,6 +28,16 @@
             "environment": {
                 "PATH": "D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/ucrt64/bin;D:/Professional Software/Anaconda/Bike_SpeedView/msys2-x86_64/usr/bin;$penv{PATH}"
             }
+        },
+        {
+            "name": "bike-ui-stm32-host",
+            "displayName": "STM32 UI contract check on existing host compiler",
+            "inherits": "bike-ui-ucrt64",
+            "binaryDir": "${sourceDir}/build-stm32-host",
+            "cacheVariables": {
+                "UI_PLATFORM": "STM32",
+                "UI_BOARD_CONTRACT_TESTS": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -38,6 +48,10 @@
         {
             "name": "bike-ui-ucrt64",
             "configurePreset": "bike-ui-ucrt64"
+        },
+        {
+            "name": "bike-ui-stm32-host",
+            "configurePreset": "bike-ui-stm32-host"
         }
     ],
     "testPresets": [
@@ -51,6 +65,13 @@
         {
             "name": "bike-ui-ucrt64",
             "configurePreset": "bike-ui-ucrt64",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "bike-ui-stm32-host",
+            "configurePreset": "bike-ui-stm32-host",
             "output": {
                 "outputOnFailure": true
             }

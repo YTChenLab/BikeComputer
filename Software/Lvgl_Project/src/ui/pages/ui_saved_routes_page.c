@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_saved_routes_page.h"
 #include "ui_page_common.h"
 #include "../core/ui_text.h"
@@ -11,7 +12,7 @@
 #include <string.h>
 #include <math.h>
 typedef enum { F_ROUTE,F_MAPS,F_IMPORT,F_REFRESH,F_ROUTES_TAB,F_PLACES_TAB } focus_section_t;
-static struct {
+static UI_LARGE_RAM struct {
  lv_obj_t *screen,*list,*tabs[2],*rows[8],*refresh,*maps,*import,*footer;
  ui_nav_capsule_row_t footer_choices,tab_choices;focus_section_t focus_section;
  ui_status_bar_t status;ui_page_action_cb_t callback;void *user_data;
@@ -89,9 +90,9 @@ static void load_offset(uint32_t offset)
 static void tick(lv_timer_t *t)
 {
  (void)t;if(!s.active)return;if(s.reload&&!ui_nav_session_busy())load_offset(s.catalog.offset);
- uint32_t cv;ui_nav_catalog_t c;ui_nav_session_get_catalog(&c,&cv);
+ uint32_t cv;static UI_LARGE_RAM ui_nav_catalog_t c;ui_nav_session_get_catalog(&c,&cv);
  if(cv!=s.catalog_version&&c.kind==s.kind&&c.request_id==s.request_id){s.catalog=c;s.catalog_version=cv;render(s.kind==UI_NAV_LIST_RECENT_ROUTES?"暂无最近使用的路线":"暂无导航内容");}
- ui_nav_result_t r;uint32_t rv;ui_nav_session_get_result(&r,&rv);
+ static UI_LARGE_RAM ui_nav_result_t r;uint32_t rv;ui_nav_session_get_result(&r,&rv);
  if(rv!=s.result_version){s.result_version=rv;if(r.request_id==s.request_id&&r.code!=UI_NAV_OK)render(ui_nav_result_text(r.code));}
  bool places=ui_nav_store_capabilities()&UI_NAV_CAP_PLACES;if(places)lv_obj_clear_state(s.tabs[1],LV_STATE_DISABLED);else lv_obj_add_state(s.tabs[1],LV_STATE_DISABLED);
 }

@@ -1,9 +1,10 @@
+#include "ui/core/ui_memory.h"
 #include "ui_nav_session.h"
 #include "ui/core/ui_concurrency.h"
 #include <math.h>
 #include <string.h>
 
-static struct {
+static UI_LARGE_RAM struct {
     ui_nav_session_t session, pending_session;
     ui_nav_catalog_t catalog;
     ui_nav_catalog_t pending_catalog;
@@ -106,7 +107,8 @@ uint32_t ui_nav_session_request(const ui_nav_request_t *request, uint32_t now_ms
     ui_nav_backend_t backend = s_backend;
     ui_concurrency_unlock();
     if(!allowed || !backend.dispatch || !backend.dispatch(&copy, backend.context)) {
-        ui_nav_result_t failure = {.request_id=copy.id, .code=allowed?UI_NAV_UNAVAILABLE:UI_NAV_NO_ROUTE};
+        static UI_LARGE_RAM ui_nav_result_t failure;
+        memset(&failure,0,sizeof(failure)); failure.request_id=copy.id; failure.code=allowed?UI_NAV_UNAVAILABLE:UI_NAV_NO_ROUTE;
         ui_nav_session_complete(&failure);
     }
     return copy.id;
@@ -266,9 +268,9 @@ bool ui_nav_session_busy(void)
 { ui_concurrency_lock(); bool busy=s.busy; ui_concurrency_unlock(); return busy; }
 bool ui_nav_session_active(void)
 {
-    ui_nav_session_t session; ui_nav_session_get(&session);
-    return session.state == UI_NAV_SESSION_ACTIVE || session.state == UI_NAV_SESSION_STOPPING ||
-        session.state == UI_NAV_SESSION_ARRIVED;
+    ui_concurrency_lock(); ui_nav_session_state_t state=s.session.state; ui_concurrency_unlock();
+    return state == UI_NAV_SESSION_ACTIVE || state == UI_NAV_SESSION_STOPPING ||
+        state == UI_NAV_SESSION_ARRIVED;
 }
 uint32_t ui_nav_session_now(void)
 { ui_concurrency_lock(); uint32_t now=s.last_tick; ui_concurrency_unlock(); return now; }

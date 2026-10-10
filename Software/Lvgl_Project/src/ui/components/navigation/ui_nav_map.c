@@ -639,7 +639,7 @@ void ui_nav_map_apply_model(ui_nav_map_t *map, const nav_model_t *model)
         if(map->render_scale > 0)
             lv_label_set_text_fmt(map->scale_label, "%lu m", (unsigned long)lroundf(
                 84.0f * map->meters_per_pixel * 256.0f / map->render_scale));
-        lv_point_precise_t points[UI_NAV_ROUTE_POINT_MAX];
+        lv_point_precise_t *points=map->route_points;
         uint8_t count = 0;
         for(unsigned i = 0; map->origin_valid && i < model->route_point_count && i < UI_NAV_ROUTE_POINT_MAX; ++i) {
             double lat = model->route_latitude[i], lon = model->route_longitude[i];
@@ -722,7 +722,7 @@ void ui_nav_map_apply_frame(ui_nav_map_t *map,const ui_nav_map_frame_t *frame)
         map->road_a[i]=local_point(map,frame->roads[i].a); map->road_b[i]=local_point(map,frame->roads[i].b);
         map->road_level[i]=frame->roads[i].level;
     }
-    lv_point_precise_t points[UI_NAV_ROUTE_POINT_MAX];
+    lv_point_precise_t *points=map->route_points;
     for(unsigned i=0;i<frame->point_count;i++) points[i]=local_point(map,frame->points[i]);
     nav_map_update_route(map,points,frame->point_count);
     lv_obj_clear_flag(map->road_layer,LV_OBJ_FLAG_HIDDEN); set_map_scale(map,map->render_scale);

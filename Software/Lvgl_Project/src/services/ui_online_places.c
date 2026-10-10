@@ -1,3 +1,5 @@
+#include "ui/core/ui_memory.h"
+#include <stdatomic.h>
 #include "ui_online_places.h"
 #include <ctype.h>
 #include <math.h>
@@ -8,7 +10,7 @@
 /* Fixed token budget and depth: do not trust HTTP response sizes or nesting. */
 enum { J_STRING,J_OBJECT,J_ARRAY,J_PRIMITIVE,J_MAX=2048 };
 typedef struct {size_t start,end;unsigned next,type;} token_t;
-typedef struct {const char *text;size_t size,at;unsigned count;token_t tokens[J_MAX];} json_t;
+typedef struct {const char *text;size_t size,at;unsigned count;token_t tokens[J_MAX];char scratch_detail[512],scratch_name[256];} json_t;
 static void spaces(json_t *j){while(j->at<j->size&&strchr(" \t\r\n",j->text[j->at]))j->at++;}
 static bool json_number(const char *p,size_t n)
 {
@@ -140,41 +142,54 @@ static bool point(const char *text,ui_nav_point_t *out)
 }
 static uint32_t identity(const char *id)
 {uint32_t hash=2166136261u;for(const char *p="amap:";*p;p++)hash=(hash^(unsigned char)*p)*16777619u;for(;*id;id++)hash=(hash^(unsigned char)*id)*16777619u;return hash?hash:1;}
-ui_place_online_status_t ui_online_places_amap_parse(const char *text,size_t size,ui_place_results_t *out)
+static ui_place_online_status_t parse_amap(const char *text,size_t size,ui_place_results_t *out,json_t *workspace)
 {
  if(!out)return UI_PLACE_ONLINE_FAILED;*out=(ui_place_results_t){0};
  if(!text||!size||size>UI_ONLINE_RESPONSE_MAX||memchr(text,0,size))return UI_PLACE_ONLINE_FAILED;
- json_t j={.text=text,.size=size};unsigned root;if(!value(&j,0,&root))return UI_PLACE_ONLINE_FAILED;spaces(&j);
- if(j.at!=size||j.tokens[root].type!=J_OBJECT)return UI_PLACE_ONLINE_FAILED;
- char status[16],code[24];if(!field(&j,root,"status",status,sizeof(status)))return UI_PLACE_ONLINE_FAILED;
+ json_t *j=workspace; memset(j,0,sizeof(*j));j->text=text;j->size=size;unsigned root;if(!value(j,0,&root))return UI_PLACE_ONLINE_FAILED;spaces(j);
+ if(j->at!=size||j->tokens[root].type!=J_OBJECT)return UI_PLACE_ONLINE_FAILED;
+ char status[16],code[24];if(!field(j,root,"status",status,sizeof(status)))return UI_PLACE_ONLINE_FAILED;
  if(strcmp(status,"1")){
-  if(field(&j,root,"infocode",code,sizeof(code))&&(!strcmp(code,"10001")||!strcmp(code,"10004")||!strcmp(code,"10005")||!strcmp(code,"10006")||!strcmp(code,"10007")||!strcmp(code,"10009")||!strcmp(code,"10012")||!strcmp(code,"10013")))return UI_PLACE_ONLINE_KEY_ERROR;
+  if(field(j,root,"infocode",code,sizeof(code))&&(!strcmp(code,"10001")||!strcmp(code,"10004")||!strcmp(code,"10005")||!strcmp(code,"10006")||!strcmp(code,"10007")||!strcmp(code,"10009")||!strcmp(code,"10012")||!strcmp(code,"10013")))return UI_PLACE_ONLINE_KEY_ERROR;
   return UI_PLACE_ONLINE_FAILED;
  }
- unsigned tips=property(&j,root,"tips");if(tips>=j.count||j.tokens[tips].type!=J_ARRAY)return UI_PLACE_ONLINE_FAILED;
- for(unsigned i=tips+1;i<j.tokens[tips].next;i=j.tokens[i].next){
-  char id[128],name[256],adcode[24],location[128],address[256]="";ui_nav_point_t p;
-  if(!field(&j,i,"id",id,sizeof(id))||!id[0]||!field(&j,i,"name",name,sizeof(name))||!name[0]||
-     !field(&j,i,"adcode",adcode,sizeof(adcode))||!district(adcode)||!field(&j,i,"location",location,sizeof(location))||!point(location,&p))continue;
+ unsigned tips=property(j,root,"tips");if(tips>=j->count||j->tokens[tips].type!=J_ARRAY)return UI_PLACE_ONLINE_FAILED;
+ for(unsigned i=tips+1;i<j->tokens[tips].next;i=j->tokens[i].next){
+  char id[128],adcode[24],location[128],address[256]="";char *name=j->scratch_name;ui_nav_point_t p;
+  if(!field(j,i,"id",id,sizeof(id))||!id[0]||!field(j,i,"name",name,sizeof(j->scratch_name))||!name[0]||
+     !field(j,i,"adcode",adcode,sizeof(adcode))||!district(adcode)||!field(j,i,"location",location,sizeof(location))||!point(location,&p))continue;
   bool duplicate=false;for(unsigned n=0;n<out->count;n++)if(out->items[n].id==identity(id))duplicate=true;if(duplicate)continue;
   if(out->count==UI_PLACE_RESULT_MAX){out->limited=true;continue;}
-  field(&j,i,"address",address,sizeof(address));ui_place_t *item=&out->items[out->count++];
+  field(j,i,"address",address,sizeof(address));ui_place_t *item=&out->items[out->count++];
   *item=(ui_place_t){.id=identity(id),.point=p,.kind=7,.online=true};utf8_copy(item->name,sizeof(item->name),name);
-  char detail[512];snprintf(detail,sizeof(detail),"高德 · %s%s%s",district(adcode),address[0]?" · ":"",address);utf8_copy(item->detail,sizeof(item->detail),detail);
+  char *detail=j->scratch_detail;snprintf(detail,sizeof(j->scratch_detail),"高德 · %s%s%s",district(adcode),address[0]?" · ":"",address);utf8_copy(item->detail,sizeof(item->detail),detail);
  }return UI_PLACE_ONLINE_OK;
 }
+static UI_LARGE_RAM json_t s_json_workspace;
+static UI_LARGE_RAM ui_place_results_t s_merge_workspace;
+static atomic_flag s_json_busy=ATOMIC_FLAG_INIT;
+ui_place_online_status_t ui_online_places_amap_parse(const char *text,size_t size,ui_place_results_t *out)
+{
+ if(atomic_flag_test_and_set_explicit(&s_json_busy,memory_order_acquire))return UI_PLACE_ONLINE_FAILED;
+ ui_place_online_status_t status=parse_amap(text,size,out,&s_json_workspace);
+ atomic_flag_clear_explicit(&s_json_busy,memory_order_release);return status;
+}
+
 static bool same(const ui_place_t *a,const ui_place_t *b)
 {double x=(a->point.longitude-b->point.longitude)*92000,y=(a->point.latitude-b->point.latitude)*111319;return !strcmp(a->name,b->name)&&x*x+y*y<120*120;}
 void ui_online_places_merge(ui_place_results_t *offline,const ui_place_results_t *online,ui_place_online_status_t status)
 {
  if(!offline)return;offline->online_status=(uint8_t)status;if(status!=UI_PLACE_ONLINE_OK||!online)return;
- ui_place_results_t merged={.request_id=offline->request_id,.online_status=(uint8_t)status,.limited=offline->limited||online->limited};
+ if(atomic_flag_test_and_set_explicit(&s_json_busy,memory_order_acquire)){offline->online_status=UI_PLACE_ONLINE_FAILED;return;}
+ ui_place_results_t *merged=&s_merge_workspace;memset(merged,0,sizeof(*merged));
+ merged->request_id=offline->request_id;merged->online_status=(uint8_t)status;merged->limited=offline->limited||online->limited;
  for(unsigned index=0;index<UI_PLACE_RESULT_MAX;index++)for(unsigned source=0;source<2;source++){
   const ui_place_results_t *r=source?online:offline;if(index>=r->count)continue;ui_place_t p=r->items[index];bool duplicate=false;
-  for(unsigned i=0;i<merged.count;i++)if(same(&merged.items[i],&p))duplicate=true;if(duplicate)continue;
-  if(merged.count==UI_PLACE_RESULT_MAX){merged.limited=true;continue;}
-  bool collision;do{collision=false;for(unsigned i=0;i<merged.count;i++)if(merged.items[i].id==p.id){p.id++;if(!p.id)p.id=1;collision=true;}}while(collision);
-  merged.items[merged.count++]=p;
+  for(unsigned i=0;i<merged->count;i++)if(same(&merged->items[i],&p))duplicate=true;if(duplicate)continue;
+  if(merged->count==UI_PLACE_RESULT_MAX){merged->limited=true;continue;}
+  bool collision;do{collision=false;for(unsigned i=0;i<merged->count;i++)if(merged->items[i].id==p.id){p.id++;if(!p.id)p.id=1;collision=true;}}while(collision);
+  merged->items[merged->count++]=p;
  }
- if(!merged.count&&offline->code!=UI_NAV_OK)merged.code=offline->code;*offline=merged;
+ if(!merged->count&&offline->code!=UI_NAV_OK)merged->code=offline->code;*offline=*merged;
+ atomic_flag_clear_explicit(&s_json_busy,memory_order_release);
 }

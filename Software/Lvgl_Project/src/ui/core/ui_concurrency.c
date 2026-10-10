@@ -1,9 +1,8 @@
 #include "ui_concurrency.h"
 
-#include <stdatomic.h>
+#include "platform/ui_platform_internal.h"
 #include <stddef.h>
 
-static atomic_flag s_default_lock = ATOMIC_FLAG_INIT;
 static ui_concurrency_lock_cb_t s_lock;
 static ui_concurrency_unlock_cb_t s_unlock;
 static void *s_context;
@@ -26,18 +25,17 @@ void ui_concurrency_reset_port(void)
     s_lock = NULL;
     s_unlock = NULL;
     s_context = NULL;
-    atomic_flag_clear_explicit(&s_default_lock, memory_order_release);
+    ui_platform_default_lock_reset();
 }
 
 void ui_concurrency_lock(void)
 {
+    ui_platform_check_lock_context();
     if(s_lock != NULL) {
         s_lock(s_context);
         return;
     }
-    while(atomic_flag_test_and_set_explicit(&s_default_lock,
-                                             memory_order_acquire)) {
-    }
+    ui_platform_default_lock();
 }
 
 void ui_concurrency_unlock(void)
@@ -46,5 +44,5 @@ void ui_concurrency_unlock(void)
         s_unlock(s_context);
         return;
     }
-    atomic_flag_clear_explicit(&s_default_lock, memory_order_release);
+    ui_platform_default_unlock();
 }

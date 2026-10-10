@@ -1,4 +1,5 @@
 #include "ui_sound.h"
+#include <stddef.h>
 
 typedef struct
 {

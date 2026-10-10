@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_nav_workspace.h"
 #include "ui_navigation.h"
 #include "services/ui_nav_store.h"
@@ -19,7 +20,7 @@
 typedef enum { A_BACK,A_ROUTES,A_RECENT,A_MAPS,A_ITEM,A_START,A_MENU,A_FOLLOW,
  A_OVERVIEW,A_SOUND,A_STOP,A_STOP_YES,A_RETRY,A_IMPORT,A_PHONE,A_PLACES,A_UPDATE,
  A_VERSIONS,A_STORAGE,A_DELETE,A_DELETE_YES,A_MAP_IMPORT,A_PLAN,A_PICK,A_PICK_CONFIRM,A_SEARCH } action_t;
-static struct {
+static UI_LARGE_RAM struct {
  lv_obj_t *root,*content,*aux,*rows,*fallback_slot,*focus_capsule,*choice_track,*compact,*spinner;
  ui_nav_capsule_row_t aux_choices[2];lv_obj_t *aux_footer;
  lv_obj_t *focus[24];uint32_t focus_ids[24];unsigned count,selected;
@@ -119,10 +120,17 @@ static lv_obj_t *button(lv_obj_t *parent,int x,int y,int w,int h,const char *tex
 }
 static void divider(lv_obj_t *p,int y)
 {lv_obj_t *o=ui_nav_surface(p,16,y,432,1,false);lv_obj_set_style_bg_color(o,lv_color_hex(0x484848),0);lv_obj_set_style_bg_opa(o,LV_OPA_COVER,0);}
-static void request(ui_nav_request_t r)
-{s.retry=r;s.result=(ui_nav_result_t){0};s.request_id=ui_nav_store_command(&r,lv_tick_get());ui_nav_store_get(&s.snapshot);}
+static void request(const ui_nav_request_t *r)
+{s.retry=*r;memset(&s.result,0,sizeof(s.result));s.request_id=ui_nav_store_command(r,lv_tick_get());ui_nav_store_get(&s.snapshot);}
+static void request_kind(ui_nav_request_kind_t kind,ui_nav_list_t list,uint32_t offset,const ui_nav_item_t *item)
+{
+ static UI_LARGE_RAM ui_nav_request_t r;
+ memset(&r,0,sizeof(r));r.kind=kind;r.list=list;r.offset=offset;
+ if(item){r.destination=*item;if(kind==UI_NAV_REQ_LOAD_ROUTE){r.route_id=item->id;r.route_revision=item->revision;}}
+ request(&r);
+}
 static void load(ui_nav_list_t list,uint32_t offset)
-{s.list=list;s.catalog=(ui_nav_catalog_t){.kind=list,.offset=offset};request((ui_nav_request_t){.kind=UI_NAV_REQ_LIST,.list=list,.offset=offset});build(list==UI_NAV_LIST_MAPS?UI_NAV_VIEW_MAPS:list==UI_NAV_LIST_MAP_VERSIONS?UI_NAV_VIEW_MAP_VERSIONS:list==UI_NAV_LIST_STORAGE?UI_NAV_VIEW_STORAGE:UI_NAV_VIEW_LIST);}
+{s.list=list;s.catalog=(ui_nav_catalog_t){.kind=list,.offset=offset};request_kind(UI_NAV_REQ_LIST,list,offset,NULL);build(list==UI_NAV_LIST_MAPS?UI_NAV_VIEW_MAPS:list==UI_NAV_LIST_MAP_VERSIONS?UI_NAV_VIEW_MAP_VERSIONS:list==UI_NAV_LIST_STORAGE?UI_NAV_VIEW_STORAGE:UI_NAV_VIEW_LIST);}
 static void statistics(lv_obj_t *p,int y,bool arrived)
 {
  const ui_nav_session_t *q=&s.snapshot.session;char a[32],b[32],c[32];
@@ -323,28 +331,28 @@ static void perform(action_t a,unsigned i)
  case A_OVERVIEW:if(s.snapshot.session.state==UI_NAV_SESSION_ARRIVED)s.arrival_map=true;ui_navigation_set_overview(true);build(UI_NAV_VIEW_LIVE);break;
  case A_SOUND:ui_navigation_toggle_prompts();build(s.view);break;
  case A_STOP:s.return_view=s.view;s.result.code=UI_NAV_OK;build(UI_NAV_VIEW_STOP);break;
- case A_STOP_YES:if(!s.finish_callback||!s.finish_callback()){request((ui_nav_request_t){.kind=UI_NAV_REQ_STOP});build(s.view);}break;
- case A_PLAN:if(s.snapshot.capabilities&UI_NAV_CAP_PLAN){request((ui_nav_request_t){.kind=UI_NAV_REQ_PLAN,.destination=s.selected_place});build(UI_NAV_VIEW_PREVIEW);}break;
+ case A_STOP_YES:if(!s.finish_callback||!s.finish_callback()){request_kind(UI_NAV_REQ_STOP,0,0,NULL);build(s.view);}break;
+ case A_PLAN:if(s.snapshot.capabilities&UI_NAV_CAP_PLAN){request_kind(UI_NAV_REQ_PLAN,0,0,&s.selected_place);build(UI_NAV_VIEW_PREVIEW);}break;
  case A_START:if(s.snapshot.session.state==UI_NAV_SESSION_PREVIEW&&s.snapshot.session.route.start_allowed){if(s.start_callback)s.start_callback();else ui_nav_workspace_start();}break;
  case A_ITEM:if(i<s.catalog.count){if(s.list==UI_NAV_LIST_MAPS){s.selected_map=s.catalog.items[i];build(UI_NAV_VIEW_MAP_DETAIL);}
   else ui_nav_workspace_preview_route(&s.catalog.items[i]);}break;
- case A_RETRY:if(i==1)request((ui_nav_request_t){.kind=UI_NAV_REQ_REROUTE});else request(s.retry);build(i==1?UI_NAV_VIEW_LIVE:s.view);break;
+ case A_RETRY:if(i==1)request_kind(UI_NAV_REQ_REROUTE,0,0,NULL);else request(&s.retry);build(i==1?UI_NAV_VIEW_LIVE:s.view);break;
  case A_UPDATE:load(s.list,s.catalog.offset+s.catalog.count<s.catalog.total?s.catalog.offset+s.catalog.count:0);break;
- case A_IMPORT:if(!(s.snapshot.capabilities&UI_NAV_CAP_IMPORT_ROUTE))break;request((ui_nav_request_t){.kind=UI_NAV_REQ_IMPORT_ROUTE});build(UI_NAV_VIEW_PREVIEW);break;
+ case A_IMPORT:if(!(s.snapshot.capabilities&UI_NAV_CAP_IMPORT_ROUTE))break;request_kind(UI_NAV_REQ_IMPORT_ROUTE,0,0,NULL);build(UI_NAV_VIEW_PREVIEW);break;
  case A_PHONE:build(UI_NAV_VIEW_PHONE);break;
  case A_VERSIONS:load(UI_NAV_LIST_MAP_VERSIONS,0);break;
  case A_STORAGE:load(UI_NAV_LIST_STORAGE,0);break;
- case A_MAP_IMPORT:if(!(s.snapshot.capabilities&UI_NAV_CAP_IMPORT_MAP))break;request((ui_nav_request_t){.kind=UI_NAV_REQ_IMPORT_MAP,.list=UI_NAV_LIST_MAPS});build(UI_NAV_VIEW_MAPS);break;
+ case A_MAP_IMPORT:if(!(s.snapshot.capabilities&UI_NAV_CAP_IMPORT_MAP))break;request_kind(UI_NAV_REQ_IMPORT_MAP,UI_NAV_LIST_MAPS,0,NULL);build(UI_NAV_VIEW_MAPS);break;
  default:break;
  }
 }
 void ui_nav_workspace_refresh(void)
 {
- if(!s.created)return;ui_nav_snapshot_t next;ui_nav_store_get(&next);bool changed=next.revision!=s.snapshot.revision;
+ if(!s.created)return;static UI_LARGE_RAM ui_nav_snapshot_t next;ui_nav_store_get(&next);bool changed=next.revision!=s.snapshot.revision;
  ui_nav_session_state_t old=s.snapshot.session.state;bool identity=next.session.id!=s.snapshot.session.id||next.session.route.revision!=s.snapshot.session.route.revision;
  s.snapshot=next;if(identity)s.arrival_map=false;
- ui_nav_result_t r;uint32_t rv;ui_nav_session_get_result(&r,&rv);bool result=rv!=s.result_version&&r.request_id==s.request_id;s.result_version=rv;if(result)s.result=r;
- ui_nav_catalog_t c;uint32_t cv;ui_nav_session_get_catalog(&c,&cv);bool catalog=cv!=s.catalog_version&&c.kind==s.list;s.catalog_version=cv;if(catalog&&(!c.request_id||c.request_id==s.request_id))s.catalog=c;else catalog=false;
+ static UI_LARGE_RAM ui_nav_result_t r;uint32_t rv;ui_nav_session_get_result(&r,&rv);bool result=rv!=s.result_version&&r.request_id==s.request_id;s.result_version=rv;if(result)s.result=r;
+ static UI_LARGE_RAM ui_nav_catalog_t c;uint32_t cv;ui_nav_session_get_catalog(&c,&cv);bool catalog=cv!=s.catalog_version&&c.kind==s.list;s.catalog_version=cv;if(catalog&&(!c.request_id||c.request_id==s.request_id))s.catalog=c;else catalog=false;
  /* Recording owns the STOP request in the product app, including while this page is hidden. */
  if(next.session.state==UI_NAV_SESSION_IDLE&&
     (s.view==UI_NAV_VIEW_STOP||s.view==UI_NAV_VIEW_LIVE||s.view==UI_NAV_VIEW_ARRIVAL||s.view==UI_NAV_VIEW_MENU||s.view==UI_NAV_VIEW_ERROR)){
@@ -438,7 +446,7 @@ void ui_nav_workspace_preview_destination(const ui_nav_item_t *place){if(!place|
 void ui_nav_workspace_preview_search_destination(const ui_nav_item_t *place,bool mapped_entrance,bool online){if(!place||ui_nav_session_active())return;ui_nav_session_cancel();ui_nav_session_discard_preview();s.search_origin=true;s.search_entrance=mapped_entrance;s.search_online=online;s.search_manual=false;s.selected_place=*place;s.saved[UI_NAV_VIEW_DESTINATION].id=A_PLAN;build(UI_NAV_VIEW_DESTINATION);}
 void ui_nav_workspace_suspend(bool value){s.suspended=value;if(ui_bottom_surface_root()){if(value)lv_obj_add_flag(ui_bottom_surface_root(),LV_OBJ_FLAG_HIDDEN);else lv_obj_clear_flag(ui_bottom_surface_root(),LV_OBJ_FLAG_HIDDEN);}}
 void ui_nav_workspace_preview_route(const ui_nav_item_t *r)
-{if(!r||ui_nav_session_active())return;s.search_origin=false;request((ui_nav_request_t){.kind=UI_NAV_REQ_LOAD_ROUTE,.route_id=r->id,.route_revision=r->revision,.destination=*r});build(UI_NAV_VIEW_PREVIEW);}
+{if(!r||ui_nav_session_active())return;s.search_origin=false;request_kind(UI_NAV_REQ_LOAD_ROUTE,0,0,r);build(UI_NAV_VIEW_PREVIEW);}
 void ui_nav_workspace_open_phone(void){build(UI_NAV_VIEW_PHONE);}
 void ui_nav_workspace_import_route(void){perform(A_IMPORT,0);}
 void ui_nav_workspace_stop(void){perform(A_STOP,0);}
@@ -446,9 +454,9 @@ void ui_nav_workspace_set_start_callback(void (*callback)(void)){s.start_callbac
 void ui_nav_workspace_set_finish_callback(bool (*callback)(void)){s.finish_callback=callback;}
 bool ui_nav_workspace_start(void)
 {
- ui_nav_session_t session;bool busy;ui_nav_session_get(&session);ui_nav_snapshot_t snapshot;ui_nav_store_get(&snapshot);busy=snapshot.busy;
+ static UI_LARGE_RAM ui_nav_session_t session;bool busy;ui_nav_session_get(&session);static UI_LARGE_RAM ui_nav_snapshot_t snapshot;ui_nav_store_get(&snapshot);busy=snapshot.busy;
  if(busy||session.state!=UI_NAV_SESSION_PREVIEW||!session.route.start_allowed)return false;
- request((ui_nav_request_t){.kind=UI_NAV_REQ_START});build(UI_NAV_VIEW_PREVIEW);return s.request_id!=0;
+ request_kind(UI_NAV_REQ_START,0,0,NULL);build(UI_NAV_VIEW_PREVIEW);return s.request_id!=0;
 }
 void ui_nav_workspace_open_maps(void){load(UI_NAV_LIST_MAPS,0);}
 void ui_nav_workspace_rebuild(void){build(s.view);}

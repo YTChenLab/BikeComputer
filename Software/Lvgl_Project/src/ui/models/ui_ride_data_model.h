@@ -134,4 +134,7 @@ bool ui_ride_data_model_submit_patch(const ui_ride_data_t *patch, uint32_t field
 bool ui_ride_data_model_process(void);
 bool ui_ride_data_model_get(ui_ride_data_t *data, uint32_t *version);
 
+/* Preserves legacy void entry; board observes rejected/stale producer frames. */
+bool ui_ride_data_model_submit_checked(const ui_ride_data_t *data);
+
 #endif /* UI_RIDE_DATA_MODEL_H */

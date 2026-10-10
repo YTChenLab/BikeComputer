@@ -1,3 +1,5 @@
+#include "platform/ui_platform_internal.h"
+#include "ui/core/ui_memory.h"
 #include "ui_ride_report_page.h"
 
 #include "ui_page_common.h"
@@ -9,7 +11,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <math.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -46,7 +47,7 @@ typedef struct
     const char *unit;
 } performance_item_t;
 
-static report_page_t s_pages[UI_RIDE_REPORT_MODE_COUNT];
+static UI_LARGE_RAM report_page_t s_pages[UI_RIDE_REPORT_MODE_COUNT];
 
 
 static lv_obj_t *report_label(lv_obj_t *parent, int32_t x, int32_t y,
@@ -104,19 +105,14 @@ static void format_date(int64_t seconds, char *text, size_t capacity)
         snprintf(text, capacity, "DATE UNAVAILABLE");
         return;
     }
-    time_t value = (time_t)seconds;
-    struct tm local_time;
-#if defined(_WIN32)
-    if(localtime_s(&local_time, &value) != 0) {
-#else
-    if(localtime_r(&value, &local_time) == NULL) {
-#endif
+    ui_calendar_date_t local_time;
+    if(!ui_platform_local_date(seconds, &local_time)) {
         snprintf(text, capacity, "DATE UNAVAILABLE");
         return;
     }
     snprintf(text, capacity, "%04d.%02d.%02d  %02d:%02d",
-             local_time.tm_year + 1900, local_time.tm_mon + 1,
-             local_time.tm_mday, local_time.tm_hour, local_time.tm_min);
+             local_time.year, local_time.month,
+             local_time.day, local_time.hour, local_time.minute);
 }
 
 static lv_obj_t *map_line(lv_obj_t *parent,

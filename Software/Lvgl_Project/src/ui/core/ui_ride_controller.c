@@ -4,6 +4,7 @@
 #include "ui_state_machine.h"
 
 #include <stdint.h>
+#include <stddef.h>
 
 static int32_t s_subscription_id = -1;
 

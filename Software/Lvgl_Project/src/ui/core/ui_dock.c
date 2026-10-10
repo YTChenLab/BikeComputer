@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_dock.h"
 
 #include <string.h>
@@ -15,7 +16,7 @@ typedef struct
     void *observer_user_data;
 } ui_dock_context_t;
 
-static ui_dock_context_t s_dock;
+static UI_LARGE_RAM ui_dock_context_t s_dock;
 
 static bool valid_card(const ui_dock_card_t *card)
 {

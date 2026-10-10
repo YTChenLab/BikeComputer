@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_navigation_service.h"
 
 #include "ui/core/ui_concurrency.h"
@@ -24,14 +25,7 @@ typedef struct
     bool pending_valid, prompts_enabled;
 } ui_navigation_service_context_t;
 
-static ui_navigation_service_context_t s_navigation_service;
-static bool s_demo_enabled = true;
-static void (*s_demo_step)(void);
-void ui_navigation_service_register_demo_step(void (*callback)(void)) { s_demo_step=callback; }
-bool ui_navigation_service_demo_step(void)
-{ if(!s_demo_enabled||!s_demo_step) return false; s_demo_step(); return true; }
-void ui_navigation_service_set_demo_enabled(bool enabled) { s_demo_enabled = enabled; }
-bool ui_navigation_service_demo_enabled(void) { return s_demo_enabled; }
+static UI_LARGE_RAM ui_navigation_service_context_t s_navigation_service;
 
 void ui_navigation_service_init(void)
 {
@@ -87,9 +81,12 @@ bool ui_navigation_service_unsubscribe(int32_t subscription_id)
 }
 
 void ui_navigation_service_submit(const nav_model_t *model)
+{ (void)ui_navigation_service_submit_checked(model); }
+
+bool ui_navigation_service_submit_checked(const nav_model_t *model)
 {
-    if(model == NULL) return;
-    if(model->route_point_count > 16 || (model->demo && !s_demo_enabled)) return;
+    if(model == NULL) return false;
+    if(model->route_point_count > 16 || (model->demo && !ui_navigation_service_demo_enabled())) return false;
     if(model->session_bound && (!model->session_id || !model->route_id || !model->route_revision ||
         model->coordinate_system>1 || model->ui_state>=NAV_UI_STATE_COUNT ||
         (model->position_valid && (!isfinite(model->latitude)||!isfinite(model->longitude)||fabs(model->latitude)>90||fabs(model->longitude)>180)) ||
@@ -101,19 +98,20 @@ void ui_navigation_service_submit(const nav_model_t *model)
         (model->next_valid && model->next_direction>=NAV_MANEUVER_COUNT) ||
         (model->exit_valid && !model->roundabout_exit) ||
         (model->exit_position_valid && (!isfinite(model->exit_latitude)||!isfinite(model->exit_longitude)||fabs(model->exit_latitude)>90||fabs(model->exit_longitude)>180)) ||
-        (model->junction_valid && (!isfinite(model->junction_latitude)||!isfinite(model->junction_longitude)||fabs(model->junction_latitude)>90||fabs(model->junction_longitude)>180)))) return;
+        (model->junction_valid && (!isfinite(model->junction_latitude)||!isfinite(model->junction_longitude)||fabs(model->junction_latitude)>90||fabs(model->junction_longitude)>180)))) return false;
     ui_concurrency_lock();
     const nav_model_t *latest=s_navigation_service.pending_valid?&s_navigation_service.pending:&s_navigation_service.current;
     if(model->session_bound&&latest->session_bound&&model->session_id==latest->session_id&&model->route_id==latest->route_id&&
        (model->route_revision<latest->route_revision ||
         (model->route_revision==latest->route_revision && (model->step_id<latest->step_id ||
          (model->sampled_at_ms&&latest->sampled_at_ms&&(int32_t)(model->sampled_at_ms-latest->sampled_at_ms)<0))))) {
-        ui_concurrency_unlock();return;
+        ui_concurrency_unlock();return false;
     }
     s_navigation_service.pending = *model;
     s_navigation_service.pending.road_name[sizeof(model->road_name) - 1] = '\0';
     s_navigation_service.pending_valid = true;
     ui_concurrency_unlock();
+    return true;
 }
 
 bool ui_navigation_service_process(void)

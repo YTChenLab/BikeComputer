@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_ride_detail_page.h"
 
 #include "ui_ride_report_page.h"
@@ -12,7 +13,7 @@ lv_obj_t *ui_ride_detail_page_create(ui_page_action_cb_t callback,
 
 void ui_ride_detail_page_set_record(const ui_ride_record_t *record)
 {
-    ui_ride_report_model_t report;
+    static UI_LARGE_RAM ui_ride_report_model_t report;
     if(ui_ride_report_model_from_record(&report, record))
         (void)ui_ride_report_page_set_model(UI_RIDE_REPORT_DETAIL_MODE,
                                             &report);

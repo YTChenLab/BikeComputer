@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_history_page.h"
 
 #include "ui_page_common.h"
@@ -11,7 +12,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
+#include "platform/ui_platform_internal.h"
 
 #define HISTORY_VISIBLE_MAX 10U
 #define HISTORY_ROW_HEIGHT  112
@@ -38,7 +39,7 @@ typedef struct
     void *user_data;
 } ui_history_page_context_t;
 
-static ui_history_page_context_t s_history;
+static UI_LARGE_RAM ui_history_page_context_t s_history;
 
 static bool change_page(int direction)
 {
@@ -76,19 +77,14 @@ static lv_obj_t *history_label(lv_obj_t *parent, int32_t x, int32_t y,
 static void format_date(int64_t seconds, char *text, size_t capacity)
 {
     if(seconds <= 0) { snprintf(text,capacity,"DATE UNAVAILABLE"); return; }
-    time_t value = (time_t)seconds;
-    struct tm local_time;
-#if defined(_WIN32)
-    if(localtime_s(&local_time, &value) != 0) {
-#else
-    if(localtime_r(&value, &local_time) == NULL) {
-#endif
+    ui_calendar_date_t local_time;
+    if(!ui_platform_local_date(seconds, &local_time)) {
         snprintf(text, capacity, "DATE UNAVAILABLE");
         return;
     }
     snprintf(text, capacity, "%04d.%02d.%02d  %02d:%02d",
-             local_time.tm_year + 1900, local_time.tm_mon + 1,
-             local_time.tm_mday, local_time.tm_hour, local_time.tm_min);
+             local_time.year, local_time.month,
+             local_time.day, local_time.hour, local_time.minute);
 }
 
 static void update_focus(void)

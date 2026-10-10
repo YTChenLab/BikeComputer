@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_profile_page.h"
 
 #include "ui_page_common.h"
@@ -43,7 +44,7 @@ typedef struct {
     ui_liquid_selection_t selection;
 } profile_context_t;
 
-static profile_context_t s_profile;
+static UI_LARGE_RAM profile_context_t s_profile;
 static void update_focus(bool animate);
 
 static lv_obj_t *profile_label(lv_obj_t *parent, int32_t x, int32_t y,

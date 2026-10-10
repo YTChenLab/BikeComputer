@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_motion.h"
 
 #include "../design/ui_design_tokens.h"
@@ -13,7 +14,7 @@ typedef struct {
     float position, velocity, goal, frequency, damping;
     uint32_t last_tick, started_tick;
 } spring_t;
-static spring_t s_springs[SPRING_CAPACITY];
+static UI_LARGE_RAM spring_t s_springs[SPRING_CAPACITY];
 static lv_timer_t *s_spring_timer;
 static bool s_reduced, s_riding;
 

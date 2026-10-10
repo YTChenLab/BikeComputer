@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_navigation.h"
 #include "ui_nav_workspace.h"
 #include "services/ui_nav_store.h"
@@ -13,7 +14,7 @@
 #include <string.h>
 #include <math.h>
 #define NAV_EVENT_SOURCE 0x4E415600UL
-static struct {
+static UI_LARGE_RAM struct {
  lv_obj_t *screen,*map_status,*capsule,*capsule_title,*capsule_detail,*attribution;
  ui_nav_map_t map;nav_model_t model;bool active,created,live,was_preview,card_entered;
  ui_navigation_card_t selected_card;
@@ -98,7 +99,7 @@ static void navigation_model_changed(const nav_model_t *model,
     (void)version;
     (void)user_data;
     if(model == NULL) return;
-    ui_nav_session_t session; ui_nav_session_get(&session);
+    static UI_LARGE_RAM ui_nav_session_t session; ui_nav_session_get(&session);
     if(!model->session_bound || !ui_nav_session_active() || model->session_id!=session.id ||
         model->route_id!=session.route.id || model->route_revision!=session.route.revision) return;
     uint32_t key=model->session_id*2654435761u ^ model->route_revision*2246822519u ^
@@ -138,7 +139,7 @@ static void map_tick(lv_timer_t *timer)
 {
  (void)timer;if(!s_navigation.active)return;
  if(ui_nav_search_panel_active()||s_navigation.search_progress)return; /* Freeze map camera while entering text. */
- ui_nav_workspace_refresh();ui_nav_snapshot_t snapshot;ui_nav_store_get(&snapshot);
+ ui_nav_workspace_refresh();static UI_LARGE_RAM ui_nav_snapshot_t snapshot;ui_nav_store_get(&snapshot);
  const ui_nav_session_t *session=&snapshot.session;s_navigation.live=ui_nav_session_active();
  if(!ui_nav_workspace_map_visible()){lv_obj_add_flag(s_navigation.map.root,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(s_navigation.map_status,LV_OBJ_FLAG_HIDDEN);visual_status();return;}
  lv_obj_clear_flag(s_navigation.map.root,LV_OBJ_FLAG_HIDDEN);
@@ -158,7 +159,7 @@ static void map_tick(lv_timer_t *timer)
   s_navigation.model=snapshot.guidance;ui_nav_map_apply_model(&s_navigation.map,&s_navigation.model);}
  ui_nav_map_camera(&s_navigation.map,&s_navigation.model,lv_tick_get());
  /* Keep the bounded map snapshot out of the small embedded UI task stack. */
- static ui_nav_map_frame_t frame;uint32_t version;ui_nav_map_provider_get(&frame,&version);
+ static UI_LARGE_RAM ui_nav_map_frame_t frame;uint32_t version;ui_nav_map_provider_get(&frame,&version);
  /* Do not rebase the raster/local coordinate frame under a held finger.
   * Guidance and the rider marker continue updating; apply geometry on release. */
  if(!s_navigation.map.pointer_down&&version!=s_navigation.map_version&&frame.route_id==route&&frame.route_revision==revision){
@@ -322,7 +323,7 @@ void ui_navigation_open_search(void)
  s_navigation.search_restore=false;
  lv_anim_delete(&s_navigation.map,NULL);
  s_navigation.map.state=NAV_EXPLORE;ui_nav_map_set_focus(&s_navigation.map,s_navigation.map.focused_control,false);ui_nav_workspace_suspend(true);
- ui_nav_snapshot_t snapshot;ui_nav_store_get(&snapshot);
+ static UI_LARGE_RAM ui_nav_snapshot_t snapshot;ui_nav_store_get(&snapshot);
  bool position_valid=snapshot.session.position_valid&&snapshot.session.position.system==UI_NAV_COORD_WGS84;
  ui_nav_search_panel_open(position_valid?snapshot.session.position:s_navigation.search_previous_center,position_valid);
 }

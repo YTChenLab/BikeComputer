@@ -37,8 +37,8 @@ ui_nav_result_code_t ui_offline_tiles_open(ui_offline_tiles_t *t,const ui_offlin
         first+=l->cols*l->rows;
     }
     if(first!=t->total)return UI_NAV_CORRUPT_MAP;
-    uint8_t buffer[1024];uint32_t remaining=t->directory+t->total*16-128,offset=128;c=0xffffffff;
-    while(remaining){size_t n=remaining>sizeof(buffer)?sizeof(buffer):remaining;
+    uint8_t *buffer=t->validation_workspace;uint32_t remaining=t->directory+t->total*16-128,offset=128;c=0xffffffff;
+    while(remaining){size_t n=remaining>sizeof(t->validation_workspace)?sizeof(t->validation_workspace):remaining;
         if(!io->read_at(io->context,offset,buffer,n))return UI_NAV_CORRUPT_MAP;
         c=ui_offline_crc32(c,buffer,n);remaining-=n;offset+=n;}
     if((c^0xffffffff)!=u32(h+64))return UI_NAV_CORRUPT_MAP;
@@ -46,7 +46,7 @@ ui_nav_result_code_t ui_offline_tiles_open(ui_offline_tiles_t *t,const ui_offlin
     if(t->label_offset){
         if(t->label_offset<t->directory+t->total*16||t->label_offset>io->size||t->label_bytes>io->size-t->label_offset||t->label_bytes<t->total*8)return UI_NAV_CORRUPT_MAP;
         offset=t->label_offset;remaining=t->label_bytes;c=0xffffffff;
-        while(remaining){size_t n=remaining>sizeof(buffer)?sizeof(buffer):remaining;
+        while(remaining){size_t n=remaining>sizeof(t->validation_workspace)?sizeof(t->validation_workspace):remaining;
             if(!io->read_at(io->context,offset,buffer,n))return UI_NAV_CORRUPT_MAP;c=ui_offline_crc32(c,buffer,n);remaining-=n;offset+=n;}
         if((c^0xffffffff)!=u32(h+80))return UI_NAV_CORRUPT_MAP;
     }
@@ -54,11 +54,11 @@ ui_nav_result_code_t ui_offline_tiles_open(ui_offline_tiles_t *t,const ui_offlin
 }
 void ui_offline_tile_cache_init(ui_offline_tile_cache_t *cache,uint16_t *pixels,unsigned slots)
 {if(cache){memset(cache,0,sizeof(*cache));cache->pixels=pixels;cache->slots=slots>32?32:slots;}}
-typedef struct {const ui_offline_tiles_t *tiles;ui_offline_tiles_stats_t *stats;uint32_t offset,left,crc;size_t index,count;uint8_t data[4096];} stream_t;
+typedef struct {const ui_offline_tiles_t *tiles;ui_offline_tiles_stats_t *stats;uint32_t offset,left,crc;size_t index,count;uint8_t *data;} stream_t;
 static bool fill(stream_t *s)
 {
     if(s->index<s->count)return true;if(!s->left)return false;
-    s->count=s->left>sizeof(s->data)?sizeof(s->data):s->left;s->index=0;
+    s->count=s->left>4096U?4096U:s->left;s->index=0;
     if(!s->tiles->io.read_at(s->tiles->io.context,s->offset,s->data,s->count))return false;
     s->crc=ui_offline_crc32(s->crc,s->data,s->count);s->stats->bytes+=s->count;s->offset+=s->count;s->left-=s->count;return true;
 }
@@ -110,16 +110,16 @@ static ui_nav_result_code_t tile(const ui_offline_tiles_t *t,ui_offline_tile_cac
        (encoding==0&&length!=131072)||(encoding==1&&length%4))return UI_NAV_CORRUPT_MAP;
     unsigned slot=0;for(unsigned i=0;i<cache->slots;i++)if(!cache->entries[i].valid){slot=i;break;}
         else if(cache->entries[i].age<cache->entries[slot].age)slot=i;
-    cache->entries[slot].valid=false;uint16_t *pixels=cache->pixels+slot*65536;uint32_t c=0xffffffff,written=0;uint8_t buffer[4096];
+    cache->entries[slot].valid=false;uint16_t *pixels=cache->pixels+slot*65536;uint32_t c=0xffffffff,written=0;uint8_t *buffer=cache->decode_workspace;
     if(encoding==2){
-        stream_t stream={.tiles=t,.stats=stats,.offset=offset,.left=length,.crc=0xffffffff};
+        stream_t stream={.data=cache->decode_workspace,.tiles=t,.stats=stats,.offset=offset,.left=length,.crc=0xffffffff};
         if(!lz4_block(&stream,(uint8_t *)pixels)||(stream.crc^0xffffffff)!=expected)return UI_NAV_CORRUPT_MAP;
         for(unsigned i=0;i<65536;i++)pixels[i]=u16((const uint8_t *)pixels+i*2);
         cache->entries[slot].key=key;cache->entries[slot].age=++cache->clock;
         if(!read_labels(t,key,&cache->entries[slot],stats))return UI_NAV_CORRUPT_MAP;
         cache->entries[slot].valid=true;*out=pixels;stats->misses++;return UI_NAV_OK;
     }
-    while(length){size_t n=length>sizeof(buffer)?sizeof(buffer):length;
+    while(length){size_t n=length>sizeof(cache->decode_workspace)?sizeof(cache->decode_workspace):length;
         if(!t->io.read_at(t->io.context,offset,buffer,n))return UI_NAV_CORRUPT_MAP;
         stats->bytes+=n;c=ui_offline_crc32(c,buffer,n);
         if(!encoding){for(size_t i=0;i<n;i+=2)pixels[written++]=u16(buffer+i);}

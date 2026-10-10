@@ -2,7 +2,7 @@
 #define UI_OFFLINE_GRAPH_H
 #include "ui_offline_route.h"
 typedef struct {
-    ui_offline_map_io_t io;uint32_t revision,nodes,edges,names,node_offset,edge_offset,name_offset;
+    ui_offline_map_io_t io; uint8_t validation_workspace[4096];uint32_t revision,nodes,edges,names,node_offset,edge_offset,name_offset;
     int32_t west,south,east,north;
 } ui_offline_graph_t;
 typedef struct {uint32_t expanded,bytes;float start_snap_m,end_snap_m;bool cancelled;} ui_offline_graph_stats_t;

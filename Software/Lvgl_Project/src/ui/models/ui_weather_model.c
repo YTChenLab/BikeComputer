@@ -2,6 +2,7 @@
 #include "../core/ui_concurrency.h"
 
 #include <string.h>
+#include "platform/ui_platform_internal.h"
 
 typedef struct
 {
@@ -32,15 +33,7 @@ void ui_weather_model_init(void)
 {
     memset(&s_weather, 0, sizeof(s_weather));
     memset(s_observers, 0, sizeof(s_observers));
-    s_weather.temperature_c = 22;
-    s_weather.feels_like_c = 21;
-    s_weather.wind_kmh = 12U;
-    s_weather.rain_percent = 10U;
-    s_weather.air_quality_index = 42U;
-    s_weather.condition = UI_WEATHER_CLOUDY;
-    s_weather.version = 1U;
-    s_weather.quality_known = true;
-    s_weather.valid = false;
+    ui_platform_initial_weather(&s_weather);
     s_pending_valid = false;
     s_next_id = 1;
 }

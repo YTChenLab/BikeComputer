@@ -108,5 +108,6 @@ uint8_t ui_command_service_pending(void);
 bool ui_command_service_active(ui_command_t *command);
 uint32_t ui_command_service_dropped(void);
 uint32_t ui_command_service_unexpected_results(void);
+uint32_t ui_command_service_timeouts(void);
 
 #endif /* UI_COMMAND_SERVICE_H */

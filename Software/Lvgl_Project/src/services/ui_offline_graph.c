@@ -29,8 +29,8 @@ ui_nav_result_code_t ui_offline_graph_open(ui_offline_graph_t *g,const ui_offlin
     if(!g->nodes||g->nodes>500000||!g->edges||g->edges>4000000||!g->names||g->node_offset!=128||
        g->west>=g->east||g->south>=g->north||g->edge_offset!=128+g->nodes*16||g->name_offset!=g->edge_offset+g->edges*16||
        g->name_offset>io->size||g->names>(io->size-g->name_offset)/48||io->size!=g->name_offset+g->names*48)return UI_NAV_CORRUPT_MAP;
-    uint8_t b[4096];uint32_t offset=128;c=0xffffffff;
-    while(offset<io->size){size_t n=io->size-offset;if(n>sizeof(b))n=sizeof(b);if(!io->read_at(io->context,offset,b,n))return UI_NAV_CORRUPT_MAP;c=ui_offline_crc32(c,b,n);offset+=n;}
+    uint8_t *b=g->validation_workspace;uint32_t offset=128;c=0xffffffff;
+    while(offset<io->size){size_t n=io->size-offset;if(n>sizeof(g->validation_workspace))n=sizeof(g->validation_workspace);if(!io->read_at(io->context,offset,b,n))return UI_NAV_CORRUPT_MAP;c=ui_offline_crc32(c,b,n);offset+=n;}
     return (c^0xffffffff)==u32(h+56)?UI_NAV_OK:UI_NAV_CORRUPT_MAP;
 }
 size_t ui_offline_graph_workspace_size(const ui_offline_graph_t *g){return g?(size_t)g->nodes*24:0;}

@@ -15,11 +15,11 @@ typedef struct
     ui_ride_history_checkpoint_t checkpoint;
 } ui_ride_history_repository_context_t;
 
-static ui_ride_history_repository_context_t s_repository;
+static UI_LARGE_RAM ui_ride_history_repository_context_t s_repository;
 /* Controlled workspace, never a 100-record task-stack allocation. Boards may
  * place it and the history model in external RAM through the linker. */
 static UI_LARGE_RAM ui_ride_record_t s_working[UI_RIDE_HISTORY_MAX_RECORDS];
-static struct {
+static UI_LARGE_RAM struct {
     ui_ride_history_storage_t storage;
     ui_ride_history_checkpoint_t checkpoint;
     ui_ride_history_result_t result;
@@ -154,39 +154,37 @@ ui_ride_history_result_t ui_ride_history_repository_stage(
                         ((uint64_t)(summary->distance_km * 1000.0f + 0.5f)
                          << 1U);
     if(!utc_valid) {
-        ui_ride_record_t newest;
+        static UI_LARGE_RAM ui_ride_record_t newest;
         uint64_t previous = ui_ride_history_model_get_newest(0, &newest) ? newest.id : 0;
         identity ^= previous ^ ((uint64_t)++s_record_nonce << 8);
     }
-    s_repository.pending = (ui_ride_record_t) {
-        .id = mix_id(identity),
-        .started_at_utc = started,
-        .finished_at_utc = finished,
-        .distance_km = summary->distance_km,
-        .duration_seconds = summary->duration_seconds,
-        .moving_time_seconds = summary->moving_time_seconds,
-        .average_speed_kmh = summary->average_speed_kmh,
-        .maximum_speed_kmh = summary->maximum_speed_kmh,
-        .ascent_m = summary->ascent_m,
-        .descent_m = summary->descent_m,
-        .maximum_elevation_m = summary->maximum_elevation_m,
-        .calories_kcal = summary->calories_kcal,
-        .has_heart_rate = summary->has_heart_rate,
-        .average_heart_rate = summary->average_heart_rate,
-        .maximum_heart_rate = summary->maximum_heart_rate,
-        .minimum_heart_rate = summary->minimum_heart_rate,
-        .has_power = summary->has_power,
-        .average_power = summary->average_power,
-        .maximum_power = summary->maximum_power,
-        .has_cadence = summary->has_cadence,
-        .average_cadence = summary->average_cadence,
-        .maximum_cadence = summary->maximum_cadence,
-        .has_temperature = summary->has_temperature,
-        .average_temperature_tenths_c =
-            summary->average_temperature_tenths_c,
-        .metric_flags = summary->metric_flags,
-        .trace = summary->trace
-    };
+    memset(&s_repository.pending,0,sizeof(s_repository.pending));
+    s_repository.pending.id = mix_id(identity);
+    s_repository.pending.started_at_utc = started;
+    s_repository.pending.finished_at_utc = finished;
+    s_repository.pending.distance_km = summary->distance_km;
+    s_repository.pending.duration_seconds = summary->duration_seconds;
+    s_repository.pending.moving_time_seconds = summary->moving_time_seconds;
+    s_repository.pending.average_speed_kmh = summary->average_speed_kmh;
+    s_repository.pending.maximum_speed_kmh = summary->maximum_speed_kmh;
+    s_repository.pending.ascent_m = summary->ascent_m;
+    s_repository.pending.descent_m = summary->descent_m;
+    s_repository.pending.maximum_elevation_m = summary->maximum_elevation_m;
+    s_repository.pending.calories_kcal = summary->calories_kcal;
+    s_repository.pending.has_heart_rate = summary->has_heart_rate;
+    s_repository.pending.average_heart_rate = summary->average_heart_rate;
+    s_repository.pending.maximum_heart_rate = summary->maximum_heart_rate;
+    s_repository.pending.minimum_heart_rate = summary->minimum_heart_rate;
+    s_repository.pending.has_power = summary->has_power;
+    s_repository.pending.average_power = summary->average_power;
+    s_repository.pending.maximum_power = summary->maximum_power;
+    s_repository.pending.has_cadence = summary->has_cadence;
+    s_repository.pending.average_cadence = summary->average_cadence;
+    s_repository.pending.maximum_cadence = summary->maximum_cadence;
+    s_repository.pending.has_temperature = summary->has_temperature;
+    s_repository.pending.average_temperature_tenths_c = summary->average_temperature_tenths_c;
+    s_repository.pending.metric_flags = summary->metric_flags;
+    s_repository.pending.trace = summary->trace;
     if(!ui_ride_record_is_valid(&s_repository.pending)) return UI_RIDE_HISTORY_INVALID_DATA;
     s_repository.pending_valid = true;
     ui_ride_history_model_totals(&s_repository.checkpoint.totals);
@@ -393,9 +391,8 @@ ui_ride_history_result_t ui_ride_history_repository_load_page(
                                                count, s_repository.storage.context);
     *count = 0;
     for(size_t i = newest_offset; *count < capacity; ++i) {
-        ui_ride_record_t record;
-        if(!ui_ride_history_model_get_newest(i, &record)) break;
-        records[(*count)++] = record;
+        if(!ui_ride_history_model_get_newest(i, &records[*count])) break;
+        ++*count;
     }
     return *count ? UI_RIDE_HISTORY_OK : UI_RIDE_HISTORY_EMPTY;
 }

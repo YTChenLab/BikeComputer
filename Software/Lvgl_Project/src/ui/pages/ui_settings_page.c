@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_settings_page.h"
 
 #include "ui_page_common.h"
@@ -8,7 +9,7 @@
 #include <stdio.h>
 
 static ui_status_bar_t s_status;
-static ui_settings_list_t s_list;
+static UI_LARGE_RAM ui_settings_list_t s_list;
 static ui_page_action_cb_t s_callback;
 static void *s_user_data;
 static int s_storage_state = -1;

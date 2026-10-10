@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_command_service.h"
 
 #include "ui/core/ui_concurrency.h"
@@ -25,6 +26,7 @@ typedef struct
     uint32_t next_command_id;
     uint32_t dropped;
     uint32_t unexpected_results;
+    uint32_t timeouts;
     int32_t next_observer_id;
     uint8_t queued_count;
     uint8_t result_count;
@@ -32,7 +34,7 @@ typedef struct
     bool active_valid;
 } ui_command_service_context_t;
 
-static ui_command_service_context_t s_commands;
+static UI_LARGE_RAM ui_command_service_context_t s_commands;
 static uint32_t s_next_id = 1;
 
 static bool final_status(ui_command_status_t status)
@@ -278,6 +280,7 @@ static bool timeout_active(uint32_t elapsed_ms,
         .status = UI_COMMAND_STATUS_TIMEOUT,
         .error_code = 0
     };
+    s_commands.timeouts++;
     s_commands.active_valid = false;
     ui_concurrency_unlock();
     return true;
@@ -412,3 +415,6 @@ uint32_t ui_command_service_unexpected_results(void)
     ui_concurrency_unlock();
     return unexpected;
 }
+
+uint32_t ui_command_service_timeouts(void)
+{ ui_concurrency_lock(); uint32_t value=s_commands.timeouts; ui_concurrency_unlock(); return value; }

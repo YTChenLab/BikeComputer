@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_nav_geometry.h"
 #include "../../core/ui_text.h"
 #include "lvgl/src/draw/lv_draw_line.h"
@@ -46,7 +47,7 @@ static void details(lv_layer_t *l,const lv_area_t *a,const ui_nav_map_frame_t *f
         if(!pass)line(l,p,q,w+3,0x101112,LV_OPA_COVER);
         else line(l,p,q,w,f->roads[i].level==0?0x4C5053:f->roads[i].level==1?0x34373B:0x25292C,LV_OPA_COVER);
     }
-    lv_area_t used[UI_NAV_MAP_LABEL_MAX];unsigned accepted=0;
+    static UI_LARGE_RAM lv_area_t used[UI_NAV_MAP_LABEL_MAX];unsigned accepted=0;
     for(unsigned i=0;i<f->label_count;i++) {
         lv_point_precise_t p=project(a,f,f->labels[i].point,m,scale);
         char text[64];const lv_font_t *font;ui_text_prepare(f->labels[i].text,20,text,sizeof(text),&font);

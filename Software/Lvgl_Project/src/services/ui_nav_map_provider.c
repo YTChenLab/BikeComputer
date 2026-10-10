@@ -1,9 +1,10 @@
+#include "ui/core/ui_memory.h"
 #include "ui_nav_map_provider.h"
 #include "ui/core/ui_concurrency.h"
 #include <math.h>
 #include <string.h>
 static ui_nav_map_backend_t s_backend;
-static struct {
+static UI_LARGE_RAM struct {
     ui_nav_map_request_t request;
     ui_nav_map_frame_t current, pending;
     uint32_t next, version, started;
@@ -34,8 +35,9 @@ uint32_t ui_nav_map_provider_request(const ui_nav_map_request_t *request,uint32_
     s.request.id=s.next++; s.started=now_ms; s.busy=true;
     ui_nav_map_request_t copy=s.request; ui_nav_map_backend_t backend=s_backend; ui_concurrency_unlock();
     if(!backend.request || !backend.request(&copy,backend.context)) {
-        ui_nav_map_frame_t empty={.request_id=copy.id,.route_id=copy.route_id,
-            .route_revision=copy.route_revision,.status=UI_NAV_NO_MAP};
+        static UI_LARGE_RAM ui_nav_map_frame_t empty;
+        memset(&empty,0,sizeof(empty)); empty.request_id=copy.id; empty.route_id=copy.route_id;
+        empty.route_revision=copy.route_revision; empty.status=UI_NAV_NO_MAP;
         ui_nav_map_provider_submit(&empty);
     }
     return copy.id;

@@ -1,3 +1,4 @@
+#include "ui/core/ui_memory.h"
 #include "ui_event_bus.h"
 
 #include <stddef.h>
@@ -31,7 +32,7 @@ typedef struct
     void *overflow_user_data;
 } ui_event_bus_context_t;
 
-static ui_event_bus_context_t s_bus;
+static UI_LARGE_RAM ui_event_bus_context_t s_bus;
 
 static bool valid_event(const ui_event_t *event)
 {

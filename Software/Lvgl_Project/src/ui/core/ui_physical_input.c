@@ -36,12 +36,10 @@ bool ui_input_map_physical_event(const ui_physical_input_event_t *event,
             default: break;
         }
     }
-    else if(event->action == UI_PHYSICAL_KEY_DOUBLE_CLICK && event->key == UI_PHYSICAL_KEY_BACK)
-        mapping->action = UI_INPUT_BACK_DOUBLE;
+    else if(event->action == UI_PHYSICAL_KEY_DOUBLE_CLICK && event->key == UI_PHYSICAL_KEY_MENU)
+        mapping->action = UI_INPUT_RIDE_TOGGLE;
     else if(event->action == UI_PHYSICAL_KEY_LONG_START) {
         if(event->key == UI_PHYSICAL_KEY_BACK) mapping->action = UI_INPUT_BACK_LONG;
-        else if(event->key == UI_PHYSICAL_KEY_MENU) mapping->action = UI_INPUT_RIDE_TOGGLE;
-        else if(event->key == UI_PHYSICAL_KEY_ENCODER_BUTTON) mapping->action = UI_INPUT_TOGGLE_CONTROL_CENTER;
     }
     if(mapping->action != UI_INPUT_COUNT) mapping->count = 1;
     return true;

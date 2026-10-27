@@ -7,7 +7,7 @@
 static void check(uint8_t key, uint8_t action, ui_input_event_t expected, uint32_t count)
 {
     /* Timestamp zero/wrap/reversal cannot change a recognized outcome. */
-    const uint32_t timestamps[] = {0, UINT32_MAX, 25, 1200, 280, 1};
+    const uint32_t timestamps[] = {0, UINT32_MAX, 25, 700, 2000, 250, 1};
     for(unsigned i = 0; i < sizeof(timestamps) / sizeof(timestamps[0]); ++i) {
         ui_physical_input_event_t event = {.key=key,.action=action,.timestamp_ms=timestamps[i]};
         ui_input_mapping_t mapping;
@@ -19,12 +19,13 @@ static void check(uint8_t key, uint8_t action, ui_input_event_t expected, uint32
 int main(void)
 {
     check(UI_PHYSICAL_KEY_BACK,UI_PHYSICAL_KEY_CLICK,UI_INPUT_BACK,1);
-    check(UI_PHYSICAL_KEY_BACK,UI_PHYSICAL_KEY_DOUBLE_CLICK,UI_INPUT_BACK_DOUBLE,1);
+    check(UI_PHYSICAL_KEY_BACK,UI_PHYSICAL_KEY_DOUBLE_CLICK,UI_INPUT_COUNT,0);
     check(UI_PHYSICAL_KEY_BACK,UI_PHYSICAL_KEY_LONG_START,UI_INPUT_BACK_LONG,1);
     check(UI_PHYSICAL_KEY_MENU,UI_PHYSICAL_KEY_CLICK,UI_INPUT_TOGGLE_CONTROL_CENTER,1);
-    check(UI_PHYSICAL_KEY_MENU,UI_PHYSICAL_KEY_LONG_START,UI_INPUT_RIDE_TOGGLE,1);
+    check(UI_PHYSICAL_KEY_MENU,UI_PHYSICAL_KEY_DOUBLE_CLICK,UI_INPUT_RIDE_TOGGLE,1);
+    check(UI_PHYSICAL_KEY_MENU,UI_PHYSICAL_KEY_LONG_START,UI_INPUT_COUNT,0);
     check(UI_PHYSICAL_KEY_ENCODER_BUTTON,UI_PHYSICAL_KEY_CLICK,UI_INPUT_ENCODER_PRESS,1);
-    check(UI_PHYSICAL_KEY_ENCODER_BUTTON,UI_PHYSICAL_KEY_LONG_START,UI_INPUT_TOGGLE_CONTROL_CENTER,1);
+    check(UI_PHYSICAL_KEY_ENCODER_BUTTON,UI_PHYSICAL_KEY_LONG_START,UI_INPUT_COUNT,0);
     check(UI_PHYSICAL_KEY_PREV,UI_PHYSICAL_KEY_CLICK,UI_INPUT_PAGE_PREV,1);
     check(UI_PHYSICAL_KEY_NEXT,UI_PHYSICAL_KEY_CLICK,UI_INPUT_PAGE_NEXT,1);
     for(uint8_t key=UI_PHYSICAL_KEY_POWER;key<UI_PHYSICAL_KEY_ENCODER;++key) {
@@ -32,7 +33,8 @@ int main(void)
         check(key,UI_PHYSICAL_KEY_UP,UI_INPUT_COUNT,0);
         check(key,UI_PHYSICAL_KEY_LONG_REPEAT,UI_INPUT_COUNT,0);
         check(key,UI_PHYSICAL_KEY_LONG_END,UI_INPUT_COUNT,0);
-        if(key!=UI_PHYSICAL_KEY_BACK) check(key,UI_PHYSICAL_KEY_DOUBLE_CLICK,UI_INPUT_COUNT,0);
+        if(key!=UI_PHYSICAL_KEY_MENU)
+            check(key,UI_PHYSICAL_KEY_DOUBLE_CLICK,UI_INPUT_COUNT,0);
     }
     for(uint8_t action=UI_PHYSICAL_KEY_DOWN;action<=UI_PHYSICAL_KEY_LONG_END;++action)
         check(UI_PHYSICAL_KEY_POWER,action,UI_INPUT_COUNT,0);

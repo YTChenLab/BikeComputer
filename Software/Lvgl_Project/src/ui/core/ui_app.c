@@ -2558,12 +2558,6 @@ void ui_app_handle_input(ui_input_event_t input) {
     }
     if(ui_dashboard_editor_handle_input(input)) return;
     if(ui_zone_editor_handle_input(input)) return;
-    if(input == UI_INPUT_BACK_DOUBLE) {
-        if(ui_state_machine_state() == UI_RIDE_STATE_RIDING ||
-           ui_state_machine_state() == UI_RIDE_STATE_PAUSED)
-            app_action(UI_ACTION_PAUSE_RIDE);
-        return;
-    }
     if(input == UI_INPUT_BACK_LONG) {
         if(ui_state_machine_state() == UI_RIDE_STATE_RIDING ||
            ui_state_machine_state() == UI_RIDE_STATE_PAUSED)

@@ -65,7 +65,7 @@ typedef struct {
 } ui_physical_input_event_t;
 ```
 
-固定大小 12 字节，delta／timestamp 偏移分别为 4／8；key/action 使用固定宽度字段，不依赖编译器 enum 大小。`reserved=0`，非编码器事件的 delta 为 0。编码器为 CW 正数、CCW 负数，单条 -64..64，超限由生产者拆分。InputService 保证同一手势不会同时产生相互排斥的 CLICK、DOUBLE_CLICK、LONG_START。
+固定大小 12 字节，delta／timestamp 偏移分别为 4／8；key/action 使用固定宽度字段，不依赖编译器 enum 大小。`reserved=0`，非编码器事件的 delta 为 0。编码器为 CW 正数、CCW 负数，单条 -64..64，超限由生产者拆分。板端 InputService 实现后，必须保证同一手势不会同时产生相互排斥的 CLICK、DOUBLE_CLICK、LONG_START。
 
 系统输入队列复制记录，UiTask 消费后调用：
 
@@ -77,7 +77,11 @@ bool ui_stm32_services_apply_display_state(bool enabled);
 
 不在 UI 中再次消抖或根据 timestamp 判定单双击。POWER 和生命周期事件可被接受而不产生 UI 动作；实体电源硬件由 PowerService 处理，UiTask 收到状态通知后 apply_display_state，不重新发送同一电源命令。
 
-迁移时删除对 `sample_inputs`、`set_key_map`、`submit_input` 的旧调用。STM32 项目的旧 `AppInputEvent_t { type, value }` 需要升级为相同语义字段／标准记录，并重新编译全部生产者和消费者；不能混用旧队列 payload。本版没有替你完成 InputService／PowerService 驱动。
+板端接入合同参数为：25 ms 消抖、BACK 长按 700 ms、POWER 长按 2000 ms、MENU 双击窗口 250 ms。它们尚未在当前 STM32 固件中验证：工程内 `InputTask` 仍是 10 ms 占位循环，输入识别和 Router 未实现。板端完成后由 STM32 输入服务识别时序，UI 不再计时。实体映射为：MENU `CLICK`→控制中心、MENU `DOUBLE_CLICK`→既有骑行控制；BACK `CLICK`→返回、BACK `LONG_START`→既有结束确认；PREV/NEXT `CLICK`→翻页或导航上下文；ENCODER_BUTTON `CLICK`→确认；编码器 delta 按符号执行原焦点/数值/地图操作。BACK 双击、MENU 长按、ENCODER_BUTTON 长按、其他未定义双击/长按/REPEAT 均无 UI 动作。
+
+PC 联调快捷键：`M` 为 MENU 单击，`F5` 为 MENU 双击，`F6` 按下/释放分别注入 BACK `LONG_START`/`LONG_END`，`Esc`/`Backspace` 为 BACK 单击，`Left`/`Right` 为 PREV/NEXT，`Enter` 为编码器按压，鼠标滚轮或上下方向键为编码器旋转。F6 的 SDL 重复按键消息不注入 `LONG_REPEAT`；`F7/F8` 已取消，不再注入旧长按手势。
+
+标准目标链路为 STM32 InputService 识别手势、Input Router 将内部事件显式转换为 `ui_physical_input_event_t` 12 字节记录、RTOS 队列交付给 UiTask，再调用既有 `ui_stm32_services_handle_input_event(const ui_physical_input_event_t *)`。当前 STM32 队列入口仍使用应用事件类型，不能直接传给这个 UI 接口；需由板端适配层显式转换后再交付。队列生产者与消费者须共享相同记录并整体重编译，不能直接 cast 内部枚举。本版保持该 UI 服务接口及事件 ABI 不变；STM32 侧 InputService、Input Router 和队列生产者不属于本次修改范围。
 
 完整行为、映射、队列迁移与 PC 联调方式见 [2026-10-09 输入契约](输入架构重构_20261009.md)。
 

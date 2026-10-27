@@ -24,11 +24,9 @@ static bool release_class(const ui_input_message_t *message)
     if(type == UI_INPUT_PHYSICAL_EVENT)
         return message->physical.key == UI_PHYSICAL_KEY_BACK &&
             (message->physical.action == UI_PHYSICAL_KEY_CLICK ||
-             message->physical.action == UI_PHYSICAL_KEY_DOUBLE_CLICK ||
              message->physical.action == UI_PHYSICAL_KEY_LONG_START);
     return type == UI_INPUT_TOUCH_END || type == UI_INPUT_TOUCH_CANCEL ||
-           type == UI_INPUT_BACK || type == UI_INPUT_BACK_DOUBLE ||
-           type == UI_INPUT_BACK_LONG;
+           type == UI_INPUT_BACK || type == UI_INPUT_BACK_LONG;
 }
 
 static bool remove_oldest_move(void)

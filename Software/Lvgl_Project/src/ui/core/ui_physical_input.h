@@ -41,8 +41,9 @@ typedef struct {
     uint32_t timestamp_ms;  /* InputService's monotonic clock; no UI timing. */
 } ui_physical_input_event_t;
 
-/* InputService emits exactly one CLICK, DOUBLE_CLICK or LONG_START outcome.
- * A long sequence may include REPEAT and ends with LONG_END/UP, never CLICK.
+/* InputService emits one CLICK, DOUBLE_CLICK or LONG_START outcome.
+ * v1.5.2 does not generate LONG_REPEAT; release may emit LONG_END/UP, never
+ * CLICK. LONG_REPEAT retains its numeric ABI but is consumed without action.
  * POWER is owned by PowerService; forwarding it to UI has no hardware action. */
 
 #endif /* UI_PHYSICAL_INPUT_H */

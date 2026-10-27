@@ -1,6 +1,8 @@
 #include "ui_pc_input.h"
 #include "ui/core/ui_input_queue.h"
 
+static bool s_back_long_active;
+
 bool ui_pc_input_post(const ui_physical_input_event_t *event)
 {
     ui_input_mapping_t mapping;
@@ -34,14 +36,24 @@ static void post_wheel(const SDL_MouseWheelEvent *wheel)
 bool ui_pc_input_handle_sdl_event(const SDL_Event *event)
 {
     if(!event) return false;
+    if(event->type == SDL_WINDOWEVENT &&
+       event->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+        if(s_back_long_active) {
+            (void)post(UI_PHYSICAL_KEY_BACK, UI_PHYSICAL_KEY_LONG_END, 0,
+                       event->window.timestamp);
+            s_back_long_active = false;
+        }
+        return false;
+    }
     if(event->type == SDL_MOUSEWHEEL) {
         post_wheel(&event->wheel);
         return true;
     }
     if((event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP) &&
        event->button.button == SDL_BUTTON_RIGHT) {
-        /* Right click is one recognized CLICK. Use F5 for DOUBLE_CLICK;
-         * SDL's click count would first deliver an unwanted single click. */
+        /* Right click is one recognized BACK CLICK. Use F5 for MENU
+         * DOUBLE_CLICK; SDL's click count would first deliver an unwanted
+         * single click. */
         if(event->type == SDL_MOUSEBUTTONUP)
             (void)post(UI_PHYSICAL_KEY_BACK, UI_PHYSICAL_KEY_CLICK, 0, event->button.timestamp);
         return true;
@@ -62,14 +74,18 @@ bool ui_pc_input_handle_sdl_event(const SDL_Event *event)
         case SDLK_RETURN: case SDLK_KP_ENTER: key = UI_PHYSICAL_KEY_ENCODER_BUTTON; break;
         case SDLK_F5:
             if(down && !keyboard->repeat)
-                (void)post(UI_PHYSICAL_KEY_BACK, UI_PHYSICAL_KEY_DOUBLE_CLICK, 0, keyboard->timestamp);
+                (void)post(UI_PHYSICAL_KEY_MENU, UI_PHYSICAL_KEY_DOUBLE_CLICK, 0, keyboard->timestamp);
             return true;
-        case SDLK_F6: case SDLK_F7: case SDLK_F8:
-            key = keyboard->keysym.sym == SDLK_F6 ? UI_PHYSICAL_KEY_BACK :
-                  keyboard->keysym.sym == SDLK_F7 ? UI_PHYSICAL_KEY_MENU : UI_PHYSICAL_KEY_ENCODER_BUTTON;
-            (void)post(key, !down ? UI_PHYSICAL_KEY_LONG_END :
-                keyboard->repeat ? UI_PHYSICAL_KEY_LONG_REPEAT : UI_PHYSICAL_KEY_LONG_START,
-                0, keyboard->timestamp);
+        case SDLK_F6:
+            key = UI_PHYSICAL_KEY_BACK;
+            if(!down && s_back_long_active) {
+                (void)post(key, UI_PHYSICAL_KEY_LONG_END, 0, keyboard->timestamp);
+                s_back_long_active = false;
+            }
+            else if(down && !keyboard->repeat && !s_back_long_active) {
+                s_back_long_active = post(key, UI_PHYSICAL_KEY_LONG_START, 0,
+                                          keyboard->timestamp);
+            }
             return true;
         default: return false;
     }

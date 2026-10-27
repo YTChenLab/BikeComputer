@@ -61,6 +61,13 @@ static void semantic_delta(int32_t delta)
         .action=UI_PHYSICAL_ENCODER_DELTA,.encoder_delta=delta,.timestamp_ms=lv_tick_get()};
     assert(ui_app_handle_input_event(&event));
 }
+static void physical_action(uint8_t key, uint8_t action)
+{
+    const ui_physical_input_event_t event = {
+        .key=key, .action=action, .timestamp_ms=lv_tick_get()
+    };
+    assert(ui_app_handle_input_event(&event));
+}
 static void semantic_input(ui_input_event_t input)
 {
     ui_physical_input_event_t event={.timestamp_ms=lv_tick_get()};
@@ -74,7 +81,7 @@ static void semantic_input(ui_input_event_t input)
         case UI_INPUT_PAGE_PREV: event.key=UI_PHYSICAL_KEY_PREV; event.action=UI_PHYSICAL_KEY_CLICK; break;
         case UI_INPUT_PAGE_NEXT: event.key=UI_PHYSICAL_KEY_NEXT; event.action=UI_PHYSICAL_KEY_CLICK; break;
         case UI_INPUT_TOGGLE_CONTROL_CENTER: event.key=UI_PHYSICAL_KEY_MENU; event.action=UI_PHYSICAL_KEY_CLICK; break;
-        case UI_INPUT_RIDE_TOGGLE: event.key=UI_PHYSICAL_KEY_MENU; event.action=UI_PHYSICAL_KEY_LONG_START; break;
+        case UI_INPUT_RIDE_TOGGLE: event.key=UI_PHYSICAL_KEY_MENU; event.action=UI_PHYSICAL_KEY_DOUBLE_CLICK; break;
         default: ui_app_handle_input(input); return;
     }
     ui_physical_input_event_t lifecycle=event;
@@ -82,8 +89,6 @@ static void semantic_input(ui_input_event_t input)
     assert(ui_app_handle_input_event(&lifecycle));
     assert(ui_app_handle_input_event(&event));
     if(event.action==UI_PHYSICAL_KEY_LONG_START) {
-        lifecycle.action=UI_PHYSICAL_KEY_LONG_REPEAT;
-        assert(ui_app_handle_input_event(&lifecycle));
         lifecycle.action=UI_PHYSICAL_KEY_LONG_END;
         assert(ui_app_handle_input_event(&lifecycle));
     }
@@ -1239,9 +1244,17 @@ int main(int argc, char **argv)
     assert(after.duration_seconds > before.duration_seconds);
     assert(ui_state_machine_state() == UI_RIDE_STATE_RIDING);
     semantic_input(UI_INPUT_ENCODER_PRESS); /* wake, consumes first press */
+    semantic_input(UI_INPUT_BACK_DOUBLE); /* Retired physical gesture has no ride effect. */
+    physical_action(UI_PHYSICAL_KEY_MENU,UI_PHYSICAL_KEY_LONG_START);
+    physical_action(UI_PHYSICAL_KEY_ENCODER_BUTTON,UI_PHYSICAL_KEY_LONG_START);
+    assert(ui_state_machine_state()==UI_RIDE_STATE_RIDING);
     semantic_input(UI_INPUT_RIDE_TOGGLE);
     advance(600);
     assert(ui_state_machine_state() == UI_RIDE_STATE_PAUSED);
+    physical_action(UI_PHYSICAL_KEY_BACK,UI_PHYSICAL_KEY_DOUBLE_CLICK);
+    physical_action(UI_PHYSICAL_KEY_MENU,UI_PHYSICAL_KEY_LONG_START);
+    physical_action(UI_PHYSICAL_KEY_ENCODER_BUTTON,UI_PHYSICAL_KEY_LONG_START);
+    assert(ui_state_machine_state()==UI_RIDE_STATE_PAUSED);
     capture("paused");
     ui_ride_summary_model_get(&before);
     advance(1600);

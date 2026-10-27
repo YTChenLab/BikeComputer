@@ -45,8 +45,11 @@ int main(int argc,char **argv)
     key(SDLK_ESCAPE,SDL_KEYDOWN,0); advance(500);
     assert(ui_system_control_shade_state()==UI_SYSTEM_CONTROL_SHADE_CLOSED);
     key(SDLK_F7,SDL_KEYDOWN,0); key(SDLK_F7,SDL_KEYUP,0); advance(1500);
+    key(SDLK_F8,SDL_KEYDOWN,0); key(SDLK_F8,SDL_KEYUP,0); advance(300);
+    assert(ui_state_machine_state()==UI_RIDE_STATE_HOME);
+    key(SDLK_F5,SDL_KEYDOWN,0); key(SDLK_F5,SDL_KEYUP,0); advance(1500);
     assert(ui_state_machine_state()==UI_RIDE_STATE_GPS_READY);
-    key(SDLK_F7,SDL_KEYDOWN,0); key(SDLK_F7,SDL_KEYUP,0); advance(300);
+    key(SDLK_F5,SDL_KEYDOWN,0); key(SDLK_F5,SDL_KEYUP,0); advance(300);
     assert(ui_state_machine_state()==UI_RIDE_STATE_RIDING);
     key(SDLK_F5,SDL_KEYDOWN,0); key(SDLK_F5,SDL_KEYUP,0); advance(300);
     assert(ui_state_machine_state()==UI_RIDE_STATE_PAUSED);

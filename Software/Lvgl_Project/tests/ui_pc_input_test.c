@@ -33,14 +33,25 @@ int main(int argc, char **argv)
     key(SDLK_ESCAPE,SDL_KEYDOWN,1); key(SDLK_ESCAPE,SDL_KEYUP,0); drain();
     assert(records==2 && actions==1);
     key(SDLK_F5,SDL_KEYDOWN,0); key(SDLK_F5,SDL_KEYDOWN,1); key(SDLK_F5,SDL_KEYUP,0); drain();
-    assert(records==3 && actions==2 && last.action==UI_PHYSICAL_KEY_DOUBLE_CLICK);
-    key(SDLK_F6,SDL_KEYDOWN,0); drain(); assert(actions==3 && last.action==UI_PHYSICAL_KEY_LONG_START);
+    assert(records==3 && actions==2 && last.key==UI_PHYSICAL_KEY_MENU &&
+           last.action==UI_PHYSICAL_KEY_DOUBLE_CLICK);
+    key(SDLK_F6,SDL_KEYUP,0); drain(); assert(records==3 && actions==2);
+    key(SDLK_F6,SDL_KEYDOWN,0); drain(); assert(records==4 && actions==3 && last.action==UI_PHYSICAL_KEY_LONG_START);
     key(SDLK_F6,SDL_KEYDOWN,1); key(SDLK_F6,SDL_KEYUP,0); drain();
-    assert(actions==3 && last.action==UI_PHYSICAL_KEY_LONG_END);
-    key(SDLK_F7,SDL_KEYDOWN,0); key(SDLK_F7,SDL_KEYUP,0); drain(); assert(actions==4 && last.key==UI_PHYSICAL_KEY_MENU);
-    key(SDLK_F8,SDL_KEYDOWN,0); key(SDLK_F8,SDL_KEYUP,0); drain(); assert(actions==5 && last.key==UI_PHYSICAL_KEY_ENCODER_BUTTON);
+    assert(records==5 && actions==3 && last.action==UI_PHYSICAL_KEY_LONG_END);
+    key(SDLK_F6,SDL_KEYDOWN,0);
+    SDL_Event focus_lost={.type=SDL_WINDOWEVENT};
+    focus_lost.window.event=SDL_WINDOWEVENT_FOCUS_LOST;
+    focus_lost.window.timestamp=1235;
+    assert(!ui_pc_input_handle_sdl_event(&focus_lost));
+    key(SDLK_F6,SDL_KEYUP,0); drain();
+    assert(records==7 && actions==4 && last.action==UI_PHYSICAL_KEY_LONG_END);
+    SDL_Event obsolete_f7={.type=SDL_KEYDOWN}; obsolete_f7.key.keysym.sym=SDLK_F7;
+    SDL_Event obsolete_f8={.type=SDL_KEYDOWN}; obsolete_f8.key.keysym.sym=SDLK_F8;
+    assert(!ui_pc_input_handle_sdl_event(&obsolete_f7));
+    assert(!ui_pc_input_handle_sdl_event(&obsolete_f8));
     key(SDLK_m,SDL_KEYDOWN,0); key(SDLK_RETURN,SDL_KEYDOWN,0); key(SDLK_LEFT,SDL_KEYDOWN,0); key(SDLK_RIGHT,SDL_KEYDOWN,0); drain();
-    assert(actions==9 && last.key==UI_PHYSICAL_KEY_NEXT);
+    assert(actions==8 && last.key==UI_PHYSICAL_KEY_NEXT);
     key(SDLK_DOWN,SDL_KEYDOWN,0); key(SDLK_DOWN,SDL_KEYDOWN,1); key(SDLK_UP,SDL_KEYDOWN,0); drain(); assert(rotation==1);
     SDL_Event wheel={.type=SDL_MOUSEWHEEL};
     wheel.wheel.y=-9; assert(ui_pc_input_handle_sdl_event(&wheel)); drain(); assert(rotation==10);
@@ -61,8 +72,7 @@ int main(int argc, char **argv)
     for(unsigned i=0;i<UI_INPUT_QUEUE_MAX;++i) assert(ui_pc_input_post(&event));
     assert(!ui_pc_input_post(&event) && ui_input_queue_dropped()==1);
     event.key=UI_PHYSICAL_KEY_BACK; event.action=UI_PHYSICAL_KEY_DOUBLE_CLICK; event.encoder_delta=0;
-    assert(ui_pc_input_post(&event) && ui_input_queue_dropped()==2); drain();
-    assert(last.action==UI_PHYSICAL_KEY_DOUBLE_CLICK);
+    assert(!ui_pc_input_post(&event) && ui_input_queue_dropped()==2); drain();
     puts("ui_pc_input_test: PASS (SDL shortcuts, no duplicate click, repeat/end, signed batches, overflow, touch separation)");
     return 0;
 }

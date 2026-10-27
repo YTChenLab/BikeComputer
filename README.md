@@ -1,6 +1,6 @@
 # BikeComputer
 
-公路车码表的软件、硬件与结构设计仓库。当前已归档的主要软件为 **LVGL UI v1.5.2**，包含 PC／STM32 平台适配及接入说明，可在 Windows PC 模拟器中构建和运行。
+公路车码表的软件、硬件与结构设计仓库。当前已归档的主要软件为 **LVGL UI v1.5.3**，包含 PC／STM32 平台适配及接入说明，可在 Windows PC 模拟器中构建和运行。
 
 ## 目录导航
 
@@ -20,7 +20,7 @@
 
 | 项目 | 当前信息 |
 | --- | --- |
-| BikeComputer LVGL UI | `v1.5.2` |
+| BikeComputer LVGL UI | `v1.5.3` |
 | 内置 LVGL 源码 | `9.3.0-dev` |
 | PC 工具链 | MSYS2 UCRT64、GCC、Ninja、CMake、包含 Pillow 的 Python |
 | STM32、硬件和结构 | 分别维护归档与验收状态 |
@@ -31,15 +31,15 @@
 
 - [构建、运行与输入映射](Software/Lvgl_Project/README.md)
 - [软件更新记录](Software/Lvgl_Project/CHANGELOG.md)
-- [v1.5.2 更新内容与验证边界](Software/Lvgl_Project/docs/V1.5.2_RELEASE_NOTES.md)
-- [STM32 v1.5.2 接口适配与接入说明](Software/Lvgl_Project/docs/STM32_V1.5.2_INTEGRATION.md)
+- [v1.5.3 更新内容与验证边界](Software/Lvgl_Project/docs/V1.5.3_RELEASE_NOTES.md)
+- [STM32 v1.5.3 接口适配与接入说明](Software/Lvgl_Project/docs/STM32_V1.5.3_INTEGRATION.md)
 - [离线导航搜索覆盖与限制](Software/Lvgl_Project/docs/导航搜索准确性_20261005.md)
 - [分支、Git LFS 与版本发布流程](Software/Lvgl_Project/docs/RELEASE_WORKFLOW.md)
 - [协作与提交命名规范](CONTRIBUTING.md)
 
 ## 版本规则
 
-- 修复缺陷：递增补丁版本，例如 `1.5.1 → 1.5.2`。
+- 修复缺陷：递增补丁版本，例如 `1.5.2 → 1.5.3`。
 - 增加兼容功能：递增次版本，例如 `1.5.x → 1.6.0`。
 - 引入不兼容接口或数据格式：递增主版本；视觉调整本身不必升级主版本。
 - 发布标签使用 `vMAJOR.MINOR.PATCH`；文档整理和 CI 修复可单独提交，不自动变更应用版本。

@@ -1,7 +1,7 @@
 # BikeComputer LVGL UI
 
-- v1.5.2 归档 PC／STM32 平台拆分、板端端口与内存适配、实体输入接口重构及接入资料。版本变化见 [v1.5.2 更新日志](docs/V1.5.2_RELEASE_NOTES.md)，当前板端契约以 [STM32 v1.5.2 接入说明](docs/STM32_V1.5.2_INTEGRATION.md) 为入口。
-- 实体输入由 InputService 识别手势，UiTask 消费标准事件；PC 用 F5/F6 分别注入 BACK 双击/长按。详细契约见 [输入架构说明](docs/输入架构重构_20261009.md)。
+- v1.5.3 统一 MENU 双击骑行控制、BACK 长按结束确认和 PC 实体输入快捷键，延续既有 PC／STM32 端口与公共事件 ABI。版本变化见 [v1.5.3 更新日志](docs/V1.5.3_RELEASE_NOTES.md)，当前板端契约以 [STM32 v1.5.3 接入说明](docs/STM32_V1.5.3_INTEGRATION.md) 为入口。
+- 实体输入由 InputService 识别手势，UiTask 消费标准事件；PC 用 F5 注入 MENU 双击、F6 注入 BACK 长按开始/结束。详细契约见 [输入架构说明](docs/输入架构重构_20261009.md)。
 
 BikeComputer 公路车码表的 LVGL UI 工程和 Windows PC Simulator。
 
@@ -11,7 +11,7 @@ BikeComputer 公路车码表的 LVGL UI 工程和 Windows PC Simulator。
 
 ## 版本信息
 
-- BikeComputer UI 工程版本：`v1.5.2`
+- BikeComputer UI 工程版本：`v1.5.3`
 - LVGL 源码版本：`9.3.0-dev`
 - 目标分辨率：`480 × 854`
 - 色彩格式：RGB565
@@ -21,7 +21,7 @@ BikeComputer 公路车码表的 LVGL UI 工程和 Windows PC Simulator。
 
 本轮软件增加连续弹性胶囊动效、骑行/保存/电源状态闭环、带质量和时间的数据接口、后台存储及历史分页、配置持久化和个人区间编辑。硬件可通过任务安全邮箱和异步命令 ACK 接入；无需从传感器任务直接调用 LVGL。
 
-v1.5.2 的版本迭代日志、发布验证和已知限制见 [发布记录](docs/V1.5.2_RELEASE_NOTES.md)。[v1.5.1 发布记录](docs/V1.5.1_RELEASE_NOTES.md)和 [v1.5.0 发布记录](docs/V1.5.0_RELEASE_NOTES.md)保留原历史。候选阶段的软件交付说明见 [软件交付与验收](docs/软件交付与验收_v1.4.0-rc1.md)；真实数据、命令、任务与存储接入见 [硬件数据与任务接口](docs/硬件数据与任务接口_v1.4.0-rc1.md)。本版本归档当前 LVGL 软件基线，PC 验证不代表 STM32 性能或整机商用验收完成。
+v1.5.3 的版本迭代日志、发布验证和已知限制见 [发布记录](docs/V1.5.3_RELEASE_NOTES.md)。[v1.5.2 发布记录](docs/V1.5.2_RELEASE_NOTES.md)、[v1.5.1 发布记录](docs/V1.5.1_RELEASE_NOTES.md)和 [v1.5.0 发布记录](docs/V1.5.0_RELEASE_NOTES.md)保留原历史。候选阶段的软件交付说明见 [软件交付与验收](docs/软件交付与验收_v1.4.0-rc1.md)；真实数据、命令、任务与存储接入见 [硬件数据与任务接口](docs/硬件数据与任务接口_v1.4.0-rc1.md)。本版本归档当前 LVGL 软件基线，PC 验证不代表 STM32 性能或整机商用验收完成。
 
 `UI_PLATFORM=PC` 构建模拟器，`UI_PLATFORM=STM32` 构建无 HAL 依赖的 `bike_ui_stm32` 静态库。后者还需要板端 BSP、FreeRTOS、显示、存储、输入和电源服务实现。2026-10-06 的接入指南和接口 CSV 是历史快照；其中旧实体输入接口已被 2026-10-09 的语义事件契约替代，详见当前接入说明。
 
@@ -179,9 +179,9 @@ v1.3.1 全局 UI、交互和稳定性验收见 [docs/v1.3.1报告.md](docs/v1.3.
 
 导航已按用户效果图和定版文字实现 [Navigation UI v2.0 Final](docs/NAVIGATION_UI_V2_FINAL.md)，实际 LVGL 预览与验收见 [本轮验证记录](docs/NAVIGATION_UI_V2_VALIDATION.md)。
 
-## v1.5.1 获取与发布
+## 获取与发布
 
-本版扩大离线道路/地点库至西安城六区与长安区（高新区按雁塔、长安区界覆盖），补全陕西科技大学未央校区并保留太华路校区独立候选；每次重新打开搜索均清空旧输入。个人主页操作卡片统一实心黄色流体胶囊选择。联网搜索接口暂时预留，空配置模板默认关闭，不包含个人 Key，也未完成真实 Key 地点验收。操作与边界见 [搜索准确性](docs/导航搜索准确性_20261005.md)和[联网接口](docs/导航联网搜索_20261005.md)。
+v1.5.1 引入的离线道路/地点库覆盖西安城六区与长安区（高新区按雁塔、长安区界覆盖），包含陕西科技大学未央校区并保留太华路校区独立候选；每次重新打开搜索均清空旧输入。个人主页操作卡片统一实心黄色流体胶囊选择。联网搜索接口暂时预留，空配置模板默认关闭，不包含个人 Key，也未完成真实 Key 地点验收。操作与边界见 [搜索准确性](docs/导航搜索准确性_20261005.md)和[联网接口](docs/导航联网搜索_20261005.md)。
 
 本软件使用 MiSans 字体。版权声明与官方许可原件位于 `assets/fonts_src/MiSans-NOTICE.txt` 和 `assets/fonts_src/MiSans-IP-License.pdf`；Windows 包保留在 `licenses/`。官方说明见 [MiSans 字体页面](https://hyperos.mi.com/font/download)。
 

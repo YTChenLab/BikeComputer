@@ -1,0 +1,67 @@
+# 本目录按正式固件源码与必要交付资料维护提交范围。
+/*
+!/.gitignore
+!/README.md
+!/VERSION
+!/CHANGELOG.md
+!/.mxproject
+!/BikeComputer_STM32.ioc
+!/App/
+!/Core/
+!/Drivers/
+!/Middlewares/
+!/MDK-ARM/
+!/tools/
+!/docs/
+
+# 当前应用与 CubeMX 源码中的历史备份和缓存。
+**/Backup/
+**/backup/
+*.bak
+*.Bak
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 保留 HAL 源码集、当前 CMSIS 头文件集及许可证。
+/Drivers/*
+!/Drivers/STM32H7xx_HAL_Driver/
+!/Drivers/CMSIS/
+/Drivers/CMSIS/*
+!/Drivers/CMSIS/Include/
+!/Drivers/CMSIS/Device/
+!/Drivers/CMSIS/LICENSE.txt
+/Drivers/CMSIS/Device/*
+!/Drivers/CMSIS/Device/ST/
+/Drivers/CMSIS/Device/ST/*
+!/Drivers/CMSIS/Device/ST/STM32H7xx/
+/Drivers/CMSIS/Device/ST/STM32H7xx/*
+!/Drivers/CMSIS/Device/ST/STM32H7xx/Include/
+!/Drivers/CMSIS/Device/ST/STM32H7xx/LICENSE.txt
+
+# Keil 工程、启动汇编和可共享的目标配置。
+/MDK-ARM/*
+!/MDK-ARM/BikeComputer_STM32.uvprojx
+!/MDK-ARM/startup_stm32h743xx.s
+!/MDK-ARM/RTE/
+!/MDK-ARM/DebugConfig/
+
+# 当前自定义链接脚本位于输出目录内，需单独纳入。
+!/MDK-ARM/BikeComputer_STM32/
+/MDK-ARM/BikeComputer_STM32/*
+!/MDK-ARM/BikeComputer_STM32/BikeComputer_Memory.sct
+
+# 正式资源安装客户端。
+/tools/*
+!/tools/resource_installer.py
+
+# 当前交付审计与正式通信协议。
+/docs/*
+!/docs/GIT_SUBMISSION_AUDIT.md
+!/docs/Q4-3/
+/docs/Q4-3/*
+!/docs/Q4-3/资源安装协议V1.md
